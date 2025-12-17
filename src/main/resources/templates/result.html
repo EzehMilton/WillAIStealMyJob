@@ -201,7 +201,7 @@
                     </div>
 
                     <!-- No Results Message -->
-                    <div th:if="${!success} and ${!error}" class="card shadow-lg border-0 rounded-4 mb-4">
+                    <div th:if="${!success and error == null}" class="card shadow-lg border-0 rounded-4 mb-4">
                         <div class="card-body p-5 text-center">
                             <div class="mb-4">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-info-circle text-muted" viewBox="0 0 16 16">
