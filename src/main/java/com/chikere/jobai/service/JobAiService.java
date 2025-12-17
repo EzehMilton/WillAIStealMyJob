@@ -20,11 +20,34 @@ public class JobAiService {
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public JobRiskAssessment assessJobRisk(String profession, String roleSummary) {
-        log.info("Assessing job risk for profession: {}", profession);
+    public JobRiskAssessment assessJobRisk(String mode, String profession, String roleSummary) {
+        log.info("Assessing job risk for mode: {}, profession: {}", mode, profession);
 
         String promptTemplate = loadPromptTemplate();
+
+        // Set mode-specific instructions and labels
+        String modeInstructions;
+        String inputLabel;
+        String detailsLabel;
+
+        if ("course".equals(mode)) {
+            modeInstructions = "Your task is to assess the career risk associated with pursuing a specific course or degree.\n" +
+                    "Analyze the job market prospects, automation risk for typical careers this education leads to,\n" +
+                    "and the long-term viability of skills gained over the next 5-10 years.";
+            inputLabel = "Course/Degree";
+            detailsLabel = "Expected Career Path";
+        } else {
+            modeInstructions = "Your task is to assess how likely a profession is to be impacted by AI and automation\n" +
+                    "over the next 5-10 years.";
+            inputLabel = "Profession";
+            detailsLabel = "Role Details";
+        }
+
         String prompt = promptTemplate
+                .replace("{mode}", mode)
+                .replace("{modeInstructions}", modeInstructions)
+                .replace("{inputLabel}", inputLabel)
+                .replace("{detailsLabel}", detailsLabel)
                 .replace("{profession}", profession)
                 .replace("{roleSummary}", roleSummary);
 

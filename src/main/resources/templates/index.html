@@ -34,19 +34,19 @@
                     aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" href="/">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#about">About</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#contact">Contact</a>
-                    </li>
-                </ul>
-            </div>
+<!--            <div class="collapse navbar-collapse" id="navbarNav">-->
+<!--                <ul class="navbar-nav ms-auto">-->
+<!--                    <li class="nav-item">-->
+<!--                        <a class="nav-link active" href="/">Home</a>-->
+<!--                    </li>-->
+<!--                    <li class="nav-item">-->
+<!--                        <a class="nav-link" href="#about">About</a>-->
+<!--                    </li>-->
+<!--                    <li class="nav-item">-->
+<!--                        <a class="nav-link" href="#contact">Contact</a>-->
+<!--                    </li>-->
+<!--                </ul>-->
+<!--            </div>-->
         </div>
     </header>
 
@@ -58,7 +58,7 @@
                     <!-- Hero Section -->
                     <div class="hero-section text-center mb-5">
                         <h1 class="display-5 fw-bold mb-3">Assess Your Career Risk</h1>
-                        <p class="lead text-muted">Understand how AI and automation might impact your profession. Get personalized insights in seconds.</p>
+                        <p class="lead text-muted">Understand how AI and automation might impact your profession or career choices. Get personalized insights in seconds.</p>
                     </div>
 
                     <!-- Form Card -->
@@ -66,9 +66,42 @@
                         <div class="card-body p-4 p-md-5">
                             <form th:action="@{/assess}" th:object="${riskAssessmentForm}" method="post">
 
-                                <!-- Profession Field -->
+                                <!-- Mode Selector -->
                                 <div class="mb-4">
-                                    <label for="profession" class="form-label fw-semibold">
+                                    <label class="form-label fw-semibold d-block mb-3">
+                                        What are you assessing?
+                                    </label>
+                                    <div class="mode-selector">
+                                        <div class="form-check form-check-inline me-4">
+                                            <input class="form-check-input"
+                                                   type="radio"
+                                                   name="mode"
+                                                   id="modeProfession"
+                                                   value="profession"
+                                                   th:field="*{mode}"
+                                                   onchange="updateFormLabels()">
+                                            <label class="form-check-label" for="modeProfession">
+                                                My current profession
+                                            </label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input"
+                                                   type="radio"
+                                                   name="mode"
+                                                   id="modeCourse"
+                                                   value="course"
+                                                   th:field="*{mode}"
+                                                   onchange="updateFormLabels()">
+                                            <label class="form-check-label" for="modeCourse">
+                                                A course or degree I'm considering
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Profession/Course Field -->
+                                <div class="mb-4">
+                                    <label for="profession" class="form-label fw-semibold" id="professionLabel">
                                         What is your profession?
                                     </label>
                                     <input type="text"
@@ -81,13 +114,13 @@
                                     <div th:if="${#fields.hasErrors('profession')}"
                                          class="invalid-feedback"
                                          th:errors="*{profession}">
-                                        Profession error
+                                        This field is required
                                     </div>
                                 </div>
 
                                 <!-- Role Summary Field -->
                                 <div class="mb-4">
-                                    <label for="roleSummary" class="form-label fw-semibold">
+                                    <label for="roleSummary" class="form-label fw-semibold" id="roleSummaryLabel">
                                         Describe your role and daily tasks
                                     </label>
                                     <textarea class="form-control form-control-lg"
@@ -100,9 +133,9 @@
                                     <div th:if="${#fields.hasErrors('roleSummary')}"
                                          class="invalid-feedback"
                                          th:errors="*{roleSummary}">
-                                        Role summary error
+                                        This field is required
                                     </div>
-                                    <div class="form-text">
+                                    <div class="form-text" id="formTextHelper">
                                         The more details you provide, the more accurate your risk assessment will be.
                                     </div>
                                 </div>
@@ -142,7 +175,7 @@
                                     </svg>
                                 </div>
                                 <h5 class="fw-semibold">Private & Secure</h5>
-                                <p class="text-muted small mb-0">Your data stays confidential</p>
+                                <p class="text-muted small mb-0">Your data is not stored</p>
                             </div>
                         </div>
                         <div class="col-md-4">
@@ -152,7 +185,7 @@
                                         <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm10 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4.9l-3.613 4.417a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61L13.445 4H10.5a.5.5 0 0 1-.5-.5"/>
                                     </svg>
                                 </div>
-                                <h5 class="fw-semibold">Actionable Insights</h5>
+                                <h5 class="fw-semibold">Insights</h5>
                                 <p class="text-muted small mb-0">Learn how to adapt</p>
                             </div>
                         </div>
@@ -173,5 +206,38 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
             crossorigin="anonymous"></script>
+
+    <!-- Dynamic Form Label Update Script -->
+    <script>
+        function updateFormLabels() {
+            const professionMode = document.getElementById('modeProfession').checked;
+            const professionLabel = document.getElementById('professionLabel');
+            const roleSummaryLabel = document.getElementById('roleSummaryLabel');
+            const professionInput = document.getElementById('profession');
+            const roleSummaryInput = document.getElementById('roleSummary');
+            const formTextHelper = document.getElementById('formTextHelper');
+
+            if (professionMode) {
+                // Profession mode
+                professionLabel.textContent = 'What is your profession?';
+                roleSummaryLabel.textContent = 'Describe your role and daily tasks';
+                professionInput.placeholder = 'e.g., Software Developer, Teacher, Accountant';
+                roleSummaryInput.placeholder = 'Tell us what you do in your role. Include key responsibilities, tools you use, and typical daily activities...';
+                formTextHelper.textContent = 'The more details you provide, the more accurate your risk assessment will be.';
+            } else {
+                // Course mode
+                professionLabel.textContent = 'What course or degree are you considering?';
+                roleSummaryLabel.textContent = 'What do you expect this course to prepare you for?';
+                professionInput.placeholder = 'e.g., Master of Data Science, Bachelor of Computer Science';
+                roleSummaryInput.placeholder = 'Describe the career path you expect this course to lead to, the skills you hope to gain, and the types of roles you aim to pursue...';
+                formTextHelper.textContent = 'Include information about your career goals and expectations from this education.';
+            }
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateFormLabels();
+        });
+    </script>
 </body>
 </html>
