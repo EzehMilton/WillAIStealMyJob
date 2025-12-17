@@ -8,11 +8,14 @@ import jakarta.validation.constraints.Size;
 @Data
 public class RiskAssessmentForm {
 
-    @NotBlank(message = "Profession is required")
-    @Size(max = 100, message = "Profession must be less than 100 characters")
+    @NotBlank(message = "Assessment mode is required")
+    private String mode; // "profession" or "course"
+
+    @NotBlank(message = "This field is required")
+    @Size(max = 100, message = "Must be less than 100 characters")
     private String profession;
 
-    @NotBlank(message = "Role summary is required")
-    @Size(max = 1000, message = "Role summary must be less than 1000 characters")
+    @NotBlank(message = "This field is required")
+    @Size(max = 1000, message = "Must be less than 1000 characters")
     private String roleSummary;
 }

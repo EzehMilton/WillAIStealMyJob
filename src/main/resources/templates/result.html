@@ -39,12 +39,12 @@
                     <li class="nav-item">
                         <a class="nav-link" href="/">Home</a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#about">About</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="#contact">Contact</a>
-                    </li>
+<!--                    <li class="nav-item">-->
+<!--                        <a class="nav-link" href="#about">About</a>-->
+<!--                    </li>-->
+<!--                    <li class="nav-item">-->
+<!--                        <a class="nav-link" href="#contact">Contact</a>-->
+<!--                    </li>-->
                 </ul>
             </div>
         </div>
@@ -93,8 +93,8 @@
                                         <div class="position-absolute top-50 start-50 translate-middle text-center">
                                             <div class="h1 fw-bold mb-0"
                                                  th:classappend="${score <= 2} ? 'text-success' : (${score <= 6} ? 'text-warning' : 'text-danger')"
-                                                 th:text="${score * 10} + '%'">40%</div>
-                                            <div class="small text-muted">Risk Score: <span th:text="${score}">4.0</span>/10</div>
+                                                 th:text="${#numbers.formatInteger(score * 10, 0)} + '%'">40%</div>
+<!--                                            <div class="small text-muted">Risk Score: <span th:text="${score}">4.0</span>/10</div>-->
                                         </div>
                                     </div>
                                 </div>
@@ -265,7 +265,7 @@
     <!-- Footer -->
     <footer class="footer mt-5 py-4 bg-light">
         <div class="container text-center">
-            <p class="text-muted mb-0">&copy; 2024 Job AI Risk Assessment. All rights reserved.</p>
+            <p class="text-muted mb-0">&copy; 2026 Job AI Risk Assessment. All rights reserved.</p>
         </div>
     </footer>
 

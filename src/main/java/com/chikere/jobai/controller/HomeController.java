@@ -23,7 +23,9 @@ public class HomeController {
 
     @GetMapping("/")
     public String home(Model model) {
-        model.addAttribute("riskAssessmentForm", new RiskAssessmentForm());
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("profession"); // Set default to profession mode
+        model.addAttribute("riskAssessmentForm", form);
         return "index";
     }
 
@@ -35,13 +37,18 @@ public class HomeController {
             return "index";
         }
 
-        log.info("Processing risk assessment for profession: {}", form.getProfession());
+        log.info("Processing risk assessment for mode: {}, profession: {}", form.getMode(), form.getProfession());
 
         try {
             // Call the AI service to assess job risk
-            JobRiskAssessment jobRiskAssessment = jobAiService.assessJobRisk(form.getProfession(), form.getRoleSummary());
+            JobRiskAssessment jobRiskAssessment = jobAiService.assessJobRisk(
+                    form.getMode(),
+                    form.getProfession(),
+                    form.getRoleSummary()
+            );
 
             // Add data to redirect attributes
+            redirectAttributes.addFlashAttribute("mode", form.getMode());
             redirectAttributes.addFlashAttribute("profession", form.getProfession());
             redirectAttributes.addFlashAttribute("score", jobRiskAssessment.getScore());
             redirectAttributes.addFlashAttribute("riskLevel", jobRiskAssessment.getRiskLevel());
