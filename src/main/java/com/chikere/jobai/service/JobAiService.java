@@ -2,7 +2,6 @@ package com.chikere.jobai.service;
 
 import com.chikere.jobai.model.JobRiskAssessment;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.Resource;
@@ -14,11 +13,19 @@ import java.nio.charset.StandardCharsets;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class JobAiService {
-    private final ChatClient chatClient;
+    private final ChatClient gpt4oChatClient;
+    private final ChatClient gpt4oMiniChatClient;
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public JobAiService(ChatClient gpt4oChatClient,
+                        ChatClient gpt4oMiniChatClient,
+                        ResourceLoader resourceLoader) {
+        this.gpt4oChatClient = gpt4oChatClient;
+        this.gpt4oMiniChatClient = gpt4oMiniChatClient;
+        this.resourceLoader = resourceLoader;
+    }
 
     public JobRiskAssessment assessJobRisk(String mode, String profession, String roleSummary) {
         log.info("Assessing job risk for mode: {}, profession: {}", mode, profession);
@@ -53,7 +60,11 @@ public class JobAiService {
 
         log.debug("Generated prompt: {}", prompt);
 
-        String response = chatClient.prompt(prompt).call().content();
+        // Use mini model for course/degree assessments, full model for profession assessments
+        ChatClient selectedChatClient = "course".equals(mode) ? gpt4oMiniChatClient : gpt4oChatClient;
+        log.info("Using model: {}", "course".equals(mode) ? "gpt-4o-mini" : "gpt-4o");
+
+        String response = selectedChatClient.prompt(prompt).call().content();
         log.debug("Received assessment response: {}", response);
 
         try {

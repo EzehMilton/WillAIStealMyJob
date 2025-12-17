@@ -61,10 +61,21 @@
                         <p class="lead text-muted">Understand how AI and automation might impact your profession or career choices. Get personalized insights in seconds.</p>
                     </div>
 
+                    <!-- Loading Overlay -->
+                    <div id="loadingOverlay" class="loading-overlay">
+                        <div class="loading-content">
+                            <div class="spinner-border text-light mb-3" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <h4 class="text-white fw-semibold">Analyzing your role...</h4>
+                            <p class="text-white-50">This may take a few moments</p>
+                        </div>
+                    </div>
+
                     <!-- Form Card -->
                     <div class="card shadow-lg border-0 rounded-4">
                         <div class="card-body p-4 p-md-5">
-                            <form th:action="@{/assess}" th:object="${riskAssessmentForm}" method="post">
+                            <form th:action="@{/assess}" th:object="${riskAssessmentForm}" method="post" id="assessmentForm" onsubmit="showLoadingOverlay()">
 
                                 <!-- Mode Selector -->
                                 <div class="mb-4">
@@ -231,6 +242,13 @@
                 professionInput.placeholder = 'e.g., Master of Data Science, Bachelor of Computer Science';
                 roleSummaryInput.placeholder = 'Describe the career path you expect this course to lead to, the skills you hope to gain, and the types of roles you aim to pursue...';
                 formTextHelper.textContent = 'Include information about your career goals and expectations from this education.';
+            }
+        }
+
+        function showLoadingOverlay() {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.style.display = 'flex';
             }
         }
 
