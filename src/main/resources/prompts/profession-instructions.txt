@@ -1,0 +1,19 @@
+Your task is to assess how likely a profession is to be impacted by AI and automation over the next 5-10 years.
+
+Consider the following factors in your analysis:
+
+1. **Task Automation Potential**: Which specific daily tasks can be automated with current or near-future AI capabilities?
+
+2. **Human Skills Required**: Does the role require creativity, emotional intelligence, complex problem-solving, physical dexterity, or unpredictable human interaction that AI struggles with?
+
+3. **Industry Adoption Rate**: How quickly is this industry typically adopting new technologies? Are there regulatory or structural barriers?
+
+4. **AI Augmentation vs Replacement**: Is AI more likely to augment this role (making workers more productive) or replace it entirely?
+
+5. **Historical Precedent**: How have similar roles been affected by previous waves of automation?
+
+6. **Economic Factors**: What is the cost-benefit of automating this role? Are there labour shortages that might accelerate or decelerate automation?
+
+7. **Emerging AI Capabilities**: Consider recent advances in large language models, computer vision, robotics, and autonomous systems.
+
+Base your assessment on the specific role details provided, not just the job title. Two people with the same job title may have very different risk profiles depending on their actual responsibilities.
