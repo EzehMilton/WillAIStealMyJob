@@ -18,244 +18,721 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* CV Upload Section Styles */
+        .cv-upload-section {
+            display: none;
+            margin-top: 1rem;
+            padding: 1.25rem;
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+            border-radius: 12px;
+            border: 1px dashed #c5d0e6;
+            transition: all 0.3s ease;
+        }
+
+        .cv-upload-section.show {
+            display: block;
+            animation: fadeSlideIn 0.3s ease-out;
+        }
+
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .cv-upload-section:hover {
+            border-color: #7c8db5;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%);
+        }
+
+        .cv-divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            color: #6c757d;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .cv-divider::before,
+        .cv-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #dee2e6, transparent);
+        }
+
+        .cv-divider span {
+            padding: 0 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .cv-upload-label {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 1.5rem;
+            border-radius: 10px;
+            background: white;
+            border: 2px dashed #d0d7e5;
+            transition: all 0.3s ease;
+            min-height: 120px;
+        }
+
+        .cv-upload-label:hover {
+            border-color: #667eea;
+            background: #fafbff;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+        }
+
+        .cv-upload-label.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: scale(1.02);
+        }
+
+        .cv-upload-label .upload-icon {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 0.75rem;
+            color: #667eea;
+            transition: transform 0.3s ease;
+        }
+
+        .cv-upload-label:hover .upload-icon {
+            transform: translateY(-3px);
+        }
+
+        .cv-upload-label .upload-text {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+
+        .cv-upload-label .upload-subtext {
+            font-size: 0.813rem;
+            color: #6b7280;
+        }
+
+        .cv-upload-label .browse-link {
+            color: #667eea;
+            font-weight: 600;
+            text-decoration: underline;
+            text-underline-offset: 2px;
+        }
+
+        .cv-file-input {
+            display: none;
+        }
+
+        .cv-file-preview {
+            display: none;
+            align-items: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e5e7eb;
+            margin-top: 0.75rem;
+        }
+
+        .cv-file-preview.show {
+            display: flex;
+            animation: fadeSlideIn 0.3s ease-out;
+        }
+
+        .cv-file-preview .file-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 0.875rem;
+            flex-shrink: 0;
+        }
+
+        .cv-file-preview .file-icon svg {
+            color: white;
+            width: 20px;
+            height: 20px;
+        }
+
+        .cv-file-preview .file-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .cv-file-preview .file-name {
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.875rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .cv-file-preview .file-size {
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .cv-file-preview .remove-file {
+            background: none;
+            border: none;
+            padding: 0.5rem;
+            cursor: pointer;
+            color: #9ca3af;
+            transition: all 0.2s ease;
+            border-radius: 6px;
+            margin-left: 0.5rem;
+        }
+
+        .cv-file-preview .remove-file:hover {
+            color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .cv-upload-info {
+            display: flex;
+            align-items: flex-start;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: #fffbeb;
+            border-radius: 8px;
+            border: 1px solid #fde68a;
+        }
+
+        .cv-upload-info svg {
+            width: 18px;
+            height: 18px;
+            color: #d97706;
+            margin-right: 0.625rem;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .cv-upload-info p {
+            font-size: 0.813rem;
+            color: #92400e;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        /* Toggle Switch for Input Method */
+        .input-method-toggle {
+            display: none;
+            margin-bottom: 1rem;
+        }
+
+        .input-method-toggle.show {
+            display: block;
+        }
+
+        .toggle-buttons {
+            display: flex;
+            gap: 0.5rem;
+            padding: 4px;
+            background: #f3f4f6;
+            border-radius: 10px;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 0.625rem 1rem;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .toggle-btn:hover {
+            color: #374151;
+        }
+
+        .toggle-btn.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .toggle-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Conditional visibility for text area */
+        .role-summary-section {
+            transition: opacity 0.3s ease;
+        }
+
+        .role-summary-section.hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-    <!-- Header -->
-    <header class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
-        <div class="container">
-            <a class="navbar-brand fw-bold" href="/">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-shield-check me-2" viewBox="0 0 16 16">
-                    <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.775 11.775 0 0 1-2.517 2.453 7.159 7.159 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7.158 7.158 0 0 1-1.048-.625 11.777 11.777 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 62.456 62.456 0 0 1 5.072.56z"/>
-                    <path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
-                </svg>
-                Job AI Risk Assessment
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-<!--            <div class="collapse navbar-collapse" id="navbarNav">-->
-<!--                <ul class="navbar-nav ms-auto">-->
-<!--                    <li class="nav-item">-->
-<!--                        <a class="nav-link active" href="/">Home</a>-->
-<!--                    </li>-->
-<!--                    <li class="nav-item">-->
-<!--                        <a class="nav-link" href="#about">About</a>-->
-<!--                    </li>-->
-<!--                    <li class="nav-item">-->
-<!--                        <a class="nav-link" href="#contact">Contact</a>-->
-<!--                    </li>-->
-<!--                </ul>-->
-<!--            </div>-->
-        </div>
-    </header>
+<!-- Header -->
+<header class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <div class="container">
+        <a class="navbar-brand fw-bold" href="/">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-shield-check me-2" viewBox="0 0 16 16">
+                <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.775 11.775 0 0 1-2.517 2.453 7.159 7.159 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7.158 7.158 0 0 1-1.048-.625 11.777 11.777 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 62.456 62.456 0 0 1 5.072.56z"/>
+                <path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
+            </svg>
+            Job AI Risk Assessment
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+    </div>
+</header>
 
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="container">
-            <div class="row justify-content-center">
-                <div class="col-lg-7 col-md-9">
-                    <!-- Hero Section -->
-                    <div class="hero-section text-center mb-5">
-                        <h1 class="display-5 fw-bold mb-3">Assess Your Career Risk</h1>
-                        <p class="lead text-muted">Understand how AI and automation might impact your profession or career choices. Get personalized insights in seconds.</p>
-                    </div>
+<!-- Main Content -->
+<main class="main-content">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-7 col-md-9">
+                <!-- Hero Section -->
+                <div class="hero-section text-center mb-5">
+                    <h1 class="display-5 fw-bold mb-3">Assess Your Career Risk</h1>
+                    <p class="lead text-muted">Understand how AI and automation might impact your profession or career choices. Get personalized insights in seconds.</p>
+                </div>
 
-                    <!-- Loading Overlay -->
-                    <div id="loadingOverlay" class="loading-overlay">
-                        <div class="loading-content">
-                            <div class="spinner-border text-light mb-3" role="status" style="width: 3rem; height: 3rem;">
-                                <span class="visually-hidden">Loading...</span>
-                            </div>
-                            <h4 class="text-white fw-semibold">Analyzing your role...</h4>
-                            <p class="text-white-50">This may take a few moments</p>
+                <!-- Loading Overlay -->
+                <div id="loadingOverlay" class="loading-overlay">
+                    <div class="loading-content">
+                        <div class="spinner-border text-light mb-3" role="status" style="width: 3rem; height: 3rem;">
+                            <span class="visually-hidden">Loading...</span>
                         </div>
+                        <h4 class="text-white fw-semibold">Analyzing your role...</h4>
+                        <p class="text-white-50">This may take a few moments</p>
                     </div>
+                </div>
 
-                    <!-- Form Card -->
-                    <div class="card shadow-lg border-0 rounded-4">
-                        <div class="card-body p-4 p-md-5">
-                            <form th:action="@{/assess}" th:object="${riskAssessmentForm}" method="post" id="assessmentForm" onsubmit="showLoadingOverlay()">
+                <!-- Form Card -->
+                <div class="card shadow-lg border-0 rounded-4">
+                    <div class="card-body p-4 p-md-5">
+                        <form th:action="@{/assess}" th:object="${riskAssessmentForm}" method="post" id="assessmentForm" enctype="multipart/form-data" onsubmit="return handleFormSubmit()">
 
-                                <!-- Mode Selector -->
-                                <div class="mb-4">
-                                    <label class="form-label fw-semibold d-block mb-3">
-                                        What are you assessing?
-                                    </label>
-                                    <div class="mode-selector">
-                                        <div class="form-check form-check-inline me-4">
-                                            <input class="form-check-input"
-                                                   type="radio"
-                                                   name="mode"
-                                                   id="modeProfession"
-                                                   value="profession"
-                                                   th:field="*{mode}"
-                                                   onchange="updateFormLabels()">
-                                            <label class="form-check-label" for="modeProfession">
-                                                My current profession
-                                            </label>
-                                        </div>
-                                        <div class="form-check form-check-inline">
-                                            <input class="form-check-input"
-                                                   type="radio"
-                                                   name="mode"
-                                                   id="modeCourse"
-                                                   value="course"
-                                                   th:field="*{mode}"
-                                                   onchange="updateFormLabels()">
-                                            <label class="form-check-label" for="modeCourse">
-                                                A course or degree I'm considering
-                                            </label>
-                                        </div>
+                            <!-- Mode Selector -->
+                            <div class="mb-4">
+                                <label class="form-label fw-semibold d-block mb-3">
+                                    What are you assessing?
+                                </label>
+                                <div class="mode-selector">
+                                    <div class="form-check form-check-inline me-4">
+                                        <input class="form-check-input"
+                                               type="radio"
+                                               name="mode"
+                                               id="modeProfession"
+                                               value="profession"
+                                               th:field="*{mode}"
+                                               onchange="updateFormLabels()">
+                                        <label class="form-check-label" for="modeProfession">
+                                            My current profession
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input"
+                                               type="radio"
+                                               name="mode"
+                                               id="modeCourse"
+                                               value="course"
+                                               th:field="*{mode}"
+                                               onchange="updateFormLabels()">
+                                        <label class="form-check-label" for="modeCourse">
+                                            A course or degree I'm studying/considering
+                                        </label>
                                     </div>
                                 </div>
+                            </div>
 
-                                <!-- Profession/Course Field -->
-                                <div class="mb-4">
-                                    <label for="profession" class="form-label fw-semibold" id="professionLabel">
-                                        What is your profession?
-                                    </label>
-                                    <input type="text"
-                                           class="form-control form-control-lg"
-                                           id="profession"
-                                           th:field="*{profession}"
-                                           th:classappend="${#fields.hasErrors('profession')} ? 'is-invalid' : ''"
-                                           placeholder="e.g., Software Developer, Teacher, Accountant"
-                                           required>
-                                    <div th:if="${#fields.hasErrors('profession')}"
-                                         class="invalid-feedback"
-                                         th:errors="*{profession}">
-                                        This field is required
-                                    </div>
+                            <!-- Profession/Course Field -->
+                            <div class="mb-4">
+                                <label for="profession" class="form-label fw-semibold" id="professionLabel">
+                                    What is your profession?
+                                </label>
+                                <input type="text"
+                                       class="form-control form-control-lg"
+                                       id="profession"
+                                       th:field="*{profession}"
+                                       th:classappend="${#fields.hasErrors('profession')} ? 'is-invalid' : ''"
+                                       placeholder="e.g., Software Developer, Teacher, Accountant"
+                                       required>
+                                <div th:if="${#fields.hasErrors('profession')}"
+                                     class="invalid-feedback"
+                                     th:errors="*{profession}">
+                                    This field is required
                                 </div>
+                            </div>
 
-                                <!-- Role Summary Field -->
-                                <div class="mb-4">
-                                    <label for="roleSummary" class="form-label fw-semibold" id="roleSummaryLabel">
-                                        Describe your role and daily tasks
-                                    </label>
-                                    <textarea class="form-control form-control-lg"
-                                              id="roleSummary"
-                                              th:field="*{roleSummary}"
-                                              th:classappend="${#fields.hasErrors('roleSummary')} ? 'is-invalid' : ''"
-                                              rows="6"
-                                              placeholder="Tell us what you do in your role. Include key responsibilities, tools you use, and typical daily activities..."
-                                              required></textarea>
-                                    <div th:if="${#fields.hasErrors('roleSummary')}"
-                                         class="invalid-feedback"
-                                         th:errors="*{roleSummary}">
-                                        This field is required
-                                    </div>
-                                    <div class="form-text" id="formTextHelper">
-                                        The more details you provide, the more accurate your risk assessment will be.
-                                    </div>
-                                </div>
-
-                                <!-- Submit Button -->
-                                <div class="d-grid">
-                                    <button type="submit" class="btn btn-primary btn-lg rounded-pill py-3 fw-semibold">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-lightning-charge-fill me-2" viewBox="0 0 16 16">
-                                            <path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/>
+                            <!-- Input Method Toggle (only visible in profession mode) -->
+                            <div class="input-method-toggle" id="inputMethodToggle">
+                                <label class="form-label fw-semibold d-block mb-2">
+                                    How would you like to provide your role details?
+                                </label>
+                                <div class="toggle-buttons">
+                                    <button type="button" class="toggle-btn active" id="toggleManual" onclick="setInputMethod('manual')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
                                         </svg>
-                                        Assess My Risk
+                                        Type it myself
+                                    </button>
+                                    <button type="button" class="toggle-btn" id="toggleCV" onclick="setInputMethod('cv')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                        </svg>
+                                        Upload my CV
                                     </button>
                                 </div>
-                            </form>
+                            </div>
+
+                            <!-- Role Summary Field (Manual Input) -->
+                            <div class="mb-4 role-summary-section" id="roleSummarySection">
+                                <label for="roleSummary" class="form-label fw-semibold" id="roleSummaryLabel">
+                                    Describe your role and daily tasks
+                                </label>
+                                <textarea class="form-control form-control-lg"
+                                          id="roleSummary"
+                                          th:field="*{roleSummary}"
+                                          th:classappend="${#fields.hasErrors('roleSummary')} ? 'is-invalid' : ''"
+                                          rows="6"
+                                          placeholder="Tell us what you do in your role. Include key responsibilities, tools you use, and typical daily activities..."></textarea>
+                                <div th:if="${#fields.hasErrors('roleSummary')}"
+                                     class="invalid-feedback"
+                                     th:errors="*{roleSummary}">
+                                    This field is required
+                                </div>
+                                <div class="form-text" id="formTextHelper">
+                                    The more details you provide, the more accurate your risk assessment will be.
+                                </div>
+                            </div>
+
+                            <!-- CV Upload Section -->
+                            <div class="cv-upload-section" id="cvUploadSection">
+                                <label class="cv-upload-label" id="cvUploadLabel" for="cvFile">
+                                    <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                                    </svg>
+                                    <span class="upload-text">Drop your CV here</span>
+                                    <span class="upload-subtext">or <span class="browse-link">browse</span> to upload</span>
+                                    <span class="upload-subtext mt-1" style="font-size: 0.75rem; color: #9ca3af;">PDF, DOC, DOCX (Max 5MB)</span>
+                                </label>
+                                <input type="file"
+                                       class="cv-file-input"
+                                       id="cvFile"
+                                       name="cvFile"
+                                       accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                       onchange="handleFileSelect(this)">
+
+                                <!-- File Preview -->
+                                <div class="cv-file-preview" id="cvFilePreview">
+                                    <div class="file-icon">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                                        </svg>
+                                    </div>
+                                    <div class="file-info">
+                                        <div class="file-name" id="fileName">document.pdf</div>
+                                        <div class="file-size" id="fileSize">2.4 MB</div>
+                                    </div>
+                                    <button type="button" class="remove-file" onclick="removeFile()" aria-label="Remove file">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+
+                                <!-- Info Note -->
+                                <div class="cv-upload-info">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                                    </svg>
+                                    <p>We'll extract relevant role details from your CV to perform the assessment. Your CV is processed securely and not stored after analysis.</p>
+                                </div>
+                            </div>
+
+                            <!-- Hidden field to track input method -->
+                            <input type="hidden" id="inputMethod" name="inputMethod" value="manual">
+
+                            <!-- Submit Button -->
+                            <div class="d-grid mt-4">
+                                <button type="submit" class="btn btn-primary btn-lg rounded-pill py-3 fw-semibold">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-lightning-charge-fill me-2" viewBox="0 0 16 16">
+                                        <path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/>
+                                    </svg>
+                                    Assess My Risk
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Info Cards -->
+                <div class="row mt-5 g-4">
+                    <div class="col-md-4">
+                        <div class="info-card text-center p-4">
+                            <div class="info-icon mb-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-speedometer2" viewBox="0 0 16 16">
+                                    <path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4M3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707M2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10m9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5m.754-4.246a.389.389 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.389.389 0 0 0-.029-.518z"/>
+                                    <path fill-rule="evenodd" d="M0 10a8 8 0 1 1 15.547 2.661c-.442 1.253-1.845 1.602-2.932 1.25C11.309 13.488 9.475 13 8 13c-1.474 0-3.31.488-4.615.911-1.087.352-2.49.003-2.932-1.25A7.988 7.988 0 0 1 0 10m8-7a7 7 0 0 0-6.603 9.329c.203.575.923.876 1.68.63C4.397 12.533 6.358 12 8 12s3.604.532 4.923.96c.757.245 1.477-.056 1.68-.631A7 7 0 0 0 8 3"/>
+                                </svg>
+                            </div>
+                            <h5 class="fw-semibold">Fast Analysis</h5>
+                            <p class="text-muted small mb-0">Get results in seconds</p>
                         </div>
                     </div>
-
-                    <!-- Info Cards -->
-                    <div class="row mt-5 g-4">
-                        <div class="col-md-4">
-                            <div class="info-card text-center p-4">
-                                <div class="info-icon mb-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-speedometer2" viewBox="0 0 16 16">
-                                        <path d="M8 4a.5.5 0 0 1 .5.5V6a.5.5 0 0 1-1 0V4.5A.5.5 0 0 1 8 4M3.732 5.732a.5.5 0 0 1 .707 0l.915.914a.5.5 0 1 1-.708.708l-.914-.915a.5.5 0 0 1 0-.707M2 10a.5.5 0 0 1 .5-.5h1.586a.5.5 0 0 1 0 1H2.5A.5.5 0 0 1 2 10m9.5 0a.5.5 0 0 1 .5-.5h1.5a.5.5 0 0 1 0 1H12a.5.5 0 0 1-.5-.5m.754-4.246a.389.389 0 0 0-.527-.02L7.547 9.31a.91.91 0 1 0 1.302 1.258l3.434-4.297a.389.389 0 0 0-.029-.518z"/>
-                                        <path fill-rule="evenodd" d="M0 10a8 8 0 1 1 15.547 2.661c-.442 1.253-1.845 1.602-2.932 1.25C11.309 13.488 9.475 13 8 13c-1.474 0-3.31.488-4.615.911-1.087.352-2.49.003-2.932-1.25A7.988 7.988 0 0 1 0 10m8-7a7 7 0 0 0-6.603 9.329c.203.575.923.876 1.68.63C4.397 12.533 6.358 12 8 12s3.604.532 4.923.96c.757.245 1.477-.056 1.68-.631A7 7 0 0 0 8 3"/>
-                                    </svg>
-                                </div>
-                                <h5 class="fw-semibold">Fast Analysis</h5>
-                                <p class="text-muted small mb-0">Get results in seconds</p>
+                    <div class="col-md-4">
+                        <div class="info-card text-center p-4">
+                            <div class="info-icon mb-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-lock-fill" viewBox="0 0 16 16">
+                                    <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/>
+                                </svg>
                             </div>
+                            <h5 class="fw-semibold">Private & Secure</h5>
+                            <p class="text-muted small mb-0">Your data is not stored</p>
                         </div>
-                        <div class="col-md-4">
-                            <div class="info-card text-center p-4">
-                                <div class="info-icon mb-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-lock-fill" viewBox="0 0 16 16">
-                                        <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/>
-                                    </svg>
-                                </div>
-                                <h5 class="fw-semibold">Private & Secure</h5>
-                                <p class="text-muted small mb-0">Your data is not stored</p>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="info-card text-center p-4">
+                            <div class="info-icon mb-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-graph-up-arrow" viewBox="0 0 16 16">
+                                    <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm10 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4.9l-3.613 4.417a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61L13.445 4H10.5a.5.5 0 0 1-.5-.5"/>
+                                </svg>
                             </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="info-card text-center p-4">
-                                <div class="info-icon mb-3">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" fill="currentColor" class="bi bi-graph-up-arrow" viewBox="0 0 16 16">
-                                        <path fill-rule="evenodd" d="M0 0h1v15h15v1H0zm10 3.5a.5.5 0 0 1 .5-.5h4a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-1 0V4.9l-3.613 4.417a.5.5 0 0 1-.74.037L7.06 6.767l-3.656 5.027a.5.5 0 0 1-.808-.588l4-5.5a.5.5 0 0 1 .758-.06l2.609 2.61L13.445 4H10.5a.5.5 0 0 1-.5-.5"/>
-                                    </svg>
-                                </div>
-                                <h5 class="fw-semibold">Insights</h5>
-                                <p class="text-muted small mb-0">Learn how to adapt</p>
-                            </div>
+                            <h5 class="fw-semibold">Insights</h5>
+                            <p class="text-muted small mb-0">Learn how to adapt</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    </main>
+    </div>
+</main>
 
-    <!-- Footer -->
-    <footer class="footer mt-5 py-4 bg-light">
-        <div class="container text-center">
-            <p class="text-muted mb-0">&copy; 2026 Job AI Risk Assessment. All rights reserved.</p>
-        </div>
-    </footer>
+<!-- Footer -->
+<footer class="footer mt-5 py-4 bg-light">
+    <div class="container text-center">
+        <p class="text-muted mb-0">&copy; 2026 Job AI Risk Assessment. All rights reserved.</p>
+    </div>
+</footer>
 
-    <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
-            crossorigin="anonymous"></script>
+<!-- Bootstrap 5 JS Bundle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
+        crossorigin="anonymous"></script>
 
-    <!-- Dynamic Form Label Update Script -->
-    <script>
-        function updateFormLabels() {
-            const professionMode = document.getElementById('modeProfession').checked;
-            const professionLabel = document.getElementById('professionLabel');
-            const roleSummaryLabel = document.getElementById('roleSummaryLabel');
-            const professionInput = document.getElementById('profession');
-            const roleSummaryInput = document.getElementById('roleSummary');
-            const formTextHelper = document.getElementById('formTextHelper');
+<!-- Dynamic Form Label Update Script -->
+<script>
+    let currentInputMethod = 'manual';
 
-            if (professionMode) {
-                // Profession mode
-                professionLabel.textContent = 'What is your profession?';
-                roleSummaryLabel.textContent = 'Describe your role and daily tasks';
-                professionInput.placeholder = 'e.g., Software Developer, Teacher, Accountant';
-                roleSummaryInput.placeholder = 'Tell us what you do in your role. Include key responsibilities, tools you use, and typical daily activities...';
-                formTextHelper.textContent = 'The more details you provide, the more accurate your risk assessment will be.';
-            } else {
-                // Course mode
-                professionLabel.textContent = 'What course or degree are you considering?';
-                roleSummaryLabel.textContent = 'What do you expect this course to prepare you for?';
-                professionInput.placeholder = 'e.g., Master of Data Science, Bachelor of Computer Science';
-                roleSummaryInput.placeholder = 'Describe the career path you expect this course to lead to, the skills you hope to gain, and the types of roles you aim to pursue...';
-                formTextHelper.textContent = 'Include information about your career goals and expectations from this education.';
+    function updateFormLabels() {
+        const professionMode = document.getElementById('modeProfession').checked;
+        const professionLabel = document.getElementById('professionLabel');
+        const roleSummaryLabel = document.getElementById('roleSummaryLabel');
+        const professionInput = document.getElementById('profession');
+        const roleSummaryInput = document.getElementById('roleSummary');
+        const formTextHelper = document.getElementById('formTextHelper');
+        const inputMethodToggle = document.getElementById('inputMethodToggle');
+        const cvUploadSection = document.getElementById('cvUploadSection');
+        const roleSummarySection = document.getElementById('roleSummarySection');
+
+        if (professionMode) {
+            // Profession mode
+            professionLabel.textContent = 'What is your profession?';
+            roleSummaryLabel.textContent = 'Describe your role and daily tasks';
+            professionInput.placeholder = 'e.g., Software Developer, Teacher, Accountant';
+            roleSummaryInput.placeholder = 'Tell us what you do in your role. Include key responsibilities, tools you use, and typical daily activities...';
+            formTextHelper.textContent = 'The more details you provide, the more accurate your risk assessment will be.';
+
+            // Show the input method toggle
+            inputMethodToggle.classList.add('show');
+
+            // Apply the current input method
+            setInputMethod(currentInputMethod);
+        } else {
+            // Course mode
+            professionLabel.textContent = 'What course or degree are you considering?';
+            roleSummaryLabel.textContent = 'What do you expect this course to prepare you for?';
+            professionInput.placeholder = 'e.g., Master of Data Science, Bachelor of Computer Science';
+            roleSummaryInput.placeholder = 'Describe the career path you expect this course to lead to, the skills you hope to gain, and the types of roles you aim to pursue...';
+            formTextHelper.textContent = 'Include information about your career goals and expectations from this education.';
+
+            // Hide the input method toggle and CV upload in course mode
+            inputMethodToggle.classList.remove('show');
+            cvUploadSection.classList.remove('show');
+            roleSummarySection.classList.remove('hidden');
+
+            // Reset to manual input
+            document.getElementById('inputMethod').value = 'manual';
+            roleSummaryInput.required = true;
+        }
+    }
+
+    function setInputMethod(method) {
+        currentInputMethod = method;
+        const toggleManual = document.getElementById('toggleManual');
+        const toggleCV = document.getElementById('toggleCV');
+        const cvUploadSection = document.getElementById('cvUploadSection');
+        const roleSummarySection = document.getElementById('roleSummarySection');
+        const roleSummaryInput = document.getElementById('roleSummary');
+        const inputMethodField = document.getElementById('inputMethod');
+
+        // Update button states
+        toggleManual.classList.toggle('active', method === 'manual');
+        toggleCV.classList.toggle('active', method === 'cv');
+
+        // Update visibility
+        if (method === 'cv') {
+            cvUploadSection.classList.add('show');
+            roleSummarySection.classList.add('hidden');
+            roleSummaryInput.required = false;
+            inputMethodField.value = 'cv';
+        } else {
+            cvUploadSection.classList.remove('show');
+            roleSummarySection.classList.remove('hidden');
+            roleSummaryInput.required = true;
+            inputMethodField.value = 'manual';
+        }
+    }
+
+    function handleFileSelect(input) {
+        const file = input.files[0];
+        if (file) {
+            // Validate file size (5MB max)
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File size must be less than 5MB');
+                input.value = '';
+                return;
+            }
+
+            // Validate file type
+            const allowedTypes = [
+                'application/pdf',
+                'application/msword',
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            ];
+            if (!allowedTypes.includes(file.type)) {
+                alert('Please upload a PDF or Word document');
+                input.value = '';
+                return;
+            }
+
+            // Show file preview
+            const preview = document.getElementById('cvFilePreview');
+            const fileName = document.getElementById('fileName');
+            const fileSize = document.getElementById('fileSize');
+            const uploadLabel = document.getElementById('cvUploadLabel');
+
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            preview.classList.add('show');
+            uploadLabel.style.display = 'none';
+        }
+    }
+
+    function removeFile() {
+        const input = document.getElementById('cvFile');
+        const preview = document.getElementById('cvFilePreview');
+        const uploadLabel = document.getElementById('cvUploadLabel');
+
+        input.value = '';
+        preview.classList.remove('show');
+        uploadLabel.style.display = 'flex';
+    }
+
+    function formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function showLoadingOverlay() {
+        const overlay = document.getElementById('loadingOverlay');
+        if (overlay) {
+            overlay.style.display = 'flex';
+        }
+    }
+
+    function handleFormSubmit() {
+        const professionMode = document.getElementById('modeProfession').checked;
+        const inputMethod = document.getElementById('inputMethod').value;
+
+        // Validate based on input method
+        if (professionMode && inputMethod === 'cv') {
+            const cvFile = document.getElementById('cvFile');
+            if (!cvFile.files || cvFile.files.length === 0) {
+                alert('Please upload your CV or switch to manual input');
+                return false;
             }
         }
 
-        function showLoadingOverlay() {
-            const overlay = document.getElementById('loadingOverlay');
-            if (overlay) {
-                overlay.style.display = 'flex';
-            }
-        }
+        showLoadingOverlay();
+        return true;
+    }
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            updateFormLabels();
+    // Drag and drop handling
+    document.addEventListener('DOMContentLoaded', function() {
+        updateFormLabels();
+
+        const uploadLabel = document.getElementById('cvUploadLabel');
+        const cvUploadSection = document.getElementById('cvUploadSection');
+
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            cvUploadSection.addEventListener(eventName, preventDefaults, false);
         });
-    </script>
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            cvUploadSection.addEventListener(eventName, () => {
+                uploadLabel.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            cvUploadSection.addEventListener(eventName, () => {
+                uploadLabel.classList.remove('dragover');
+            }, false);
+        });
+
+        cvUploadSection.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            const input = document.getElementById('cvFile');
+
+            if (files.length > 0) {
+                input.files = files;
+                handleFileSelect(input);
+            }
+        }, false);
+    });
+</script>
 </body>
 </html>

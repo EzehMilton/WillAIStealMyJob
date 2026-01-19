@@ -42,6 +42,7 @@ Score Range | Risk Level | Interpretation
 
 <output_requirements>
 Return ONLY valid JSON with no markdown formatting, code fences, or explanatory text.
+The response must start with "{" and end with "}".
 
 Required JSON structure:
 {

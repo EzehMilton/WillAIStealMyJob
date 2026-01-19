@@ -1,0 +1,21 @@
+Your task is to assess the career risk associated with pursuing a specific course or degree over the next 5-10 years.
+
+Consider the following factors in your analysis:
+
+1. **Career Pathways**: What are the typical career paths this education leads to? Assess the automation risk for each.
+
+2. **Skills Longevity**: Are the core skills taught in this course likely to remain relevant, or are they at risk of becoming obsolete? Consider both technical and transferable skills.
+
+3. **Job Market Demand**: Is demand for graduates in this field growing, stable, or declining? Are there signs of market saturation?
+
+4. **AI-Proof Elements**: Does this education develop capabilities that AI struggles to replicate - such as creative thinking, ethical judgement, interpersonal skills, or physical expertise?
+
+5. **Adaptability**: Does this course provide a foundation that allows graduates to pivot if their initial career path becomes automated?
+
+6. **Industry Trends**: How is AI currently transforming the industries this degree feeds into? Are employers changing their hiring requirements?
+
+7. **Return on Investment**: Given the time and cost of this education, what is the likelihood of a positive career outcome considering automation trends?
+
+8. **Complementary AI Skills**: Does or should this course incorporate AI literacy and tools that would make graduates more competitive?
+
+Provide practical guidance on whether this educational investment is advisable, and suggest any modifications or complementary skills the student should consider.
