@@ -27,7 +27,21 @@ public class RiskAssessmentService {
      * @throws DocumentParseException if CV parsing fails
      */
     public JobRiskAssessment processAssessment(RiskAssessmentForm form) {
-        String roleSummary = extractRoleSummary(form);
+        String roleSummary;
+        try {
+            roleSummary = extractRoleSummary(form);
+        } catch (ValidationException | DocumentParseException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            if (isCvUploadMode(form)) {
+                log.warn("Unexpected error while processing CV input: {}", e.getMessage());
+                throw new DocumentParseException(
+                        "Failed to read CV. Please try a different file or enter details manually.",
+                        e
+                );
+            }
+            throw e;
+        }
         
         log.info("Processing risk assessment for mode: {}, profession: {}", 
                 form.getMode(), form.getProfession());
@@ -71,7 +85,7 @@ public class RiskAssessmentService {
             log.error("Invalid file: {}", e.getMessage());
             throw new ValidationException("cvFile", e.getMessage());
         } catch (Exception e) {
-            log.error("Failed to parse CV", e);
+            log.warn("Failed to parse CV: {}", e.getMessage());
             throw new DocumentParseException("Failed to read CV. Please try a different file or enter details manually.", e);
         }
     }
@@ -93,16 +107,9 @@ public class RiskAssessmentService {
         }
 
         String filename = cvFile.getOriginalFilename();
-        if (filename == null || !isValidFileExtension(filename)) {
-            throw new ValidationException("cvFile", "Please upload a PDF, DOC, or DOCX file");
+        if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
+            throw new ValidationException("cvFile", "Please upload a PDF file only");
         }
-    }
-
-    private boolean isValidFileExtension(String filename) {
-        String lowerFilename = filename.toLowerCase();
-        return lowerFilename.endsWith(".pdf") ||
-               lowerFilename.endsWith(".doc") ||
-               lowerFilename.endsWith(".docx");
     }
 
     /**
