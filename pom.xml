@@ -10,9 +10,9 @@
 	</parent>
 	<groupId>com.chikere</groupId>
 	<artifactId>jobai</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>jobai</name>
-	<description>Demo project for Spring Boot</description>
+	<version>1.0.0</version>
+	<name>WillAiStealMyJob</name>
+	<description>A Portal that checks the impact AI has on your job</description>
 	<url/>
 	<licenses>
 		<license/>
