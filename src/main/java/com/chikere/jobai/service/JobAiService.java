@@ -15,8 +15,8 @@ import java.nio.charset.StandardCharsets;
 @Slf4j
 public class JobAiService {
 
-    private final ChatClient gpt4oChatClient;
-    private final ChatClient gpt4oMiniChatClient;
+    private final ChatClient gpt54ChatClient;
+    private final ChatClient gpt5MiniChatClient;
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -24,11 +24,11 @@ public class JobAiService {
     private final String professionInstructions;
     private final String courseInstructions;
 
-    public JobAiService(ChatClient gpt4oChatClient,
-                        ChatClient gpt4oMiniChatClient,
+    public JobAiService(ChatClient gpt54ChatClient,
+                        ChatClient gpt5MiniChatClient,
                         ResourceLoader resourceLoader) {
-        this.gpt4oChatClient = gpt4oChatClient;
-        this.gpt4oMiniChatClient = gpt4oMiniChatClient;
+        this.gpt54ChatClient = gpt54ChatClient;
+        this.gpt5MiniChatClient = gpt5MiniChatClient;
         this.resourceLoader = resourceLoader;
 
         this.professionInstructions = loadResourceFile("classpath:prompts/profession-instructions.txt");
@@ -67,8 +67,8 @@ public class JobAiService {
         log.debug("Generated prompt: {}", prompt);
 
         // Use mini model for course/degree assessments, full model for profession assessments
-        ChatClient selectedChatClient = "course".equals(mode) ? gpt4oMiniChatClient : gpt4oChatClient;
-        log.info("Using model: {}", "course".equals(mode) ? "gpt-4o-mini" : "gpt-4o");
+        ChatClient selectedChatClient = "course".equals(mode) ? gpt5MiniChatClient : gpt54ChatClient;
+        log.info("Using model: {}", "course".equals(mode) ? "gpt-54-mini" : "gpt-54");
 
         String response = selectedChatClient.prompt(prompt).call().content();
         String cleanedResponse = cleanJsonResponse(response);

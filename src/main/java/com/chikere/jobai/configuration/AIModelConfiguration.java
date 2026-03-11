@@ -35,4 +35,24 @@ public class AIModelConfiguration {
                         .build())
                 .build();
     }
+
+    @Bean
+    public ChatClient gpt54ChatClient(ChatClient.Builder chatClientBuilder) {
+        return chatClientBuilder
+                .defaultOptions(OpenAiChatOptions.builder()
+                        .model("gpt-5.4")
+                        .temperature(1.0)
+                        .build())
+                .build();
+    }
+
+    @Bean
+    public ChatClient gpt5MiniChatClient(ChatClient.Builder chatClientBuilder) {
+        return chatClientBuilder
+                .defaultOptions(OpenAiChatOptions.builder()
+                        .model("gpt-5-mini")
+                        .temperature(1.0)
+                        .build())
+                .build();
+    }
 }

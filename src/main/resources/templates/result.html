@@ -183,6 +183,111 @@
 
                             <hr class="my-4">
 
+                            <!-- Premium Insights Preview -->
+                            <div class="rounded-4 p-4 mb-4" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid rgba(99,102,241,0.4);">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="fs-5 me-2">&#128274;</span>
+                                    <h5 class="fw-bold mb-0 text-white">Premium: Unlock your AI Career Survival Plan <span class="badge bg-secondary ms-1" style="font-size: 0.7rem; vertical-align: middle;" th:text="${mode == 'course'} ? '£3' : '£10'">£10</span></h5>
+                                </div>
+                                <p class="text-white-50 small mb-3">Your personalised report includes:</p>
+                                <!-- Profession list -->
+                                <ul th:if="${mode != 'course'}" class="list-unstyled mb-0">
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">AI Automation Breakdown</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Understand which tasks in your job are most likely to be automated.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Tasks Most Likely to Be Replaced</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">See exactly where AI and robotics could impact your role.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">AI-Resistant Skills</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Discover the skills that will keep your profession valuable.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Safer Career Paths</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Explore related careers with lower automation risk and higher salaries.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Personalised Career Survival Plan</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Clear steps you can take over the next 5–10 years to stay relevant.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                                <!-- Course list -->
+                                <ul th:if="${mode == 'course'}" class="list-unstyled mb-0">
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">AI Risk for This Career Path</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Understand how AI is expected to impact the jobs this course leads to.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Future Job Market Outlook</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">See how demand for this profession is expected to change over the next 5–10 years.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">AI-Resilient Skills to Focus On</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Discover the skills that will make graduates in this field more valuable in the age of AI.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Safer Specialisations Within This Field</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Explore career paths and specialisations that are less likely to be automated.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Personalised Career Strategy</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Clear guidance on how to adapt your studies and skill development to stay competitive.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                            </div>
+
                             <div class="d-flex justify-content-between flex-wrap gap-3">
                                 <a th:href="@{/}" class="btn btn-outline-primary btn-lg rounded-pill px-4">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-arrow-left me-2" viewBox="0 0 16 16">
@@ -190,12 +295,8 @@
                                     </svg>
                                     New Assessment
                                 </a>
-                                <button onclick="window.print()" class="btn btn-primary btn-lg rounded-pill px-4">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-printer me-2" viewBox="0 0 16 16">
-                                        <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
-                                        <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/>
-                                    </svg>
-                                    Print Report
+                                <button class="btn btn-primary btn-lg rounded-pill px-4">
+                                    Unlock Premium Insights
                                 </button>
                             </div>
                         </div>
