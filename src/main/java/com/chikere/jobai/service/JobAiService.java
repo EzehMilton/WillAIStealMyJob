@@ -3,6 +3,7 @@ package com.chikere.jobai.service;
 import com.chikere.jobai.model.JobRiskAssessment;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -10,6 +11,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
+import java.util.Objects;
 
 @Service
 @Slf4j
@@ -18,6 +21,7 @@ public class JobAiService {
     private final ChatClient gpt54ChatClient;
     private final ChatClient gpt5MiniChatClient;
     private final ResourceLoader resourceLoader;
+    private final boolean useDummyMode;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     // Cached instructions loaded at startup
@@ -26,18 +30,27 @@ public class JobAiService {
 
     public JobAiService(ChatClient gpt54ChatClient,
                         ChatClient gpt5MiniChatClient,
-                        ResourceLoader resourceLoader) {
+                        ResourceLoader resourceLoader,
+                        @Value("${app.ai.use-dummy:false}") boolean useDummyMode) {
         this.gpt54ChatClient = gpt54ChatClient;
         this.gpt5MiniChatClient = gpt5MiniChatClient;
         this.resourceLoader = resourceLoader;
+        this.useDummyMode = useDummyMode;
 
         this.professionInstructions = loadResourceFile("classpath:prompts/profession-instructions.txt");
         this.courseInstructions = loadResourceFile("classpath:prompts/course-instructions.txt");
         log.info("Loaded prompt instructions for profession and course modes");
+        if (this.useDummyMode) {
+            log.info("JobAiService is running in dummy mode. No external AI model calls will be made.");
+        }
     }
 
     public JobRiskAssessment assessJobRisk(String mode, String profession, String roleSummary) {
         log.info("Assessing job risk for mode: {}, profession: {}", mode, profession);
+
+        if (useDummyMode) {
+            return buildDummyAssessment(mode, profession, roleSummary);
+        }
 
         String promptTemplate = loadResourceFile("classpath:prompts/jobai.txt");
 
@@ -80,6 +93,79 @@ public class JobAiService {
             log.error("Failed to parse AI response: {}", response, e);
             throw new RuntimeException("Failed to parse AI response", e);
         }
+    }
+
+    private JobRiskAssessment buildDummyAssessment(String mode, String profession, String roleSummary) {
+        String normalizedMode = mode == null ? "profession" : mode.trim().toLowerCase(Locale.ROOT);
+        String normalizedProfession = profession == null ? "Unknown" : profession.trim();
+        String normalizedRoleSummary = roleSummary == null ? "" : roleSummary.trim();
+        String content = normalizedRoleSummary.toLowerCase(Locale.ROOT);
+
+        double score = (Math.floorMod(
+                Objects.hash(normalizedMode, normalizedProfession.toLowerCase(Locale.ROOT), content), 71
+        ) / 10.0) + 1.5; // 1.5 - 8.5
+        score += scoreAdjustment(content);
+        score = Math.max(0.5, Math.min(9.5, Math.round(score * 10.0) / 10.0));
+
+        String riskLevel = score <= 2 ? "Low" : (score <= 6 ? "Moderate" : "High");
+
+        JobRiskAssessment assessment = new JobRiskAssessment();
+        assessment.setScore(score);
+        assessment.setRiskLevel(riskLevel);
+        assessment.setSummary(buildDummySummary(normalizedMode, normalizedProfession, riskLevel));
+        assessment.setAssessment(buildDummyNarrative(normalizedMode, normalizedProfession, normalizedRoleSummary, score));
+        return assessment;
+    }
+
+    private double scoreAdjustment(String content) {
+        double adjustment = 0.0;
+
+        if (containsAny(content, "repetitive", "data entry", "admin", "scheduling", "routine", "transcription")) {
+            adjustment += 1.4;
+        }
+        if (containsAny(content, "analysis", "reporting", "documentation", "support", "compliance")) {
+            adjustment += 0.8;
+        }
+        if (containsAny(content, "leadership", "negotiation", "teaching", "creative", "strategy", "hands-on", "care")) {
+            adjustment -= 1.2;
+        }
+        if (containsAny(content, "field work", "manual", "stakeholder", "coaching", "customer relationship")) {
+            adjustment -= 0.6;
+        }
+
+        return adjustment;
+    }
+
+    private boolean containsAny(String content, String... keywords) {
+        for (String keyword : keywords) {
+            if (content.contains(keyword)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String buildDummySummary(String mode, String profession, String riskLevel) {
+        String subject = "course".equals(mode) ? "career path from " + profession : profession + " role";
+        return "Demo assessment: the " + subject + " shows " + riskLevel.toLowerCase(Locale.ROOT)
+                + " automation pressure over the next 5-10 years.";
+    }
+
+    private String buildDummyNarrative(String mode, String profession, String roleSummary, double score) {
+        String subjectLine = "course".equals(mode)
+                ? "Course: " + profession
+                : "Profession: " + profession;
+
+        return subjectLine + "\n\n"
+                + "This is a locally generated dummy report for development/testing. "
+                + "No external AI model was called.\n\n"
+                + "Estimated score: " + score + "/10\n\n"
+                + "Why this score:\n"
+                + "- Inputs with routine and documentation-heavy tasks trend higher risk.\n"
+                + "- Inputs with creative, leadership, or people-facing work trend lower risk.\n"
+                + "- Final score is deterministic for the same input so you can test repeatably.\n\n"
+                + "Input excerpt:\n"
+                + roleSummary;
     }
 
     private String cleanJsonResponse(String response) {
