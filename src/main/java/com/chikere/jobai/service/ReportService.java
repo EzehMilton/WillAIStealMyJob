@@ -3,6 +3,7 @@ package com.chikere.jobai.service;
 import com.chikere.jobai.model.GenerateReportRequest;
 import com.chikere.jobai.model.PremiumReport;
 import com.chikere.jobai.model.PremiumReport.*;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -16,11 +17,20 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ReportService {
 
     private final Map<String, PremiumReport> store = new ConcurrentHashMap<>();
+    private final PremiumReportAiService premiumReportAiService;
+    private final boolean useDummyMode;
+
+    public ReportService(PremiumReportAiService premiumReportAiService,
+                         @Value("${app.ai.use-dummy:false}") boolean useDummyMode) {
+        this.premiumReportAiService = premiumReportAiService;
+        this.useDummyMode = useDummyMode;
+    }
 
     public PremiumReport generateReport(GenerateReportRequest request) {
-        String reportId = UUID.randomUUID().toString();
-        PremiumReport report = buildMockReport(reportId, request);
-        store.put(reportId, report);
+        PremiumReport report = useDummyMode
+                ? buildMockReport(UUID.randomUUID().toString(), request)
+                : premiumReportAiService.generate(request);
+        store.put(report.getReportId(), report);
         return report;
     }
 
