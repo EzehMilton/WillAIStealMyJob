@@ -180,6 +180,37 @@ textarea.form-control {
     transform: translateY(0);
 }
 
+/* Result page action buttons */
+.result-action-btn,
+.result-actions .btn {
+    border-radius: 10px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+    padding: 0.6rem 1rem !important;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.result-action-btn svg,
+.result-actions .btn svg {
+    width: 18px;
+    height: 18px;
+}
+
+.result-actions .btn-outline-primary,
+.result-actions .btn-outline-secondary {
+    border-width: 1.5px;
+    background-color: #fff;
+}
+
+.result-actions .btn-primary {
+    box-shadow: 0 3px 10px rgba(102, 126, 234, 0.25);
+}
+
 /* Info Cards */
 .info-card {
     background: white;
@@ -241,6 +272,12 @@ textarea.form-control {
     .btn-lg {
         font-size: 1rem;
         padding: 0.75rem 1.5rem;
+    }
+
+    .result-action-btn,
+    .result-actions .btn {
+        width: 100%;
+        white-space: normal;
     }
 
     .info-card {

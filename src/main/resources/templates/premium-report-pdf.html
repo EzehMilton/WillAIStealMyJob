@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="'AI Risk Report – ' + ${report.profession}">AI Risk Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 1.5cm 1.8cm 2cm 1.8cm;
+            @bottom-right {
+                content: "Page " counter(page) " of " counter(pages);
+                font-size: 7pt;
+                color: #7a8099;
+                font-family: Arial, sans-serif;
+            }
+        }
+
+        * { box-sizing: border-box; }
+
+        html { background-color: #0d0f14; }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 9pt;
+            color: #e8eaf0;
+            line-height: 1.5;
+            margin: 0;
+            padding: 0;
+            background-color: #0d0f14;
+        }
+
+        /* ── COVER ── */
+        .cover-eyebrow {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 7pt;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #4f8eff;
+            margin-bottom: 14pt;
+        }
+
+        .cover-h1 {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 22pt;
+            color: #e8eaf0;
+            line-height: 1.15;
+            margin: 0 0 4pt 0;
+        }
+
+        .cover-profession {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 15pt;
+            color: #4f8eff;
+            margin: 0 0 10pt 0;
+        }
+
+        .cover-sub {
+            font-size: 9pt;
+            color: #7a8099;
+            margin-bottom: 18pt;
+            max-width: 420pt;
+        }
+
+        /* ── STATS GRID (table-based) ── */
+        .stats-table {
+            border-collapse: collapse;
+            border: 0.5pt solid #252a38;
+            margin-bottom: 16pt;
+        }
+
+        .stat-cell {
+            background-color: #13161e;
+            padding: 10pt 18pt;
+            text-align: center;
+            border: 0.5pt solid #252a38;
+            vertical-align: top;
+            width: 90pt;
+        }
+
+        .stat-value {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 20pt;
+            line-height: 1;
+            margin-bottom: 3pt;
+        }
+
+        .stat-label {
+            font-size: 6.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #7a8099;
+            font-weight: bold;
+        }
+
+        .cover-meta {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 7.5pt;
+            color: #7a8099;
+            margin-top: 10pt;
+        }
+
+        /* ── DIVIDERS ── */
+        .divider {
+            border: none;
+            border-top: 0.5pt solid #252a38;
+            margin: 16pt 0;
+        }
+
+        /* ── SECTION LABELS & TITLES ── */
+        .section-eyebrow {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 7pt;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            color: #4f8eff;
+            margin-bottom: 4pt;
+        }
+
+        .section-title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 14pt;
+            color: #e8eaf0;
+            margin-bottom: 8pt;
+            line-height: 1.2;
+        }
+
+        .section-intro {
+            font-size: 8.5pt;
+            color: #7a8099;
+            margin-bottom: 12pt;
+            line-height: 1.7;
+        }
+
+        /* ── CARDS ── */
+        .card {
+            background-color: #13161e;
+            border: 0.5pt solid #252a38;
+            padding: 10pt 12pt;
+            margin-bottom: 10pt;
+            page-break-inside: avoid;
+        }
+
+        .card-title {
+            font-size: 9.5pt;
+            font-weight: bold;
+            color: #e8eaf0;
+            margin-bottom: 6pt;
+        }
+
+        /* ── KPI GRID ── */
+        .kpi-table { width: 100%; border-collapse: collapse; }
+
+        .kpi-cell {
+            width: 25%;
+            background-color: #1a1e2a;
+            border: 0.5pt solid #252a38;
+            padding: 7pt 9pt;
+            vertical-align: top;
+        }
+
+        .kpi-label {
+            font-size: 6.5pt;
+            color: #7a8099;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            display: block;
+            margin-bottom: 3pt;
+        }
+
+        .kpi-value {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #4f8eff;
+        }
+
+        /* ── DATA TABLES ── */
+        .data-table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+
+        .data-table th {
+            background-color: #1a1e2a;
+            color: #7a8099;
+            font-size: 6.5pt;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 6pt 8pt;
+            border: 0.5pt solid #252a38;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .data-table td {
+            padding: 6pt 8pt;
+            border: 0.5pt solid #252a38;
+            vertical-align: top;
+            color: #e8eaf0;
+        }
+
+        .data-table tr.alt td { background-color: #0f1219; }
+
+        /* ── TWO-COLUMN FLOAT LAYOUT ── */
+        .col-left  { width: 49%; float: left;  padding-right: 5pt; }
+        .col-right { width: 49%; float: right; }
+        .clearfix  { clear: both; display: block; }
+
+        /* ── LISTS ── */
+        ul { margin: 0; padding-left: 12pt; }
+        li { margin-bottom: 3pt; font-size: 8pt; color: #7a8099; }
+
+        /* ── CALLOUT ── */
+        .callout {
+            background-color: #13161e;
+            border-left: 2.5pt solid #4f8eff;
+            padding: 8pt 12pt;
+            margin: 8pt 0;
+            font-size: 8.5pt;
+            color: #7a8099;
+            line-height: 1.7;
+            page-break-inside: avoid;
+        }
+        .callout strong { color: #e8eaf0; }
+
+        /* ── SCORE VISUAL (table-based) ── */
+        .score-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #13161e;
+            border: 0.5pt solid #252a38;
+            margin-bottom: 12pt;
+        }
+
+        .score-gauge-cell {
+            width: 130pt;
+            padding: 14pt 10pt;
+            text-align: center;
+            vertical-align: middle;
+            border-right: 0.5pt solid #252a38;
+        }
+
+        .score-text-cell {
+            padding: 14pt 16pt;
+            vertical-align: middle;
+        }
+
+        .score-heading {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 13pt;
+            color: #e8eaf0;
+            margin-bottom: 6pt;
+        }
+
+        .score-desc {
+            font-size: 8.5pt;
+            color: #7a8099;
+            line-height: 1.7;
+        }
+
+        /* ── ACTION PLAN ── */
+        .plan-table { width: 100%; border-collapse: collapse; }
+
+        .plan-cell {
+            width: 33.33%;
+            vertical-align: top;
+            padding-right: 6pt;
+        }
+
+        .plan-cell:last-child { padding-right: 0; }
+
+        .plan-block {
+            background-color: #13161e;
+            border: 0.5pt solid #252a38;
+            padding: 9pt 11pt;
+            page-break-inside: avoid;
+        }
+
+        .plan-eyebrow {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 6.5pt;
+            color: #7a8099;
+            letter-spacing: 0.06em;
+            margin-bottom: 4pt;
+        }
+
+        .plan-title {
+            font-size: 9pt;
+            font-weight: bold;
+            color: #e8eaf0;
+            margin-bottom: 7pt;
+        }
+
+        /* ── PAGE BREAK ── */
+        .page-break { page-break-before: always; }
+    </style>
+</head>
+<body>
+
+    <!-- ════════════════════════════════════════════════════════
+         COVER
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="cover-eyebrow">WillAIStealMyJob.com &bull; Premium Report &bull; AI Career Risk Assessment</div>
+
+    <p class="cover-h1">AI Exposure Report</p>
+    <p class="cover-profession" th:text="${report.profession}">Software Developer</p>
+    <p class="cover-sub">A personalised analysis of your automation risk, future-proof skills, salary trajectory, and career survival plan over the next decade.</p>
+
+    <table class="stats-table">
+        <tr>
+            <td class="stat-cell">
+                <div class="stat-value" style="color:#f5a623;"
+                     th:text="${#numbers.formatDecimal(report.score * 10, 1, 0)} + '%'">70%</div>
+                <div class="stat-label">Overall Risk Score</div>
+            </td>
+            <td class="stat-cell">
+                <div class="stat-value"
+                     th:style="${report.riskLevel == 'High' ? 'color:#e74c3c' : (report.riskLevel == 'Low' ? 'color:#2ecc71' : 'color:#f5a623')}"
+                     th:text="${report.riskLevel}">Moderate</div>
+                <div class="stat-label">Risk Level</div>
+            </td>
+            <td class="stat-cell">
+                <div class="stat-value" style="color:#4f8eff;" th:text="${report.safestDirection}">Leadership</div>
+                <div class="stat-label">Safest Direction</div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="cover-meta">
+        Generated <span th:text="${#temporals.format(report.generatedAt, 'dd MMMM yyyy')}">01 January 2026</span>
+        &nbsp;&bull;&nbsp; Report ID: <span th:text="${report.reportId}">id</span>
+    </div>
+
+    <hr class="divider"/>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 01 — OVERVIEW
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section-eyebrow">Section 01 &mdash; Overview</div>
+    <div class="section-title">Your Situation at a Glance</div>
+
+    <!-- Score gauge + executive summary -->
+    <table class="score-table">
+        <tr>
+            <td class="score-gauge-cell">
+                <svg width="120" height="120" viewBox="0 0 130 130">
+                    <g transform="rotate(-90 65 65)">
+                        <circle cx="65" cy="65" r="54" fill="none" stroke="#1a1e2a" stroke-width="10"/>
+                        <circle cx="65" cy="65" r="54" fill="none" stroke="#f5a623" stroke-width="10"
+                                stroke-dasharray="339.3"
+                                th:attr="stroke-dashoffset=${339.3 * (1.0 - report.score / 10.0)}"
+                                stroke-linecap="round"/>
+                    </g>
+                    <text x="65" y="61" text-anchor="middle"
+                          font-family="Georgia, serif" font-size="22" fill="#f5a623" font-weight="bold"
+                          th:text="${#numbers.formatDecimal(report.score * 10, 1, 0)} + '%'">70%</text>
+                    <text x="65" y="76" text-anchor="middle"
+                          font-family="Arial, sans-serif" font-size="8" fill="#7a8099" letter-spacing="1">RISK</text>
+                </svg>
+            </td>
+            <td class="score-text-cell">
+                <div class="score-heading">
+                    <span th:text="${report.riskLevel} + ' Risk'">Moderate Risk</span>
+                    &nbsp;
+                    <span th:style="${report.riskLevel == 'High' ?
+                            'background-color:#2b1815;color:#e74c3c;border:0.5pt solid #e74c3c;font-size:6.5pt;font-weight:bold;padding:1pt 5pt;text-transform:uppercase;' :
+                            (report.riskLevel == 'Low' ?
+                            'background-color:#0d2318;color:#2ecc71;border:0.5pt solid #2ecc71;font-size:6.5pt;font-weight:bold;padding:1pt 5pt;text-transform:uppercase;' :
+                            'background-color:#2b220a;color:#f5a623;border:0.5pt solid #f5a623;font-size:6.5pt;font-weight:bold;padding:1pt 5pt;text-transform:uppercase;')}"
+                          th:text="${report.riskLevel}">Moderate</span>
+                </div>
+                <p class="score-desc" th:text="${report.executiveSummary}">Summary goes here.</p>
+            </td>
+        </tr>
+    </table>
+
+    <!-- At-a-glance KPIs -->
+    <table class="kpi-table" style="margin-bottom:14pt;">
+        <tr>
+            <td class="kpi-cell">
+                <span class="kpi-label">Overall Exposure</span>
+                <span class="kpi-value" th:text="${report.overallExposure}">Moderate</span>
+            </td>
+            <td class="kpi-cell">
+                <span class="kpi-label">Most Exposed Area</span>
+                <span class="kpi-value" th:text="${report.mostExposedArea}">Routine tasks</span>
+            </td>
+            <td class="kpi-cell">
+                <span class="kpi-label">Safest Direction</span>
+                <span class="kpi-value" th:text="${report.safestDirection}">Leadership</span>
+            </td>
+            <td class="kpi-cell">
+                <span class="kpi-label">Core Advice</span>
+                <span class="kpi-value" th:text="${report.coreAdvice}">Move up chain</span>
+            </td>
+        </tr>
+    </table>
+
+    <hr class="divider"/>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 02 — TASK ANALYSIS
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section-eyebrow">Section 02 &mdash; Task Analysis</div>
+    <div class="section-title">What Gets Automated, and What Doesn't</div>
+    <p class="section-intro">Not all of your work carries equal risk. Here is a task-by-task breakdown based on current AI capabilities and industry trends for your profession.</p>
+
+    <div class="card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:32%;">Work Area</th>
+                    <th style="width:20%;">Exposure Level</th>
+                    <th>Why It Matters</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="row, stat : ${report.taskExposureMap}" th:classappend="${stat.even} ? 'alt' : ''">
+                    <td style="font-weight:bold;" th:text="${row.area}"></td>
+                    <td>
+                        <span th:style="${row.exposure.contains('High') ?
+                                'color:#e74c3c;font-weight:bold;' :
+                                (row.exposure == 'Moderate' or row.exposure == 'Medium' ?
+                                'color:#f5a623;font-weight:bold;' :
+                                'color:#2ecc71;font-weight:bold;')}"
+                              th:text="${row.exposure}"></span>
+                    </td>
+                    <td style="color:#7a8099;" th:text="${row.reason}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <hr class="divider"/>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 03 — AI vs HUMAN CAPABILITY
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section-eyebrow">Section 03 &mdash; Capability Analysis</div>
+    <div class="section-title">AI Strengths vs Human Advantages</div>
+
+    <div class="col-left">
+        <div class="card">
+            <div class="card-title" style="color:#e74c3c;">What AI Is Already Strong At</div>
+            <ul>
+                <li th:each="s : ${report.aiStrengths}" th:text="${s}"></li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-right">
+        <div class="card">
+            <div class="card-title" style="color:#2ecc71;">What AI Still Struggles With</div>
+            <ul>
+                <li th:each="h : ${report.humanAdvantages}" th:text="${h}"></li>
+            </ul>
+        </div>
+    </div>
+    <div class="clearfix"></div>
+
+    <hr class="divider"/>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 04 — CAREER LEVEL ANALYSIS
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section-eyebrow">Section 04 &mdash; Career Level Analysis</div>
+    <div class="section-title">Risk Changes by Seniority</div>
+
+    <div class="card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:28%;">Career Level</th>
+                    <th style="width:20%;">Indicative Risk</th>
+                    <th>Commentary</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="row, stat : ${report.careerLevelAnalysis}" th:classappend="${stat.even} ? 'alt' : ''">
+                    <td style="font-weight:bold;" th:text="${row.level}"></td>
+                    <td>
+                        <span th:style="${row.risk.contains('High') ?
+                                'color:#e74c3c;font-weight:bold;' :
+                                (row.risk == 'Moderate' or row.risk == 'Medium' ?
+                                'color:#f5a623;font-weight:bold;' :
+                                'color:#2ecc71;font-weight:bold;')}"
+                              th:text="${row.risk}"></span>
+                    </td>
+                    <td style="color:#7a8099;" th:text="${row.commentary}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <hr class="divider"/>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 05 — CAREER TRACK COMPARISON
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section-eyebrow">Section 05 &mdash; Career Track Comparison</div>
+    <div class="section-title">Career Paths and Their Relative Resilience</div>
+
+    <div class="card">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th style="width:30%;">Track</th>
+                    <th style="width:22%;">Indicative Exposure</th>
+                    <th>Why</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="row, stat : ${report.trackComparison}" th:classappend="${stat.even} ? 'alt' : ''">
+                    <td style="font-weight:bold;" th:text="${row.track}"></td>
+                    <td>
+                        <span th:style="${row.exposure.contains('High') ?
+                                'color:#e74c3c;font-weight:bold;' :
+                                (row.exposure == 'Moderate' or row.exposure == 'Medium' ?
+                                'color:#f5a623;font-weight:bold;' :
+                                'color:#2ecc71;font-weight:bold;')}"
+                              th:text="${row.exposure}"></span>
+                    </td>
+                    <td style="color:#7a8099;" th:text="${row.reason}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 06 — ADJACENT ROLES  [page break]
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="page-break">
+        <div class="section-eyebrow">Section 06 &mdash; Adjacent Career Paths</div>
+        <div class="section-title">Lower-Risk Roles That Leverage Your Skills</div>
+        <p class="section-intro">If you want to reduce your automation exposure while maximising your existing experience, these adjacent roles represent strong transitions — each building naturally on your background.</p>
+
+        <div class="card">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th style="width:22%;">Target Role</th>
+                        <th style="width:16%;">Salary Band</th>
+                        <th style="width:14%;">AI Resilience</th>
+                        <th style="width:14%;">Difficulty</th>
+                        <th>Why It Is Safer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row, stat : ${report.adjacentRoles}" th:classappend="${stat.even} ? 'alt' : ''">
+                        <td style="font-weight:bold;color:#4f8eff;" th:text="${row.targetRole}"></td>
+                        <td th:text="${row.salaryBand}"></td>
+                        <td>
+                            <span th:style="${row.aiResilience.contains('High') or row.aiResilience.contains('Strong') or row.aiResilience.contains('Very') ?
+                                    'color:#2ecc71;font-weight:bold;' :
+                                    (row.aiResilience.contains('Low') or row.aiResilience.contains('Weak') ?
+                                    'color:#e74c3c;font-weight:bold;' :
+                                    'color:#f5a623;font-weight:bold;')}"
+                                  th:text="${row.aiResilience}"></span>
+                        </td>
+                        <td style="color:#7a8099;" th:text="${row.transitionDifficulty}"></td>
+                        <td style="color:#7a8099;" th:text="${row.reason}"></td>
+                    </tr>
+                </tbody>
+            </table>
+            <p style="margin-top:5pt;font-size:7.5pt;color:#7a8099;">Salary bands are indicative positioning cues, not guaranteed market quotes.</p>
+        </div>
+
+        <hr class="divider"/>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 07 — PERSONAL ACTION PLAN
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section-eyebrow">Section 07 &mdash; Personal Action Plan</div>
+    <div class="section-title">Your 90-Day Survival Plan</div>
+    <p class="section-intro">Three phases. Concrete steps. Starting from where you are today.</p>
+
+    <table class="plan-table" style="margin-bottom:12pt;">
+        <tr>
+            <td class="plan-cell">
+                <div class="plan-block">
+                    <div class="plan-eyebrow">Phase 01 &mdash; Foundations</div>
+                    <div class="plan-title" style="color:#e74c3c;">Next 30 Days</div>
+                    <ul>
+                        <li th:each="item : ${report.thirtyDayPlan}" th:text="${item}"></li>
+                    </ul>
+                </div>
+            </td>
+            <td class="plan-cell">
+                <div class="plan-block">
+                    <div class="plan-eyebrow">Phase 02 &mdash; Build</div>
+                    <div class="plan-title" style="color:#f5a623;">Next 90 Days</div>
+                    <ul>
+                        <li th:each="item : ${report.ninetyDayPlan}" th:text="${item}"></li>
+                    </ul>
+                </div>
+            </td>
+            <td class="plan-cell">
+                <div class="plan-block">
+                    <div class="plan-eyebrow">Phase 03 &mdash; Leverage</div>
+                    <div class="plan-title" style="color:#2ecc71;">Next 12 Months</div>
+                    <ul>
+                        <li th:each="item : ${report.yearPlan}" th:text="${item}"></li>
+                    </ul>
+                </div>
+            </td>
+        </tr>
+    </table>
+
+    <hr class="divider"/>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         SECTION 08 — WARNING SIGNS & RESILIENCE SCORECARD
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section-eyebrow">Section 08 &mdash; Warning Signs &amp; Resilience</div>
+    <div class="section-title">Signals and Strengths to Watch</div>
+
+    <div class="col-left">
+        <div class="card">
+            <div class="card-title" style="color:#f5a623;">Warning Signs</div>
+            <p style="font-size:8pt;color:#7a8099;margin-bottom:6pt;">Signals your role may be more exposed than average:</p>
+            <ul>
+                <li th:each="w : ${report.warningSigns}" th:text="${w}"></li>
+            </ul>
+        </div>
+    </div>
+    <div class="col-right">
+        <div class="card">
+            <div class="card-title" style="color:#2ecc71;">Resilience Scorecard</div>
+            <p style="font-size:8pt;color:#7a8099;margin-bottom:6pt;">Characteristics that make you safer:</p>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Factor</th>
+                        <th style="width:28%;">Signal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="row, stat : ${report.resilienceScorecard}" th:classappend="${stat.even} ? 'alt' : ''">
+                        <td th:text="${row.factor}"></td>
+                        <td style="color:#2ecc71;font-weight:bold;" th:text="${row.signal}"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="clearfix"></div>
+
+    <hr class="divider"/>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         POSITIONING ADVICE
+    ═══════════════════════════════════════════════════════════ -->
+    <div class="section-eyebrow">Positioning Advice</div>
+    <div class="section-title">How to Describe Yourself in the AI Era</div>
+    <div class="callout">
+        <p th:text="${report.positioningAdvice}">Advice text.</p>
+    </div>
+
+
+    <!-- ════════════════════════════════════════════════════════
+         FOOTER
+    ═══════════════════════════════════════════════════════════ -->
+    <hr class="divider"/>
+    <div style="text-align:center;font-size:7.5pt;color:#7a8099;">
+        <span style="font-family:'Courier New',Courier,monospace;letter-spacing:0.08em;">WillAIStealMyJob.com</span>
+        &nbsp;&bull;&nbsp;
+        Report generated <span th:text="${#temporals.format(report.generatedAt, 'dd MMMM yyyy')}">01 January 2026</span>
+        &nbsp;&bull;&nbsp;
+        Report ID: <span th:text="${report.reportId}">id</span>
+        &nbsp;&bull;&nbsp;
+        For personal use only
+    </div>
+
+</body>
+</html>

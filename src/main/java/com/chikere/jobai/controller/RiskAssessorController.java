@@ -67,6 +67,16 @@ public class RiskAssessorController {
         return "result";
     }
 
+    @GetMapping("/sample-report")
+    public String sampleReport() {
+        return "sample-report";
+    }
+
+    @GetMapping("/generating-report")
+    public String generatingReport() {
+        return "generating-report";
+    }
+
     private void addSuccessAttributes(RedirectAttributes redirectAttributes,
                                       RiskAssessmentForm form,
                                       JobRiskAssessment assessment) {

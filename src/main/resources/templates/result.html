@@ -187,7 +187,7 @@
                             <div class="rounded-4 p-4 mb-4" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid rgba(99,102,241,0.4);">
                                 <div class="d-flex align-items-center mb-2">
                                     <span class="fs-5 me-2">&#128274;</span>
-                                    <h5 class="fw-bold mb-0 text-white">Premium: Unlock your AI Career Survival Plan <span class="badge bg-secondary ms-1" style="font-size: 0.7rem; vertical-align: middle;" th:text="${mode == 'course'} ? '£3' : '£10'">£10</span></h5>
+                                    <h5 class="fw-bold mb-0 text-white">Premium: Unlock your AI Career Survival Plan <span class="badge bg-secondary ms-1" style="font-size: 0.7rem; vertical-align: middle;" th:text="${mode == 'course'} ? '£3 per report' : '£10 per report'">£10 per report</span></h5>
                                 </div>
                                 <p class="text-white-50 small mb-3">Your personalised report includes:</p>
                                 <!-- Profession list -->
@@ -290,14 +290,22 @@
                                 </ul>
                             </div>
 
-                            <div class="d-flex justify-content-between flex-wrap gap-3">
-                                <a th:href="@{/}" class="btn btn-outline-primary btn-lg rounded-pill px-4">
+                            <div class="result-actions d-flex flex-wrap justify-content-center justify-content-md-between gap-2 gap-md-3">
+                                <a th:href="@{/}" class="btn btn-outline-primary result-action-btn">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-arrow-left me-2" viewBox="0 0 16 16">
                                         <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/>
                                     </svg>
                                     New Assessment
                                 </a>
-                                <button class="btn btn-primary btn-lg rounded-pill px-4">
+                                <a th:href="@{/sample-report}" class="btn btn-outline-secondary result-action-btn">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-file-earmark-text me-2" viewBox="0 0 16 16">
+                                        <path d="M5.5 7a.5.5 0 0 0 0 1h5a.5.5 0 0 0 0-1zM5 9.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0 2a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5"/>
+                                        <path d="M9.5 0H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5zm0 1v2A1.5 1.5 0 0 0 11 4.5h2V14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1z"/>
+                                    </svg>
+                                    View Sample Report
+                                </a>
+                                <button type="button" class="btn btn-primary result-action-btn"
+                                        data-bs-toggle="modal" data-bs-target="#premiumModal">
                                     Unlock Premium Insights
                                 </button>
                             </div>
@@ -317,7 +325,7 @@
                             <p class="text-muted mb-4">
                                 It looks like you accessed this page directly. Please submit the assessment form to see your results.
                             </p>
-                            <a href="/" class="btn btn-primary btn-lg rounded-pill px-5">
+                            <a href="/" class="btn btn-primary result-action-btn">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-arrow-left me-2" viewBox="0 0 16 16">
                                     <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8"/>
                                 </svg>
@@ -373,9 +381,182 @@
         </div>
     </footer>
 
+    <!-- Premium Modal -->
+    <div class="modal fade" id="premiumModal" tabindex="-1" aria-labelledby="premiumModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+
+                <!-- Modal Header -->
+                <div class="modal-header border-0 pb-0 pt-4 px-4">
+                    <div class="w-100">
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <span class="badge rounded-pill px-3 py-2"
+                                  style="background: linear-gradient(135deg, #6366f1, #8b5cf6); font-size: 0.75rem; letter-spacing: 0.03em;">
+                                &#128274; Premium Report
+                            </span>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <h5 class="modal-title fw-bold mt-3" id="premiumModalLabel" style="font-size: 1.3rem; color: #111827;">
+                            Unlock Your AI Career Survival Plan
+                        </h5>
+                        <div class="d-flex align-items-baseline gap-2 mt-1">
+                            <span class="fw-bold" style="font-size: 2rem; color: #1f2937;"
+                                  th:text="${mode == 'course'} ? '£3' : '£10'">£10</span>
+                            <span class="text-muted" style="font-size: 0.9rem;">per personalised report</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Body -->
+                <div class="modal-body px-4 pt-3 pb-2">
+                    <p class="text-muted small mb-3">Your report is generated specifically for
+                        <strong th:text="${profession != null and !profession.isEmpty()} ? ${profession} : 'your assessment'">your assessment</strong>.
+                        Here&rsquo;s what&rsquo;s included:
+                    </p>
+
+                    <!-- Profession feature list -->
+                    <ul th:if="${mode != 'course'}" class="list-unstyled mb-0">
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">AI Automation Breakdown</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Which tasks in your role are most at risk of automation.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Tasks Most Likely to Be Automated</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Exactly where AI and robotics could impact your day-to-day work.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">AI-Resistant Skills</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">The skills that will keep you valuable as AI advances.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Safer Career Paths &amp; Salary Comparison</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Related roles with lower automation risk and what they pay.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Personalised Career Survival Plan</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Concrete steps to stay relevant over the next 5&ndash;10 years.</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- Course feature list -->
+                    <ul th:if="${mode == 'course'}" class="list-unstyled mb-0">
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">AI Risk for This Career Path</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">How AI is expected to impact the jobs this course leads to.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Future Job Market Outlook</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">How demand for this profession is expected to shift over 5&ndash;10 years.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">AI-Resilient Skills to Focus On</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Skills that will make graduates in this field more valuable in the AI era.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Safer Specialisations Within This Field</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Career paths and specialisations that are less likely to be automated.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Personalised Career Strategy</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Guidance on adapting your studies and skill development to stay competitive.</div>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="modal-footer flex-column border-0 px-4 pt-2 pb-4 gap-2">
+                    <button type="button" id="payUnlockBtn" class="btn btn-primary w-100 rounded-pill py-3 fw-bold"
+                            style="font-size: 1rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">
+                        Pay &amp; Unlock Report
+                    </button>
+                    <p class="text-muted text-center mb-0" style="font-size: 0.8rem;">
+                        &#9679; Instant access &nbsp;&bull;&nbsp; One-time payment &nbsp;&bull;&nbsp; No subscription
+                    </p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <!-- Bootstrap 5 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
             crossorigin="anonymous"></script>
+
+    <script th:inline="javascript">
+        document.getElementById('payUnlockBtn').addEventListener('click', async function () {
+            const btn = this;
+            btn.disabled = true;
+            btn.textContent = 'Redirecting to checkout\u2026';
+
+            const payload = {
+                mode:       /*[[${mode}]]*/ 'profession',
+                profession: /*[[${profession}]]*/ '',
+                score:      /*[[${score}]]*/ 0,
+                riskLevel:  /*[[${riskLevel}]]*/ '',
+                summary:    /*[[${summary}]]*/ '',
+                assessment: /*[[${assessment}]]*/ ''
+            };
+
+            try {
+                // Persist so generating-report page can retrieve it after Stripe redirect
+                sessionStorage.setItem('checkoutPayload', JSON.stringify(payload));
+
+                const response = await fetch('/payment/create-checkout-session', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) throw new Error('Session creation failed: ' + response.status);
+
+                const data = await response.json();
+                window.location.href = data.url;
+
+            } catch (err) {
+                console.error('Checkout error:', err);
+                btn.disabled = false;
+                btn.textContent = 'Pay \u0026 Unlock Report';
+                const modal = document.getElementById('premiumModal');
+                const existing = modal.querySelector('.checkout-error');
+                if (!existing) {
+                    const alert = document.createElement('p');
+                    alert.className = 'text-danger text-center small mt-2 checkout-error';
+                    alert.textContent = 'Something went wrong. Please try again.';
+                    btn.insertAdjacentElement('afterend', alert);
+                }
+            }
+        });
+    </script>
 </body>
 </html>
