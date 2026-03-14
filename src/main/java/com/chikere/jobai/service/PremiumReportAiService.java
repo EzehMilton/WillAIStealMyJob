@@ -1,0 +1,362 @@
+package com.chikere.jobai.service;
+
+import com.chikere.jobai.model.GenerateReportRequest;
+import com.chikere.jobai.model.PremiumReport;
+import com.chikere.jobai.model.PremiumReport.*;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.ResourceLoader;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+/**
+ * Calls the AI with the premium-report prompt and maps the JSON response
+ * to a PremiumReport object.
+ *
+ * Drop this into ReportService in place of buildMockReport() when ready.
+ */
+@Service
+@Slf4j
+public class PremiumReportAiService {
+
+    private final ChatClient chatClient;
+    private final ResourceLoader resourceLoader;
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final String promptTemplate;
+
+    public PremiumReportAiService(ChatClient gpt54ChatClient,  // reuse your existing bean
+                                  ResourceLoader resourceLoader) {
+        this.chatClient = gpt54ChatClient;
+        this.resourceLoader = resourceLoader;
+        this.promptTemplate = loadResource("classpath:prompts/premium-report-prompt.txt");
+        log.info("PremiumReportAiService initialised");
+    }
+
+    /**
+     * Generates a fully AI-populated PremiumReport for the given request.
+     */
+    public PremiumReport generate(GenerateReportRequest request) {
+        String reportId = UUID.randomUUID().toString();
+        log.info("Generating premium report id={} for profession={}", reportId, request.getProfession());
+
+        String mode = normalise(request.getMode(), "profession");
+        String profession = normalise(request.getProfession(), "Unknown");
+        String description = normalise(request.getDescription(), "Not provided");
+
+        String inputLabel   = "course".equals(mode) ? "Course/Degree"   : "Profession";
+        String detailsLabel = "course".equals(mode) ? "Expected Career Path" : "Role Details";
+
+        String prompt = promptTemplate
+                .replace("{mode}",          mode)
+                .replace("{inputLabel}",    inputLabel)
+                .replace("{detailsLabel}",  detailsLabel)
+                .replace("{profession}",    profession)
+                .replace("{roleSummary}",   description)
+                .replace("{score}",         String.format("%.1f", request.getScore()))
+                .replace("{riskLevel}",     normalise(request.getRiskLevel(), "Moderate"));
+
+        log.debug("Premium report prompt built, sending to AI...");
+
+        String raw = chatClient.prompt(prompt).call().content();
+        String json = extractJson(raw);
+
+        log.debug("AI response received, parsing JSON...");
+
+        try {
+            JsonNode root = objectMapper.readTree(json);
+            return mapToReport(reportId, request, root);
+        } catch (Exception e) {
+            log.error("Failed to parse AI response for reportId={}: {}", reportId, raw, e);
+            throw new RuntimeException("Failed to parse premium report AI response", e);
+        }
+    }
+
+    // ─── Mapping ─────────────────────────────────────────────────────────────
+
+    private PremiumReport mapToReport(String reportId, GenerateReportRequest req, JsonNode root) {
+        return PremiumReport.builder()
+                .reportId(reportId)
+                .profession(req.getProfession())
+                .mode(req.getMode())
+                .score(req.getScore())
+                .riskLevel(req.getRiskLevel())
+                .generatedAt(LocalDateTime.now())
+
+                // KPIs
+                .disruptionWindow(text(root, "disruptionWindow"))
+                .adaptabilityPotential(normaliseToWordLimit(text(root, "adaptabilityPotential"), 2))
+                .overallExposure(text(root, "overallExposure"))
+                .mostExposedArea(text(root, "mostExposedArea"))
+                .safestDirection(text(root, "safestDirection"))
+                .coreAdvice(text(root, "coreAdvice"))
+
+                // Narratives
+                .executiveSummary(text(root, "executiveSummary"))
+                .positioningAdvice(text(root, "positioningAdvice"))
+
+                // Tables
+                .taskExposureMap(toTaskRows(root.path("taskExposureMap")))
+                .timelineEvents(toTimelineEvents(root.path("timelineEvents")))
+                .skillCards(toSkillCards(root.path("skillCards")))
+                .careerLevelAnalysis(toCareerLevelRows(root.path("careerLevelAnalysis")))
+                .trackComparison(toTrackRows(root.path("trackComparison")))
+                .adjacentRoles(toTransitionRows(root.path("adjacentRoles")))
+                .resilienceScorecard(toResilienceRows(root.path("resilienceScorecard")))
+                .resources(toResources(root.path("resources")))
+
+                // Salary section
+                .salaryTraditionalTitle(text(root, "salaryTraditionalTitle"))
+                .salaryTraditionalMedian(text(root, "salaryTraditionalMedian"))
+                .salaryTraditionalRange(text(root, "salaryTraditionalRange"))
+                .salaryTraditionalBullets(toStringList(root.path("salaryTraditionalBullets")))
+                .salaryAiTitle(text(root, "salaryAiTitle"))
+                .salaryAiMedian(text(root, "salaryAiMedian"))
+                .salaryAiRange(text(root, "salaryAiRange"))
+                .salaryAiBullets(toStringList(root.path("salaryAiBullets")))
+                .consultancyOpportunity(text(root, "consultancyOpportunity"))
+
+                // Lists
+                .aiStrengths(toStringList(root.path("aiStrengths")))
+                .humanAdvantages(toStringList(root.path("humanAdvantages")))
+                .warningSigns(toStringList(root.path("warningSigns")))
+
+                // Action plan
+                .thirtyDayPlan(toStringList(root.path("thirtyDayPlan")))
+                .ninetyDayPlan(toStringList(root.path("ninetyDayPlan")))
+                .yearPlan(toStringList(root.path("yearPlan")))
+
+                .build();
+    }
+
+    private List<TaskRow> toTaskRows(JsonNode node) {
+        List<TaskRow> rows = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                rows.add(new TaskRow(
+                        text(n, "area"),
+                        intValue(n, "exposurePercent"),
+                        text(n, "exposure"),
+                        text(n, "timelineLabel"),
+                        text(n, "reason")
+                ));
+            }
+        }
+        return rows;
+    }
+
+    private List<TimelineEvent> toTimelineEvents(JsonNode node) {
+        List<TimelineEvent> events = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                events.add(new TimelineEvent(
+                        text(n, "period"),
+                        text(n, "title"),
+                        text(n, "description"),
+                        toStringList(n.path("tags"))
+                ));
+            }
+        }
+        return events;
+    }
+
+    private List<SkillCard> toSkillCards(JsonNode node) {
+        List<SkillCard> cards = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                cards.add(new SkillCard(
+                        text(n, "icon"),
+                        text(n, "name"),
+                        text(n, "description"),
+                        text(n, "priority"),
+                        text(n, "priorityNote")
+                ));
+            }
+        }
+        return cards;
+    }
+
+    private List<CareerLevelRow> toCareerLevelRows(JsonNode node) {
+        List<CareerLevelRow> rows = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                rows.add(new CareerLevelRow(
+                        text(n, "level"),
+                        text(n, "risk"),
+                        text(n, "commentary")
+                ));
+            }
+        }
+        return rows;
+    }
+
+    private List<TrackRow> toTrackRows(JsonNode node) {
+        List<TrackRow> rows = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                rows.add(new TrackRow(
+                        text(n, "track"),
+                        text(n, "exposure"),
+                        text(n, "reason")
+                ));
+            }
+        }
+        return rows;
+    }
+
+    private List<TransitionRow> toTransitionRows(JsonNode node) {
+        List<TransitionRow> rows = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                rows.add(new TransitionRow(
+                        text(n, "targetRole"),
+                        text(n, "salaryBand"),
+                        text(n, "aiResilience"),
+                        text(n, "transitionDifficulty"),
+                        text(n, "reason"),
+                        toStringList(n.path("skillTags"))
+                ));
+            }
+        }
+        return rows;
+    }
+
+    private List<ResourceCard> toResources(JsonNode node) {
+        List<ResourceCard> resources = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                resources.add(new ResourceCard(
+                        text(n, "type"),
+                        text(n, "title"),
+                        text(n, "description")
+                ));
+            }
+        }
+        return resources;
+    }
+
+    private List<ResilienceRow> toResilienceRows(JsonNode node) {
+        List<ResilienceRow> rows = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                rows.add(new ResilienceRow(
+                        text(n, "factor"),
+                        text(n, "signal")
+                ));
+            }
+        }
+        return rows;
+    }
+
+    private List<String> toStringList(JsonNode node) {
+        List<String> list = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                list.add(n.asText());
+            }
+        }
+        return list;
+    }
+
+    // ─── Utilities ────────────────────────────────────────────────────────────
+
+    private String text(JsonNode node, String field) {
+        JsonNode v = node.path(field);
+        return v.isMissingNode() || v.isNull() ? "" : v.asText();
+    }
+
+    private String normaliseToWordLimit(String value, int maxWords) {
+        String cleaned = normalise(value, "").replaceAll("\\s+", " ").trim();
+        if (cleaned.isEmpty() || maxWords <= 0) {
+            return "";
+        }
+
+        String[] words = cleaned.split(" ");
+        if (words.length <= maxWords) {
+            return cleaned;
+        }
+
+        StringBuilder limited = new StringBuilder();
+        for (int i = 0; i < maxWords; i++) {
+            if (i > 0) {
+                limited.append(' ');
+            }
+            limited.append(words[i]);
+        }
+        return limited.toString();
+    }
+
+    private int intValue(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        if (value.isInt() || value.isLong() || value.isFloat() || value.isDouble()) {
+            return clampPercent(value.asInt());
+        }
+
+        String raw = value.asText("");
+        if (raw.isBlank()) {
+            return 0;
+        }
+
+        String digits = raw.replaceAll("[^0-9]", "");
+        if (digits.isBlank()) {
+            return 0;
+        }
+
+        try {
+            return clampPercent(Integer.parseInt(digits));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private int clampPercent(int value) {
+        return Math.max(0, Math.min(100, value));
+    }
+
+    /**
+     * Strips markdown fences and finds the outermost JSON object.
+     * Same pattern as your cleanJsonResponse in JobAiService.
+     */
+    private String extractJson(String response) {
+        if (response == null) return "{}";
+        String s = response.trim();
+
+        // Strip ```json ... ``` fences
+        if (s.startsWith("```")) {
+            int newline = s.indexOf('\n');
+            if (newline != -1) s = s.substring(newline + 1);
+            int fence = s.lastIndexOf("```");
+            if (fence != -1) s = s.substring(0, fence);
+            s = s.trim();
+        }
+
+        int start = s.indexOf('{');
+        int end   = s.lastIndexOf('}');
+        if (start != -1 && end > start) {
+            return s.substring(start, end + 1);
+        }
+        return s;
+    }
+
+    private String normalise(String value, String fallback) {
+        return (value == null || value.isBlank()) ? fallback : value.trim();
+    }
+
+    private String loadResource(String path) {
+        try {
+            Resource r = resourceLoader.getResource(path);
+            return r.getContentAsString(StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            log.error("Could not load resource: {}", path, e);
+            throw new RuntimeException("Failed to load: " + path, e);
+        }
+    }
+}

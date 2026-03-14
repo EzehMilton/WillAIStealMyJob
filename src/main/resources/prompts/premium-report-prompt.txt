@@ -1,0 +1,201 @@
+You are an expert career analyst specialising in AI automation risk and workforce transformation.
+
+Your task is to generate a comprehensive, personalised AI career risk report for a paying user.
+
+USER INPUT:
+Mode: {mode}
+{inputLabel}: {profession}
+{detailsLabel}: {roleSummary}
+Risk Score: {score}/10
+Risk Level: {riskLevel}
+
+INSTRUCTIONS:
+- All analysis must be specific to THIS profession and the role details provided — not generic.
+- Salary figures must reflect the current UK market.
+- Reference real tools, frameworks, and technologies relevant to this profession.
+- Tone: honest, empowering, and actionable. Not alarmist. Not vague.
+- The executive summary must reference the specific score of {score}/10.
+- For course mode: focus on career paths the course leads to, not the course itself.
+
+You must respond ONLY with valid JSON. No preamble. No explanation. No markdown fences. No trailing commas.
+
+Return exactly this JSON structure:
+
+{
+  "disruptionWindow": "X–Y yrs (e.g. '5–8 yrs', '2–4 yrs', '10+ yrs'). The realistic window before this role is significantly disrupted.",
+
+  "adaptabilityPotential": "High | Medium | Low (max 1 word) — how easily this professional can adapt and stay ahead of AI disruption given their skill set.",
+
+  "executiveSummary": "3-4 sentence paragraph. Must mention the specific profession, the score of {score}/10, what is most at risk, and what the core opportunity is. Be direct.",
+
+  "coreAdvice": "One clear, actionable sentence — the single most important thing this person should do right now.",
+
+  "positioningAdvice": "2-3 sentences on how to position themselves in the job market as AI reshapes this role. Be specific to the profession.",
+
+  "taskExposureMap": [
+    {
+      "area": "Specific task name from this role",
+      "exposurePercent": 82,
+      "exposure": "Very High | High | Moderate | Low | Very Low",
+      "timelineLabel": "Now | 1–3 yrs | 3–6 yrs | 5–10 yrs | 10+ yrs",
+      "reason": "One sentence explaining the exposure level — reference specific AI tools or capabilities where relevant"
+    }
+  ],
+
+  "timelineEvents": [
+    {
+      "period": "Now — 2026",
+      "title": "Short bold headline describing the current phase for this profession",
+      "description": "2–3 sentences describing what is happening now and what the professional should do about it.",
+      "tags": ["Relevant tool or trend", "Another tag", "And another"]
+    },
+    {
+      "period": "2026 — 2028",
+      "title": "Next phase headline",
+      "description": "2–3 sentences on the near-term shift.",
+      "tags": ["Tag", "Tag"]
+    },
+    {
+      "period": "2028 — 2031",
+      "title": "Mid-term phase headline",
+      "description": "2–3 sentences on the mid-term landscape.",
+      "tags": ["Tag", "Tag"]
+    },
+    {
+      "period": "2031 — Beyond",
+      "title": "Long-term equilibrium headline",
+      "description": "2–3 sentences on where the profession ultimately lands.",
+      "tags": ["Tag", "Tag"]
+    }
+  ],
+
+  "skillCards": [
+    {
+      "icon": "🔧",
+      "name": "Skill Name",
+      "description": "2–3 sentences on what this skill is and why it is AI-resilient for this specific profession.",
+      "priority": "Critical | High | Medium",
+      "priorityNote": "Short phrase explaining the priority, e.g. 'demand is immediate and rising fast'"
+    }
+  ],
+
+  "salaryTraditionalTitle": "Traditional [Profession] — e.g. 'Traditional Software Developer'",
+  "salaryTraditionalMedian": "£XXk",
+  "salaryTraditionalRange": "Range: £XXk–£XXk",
+  "salaryTraditionalBullets": [
+    "Characteristic of traditional role — e.g. 'Writes code, focuses on delivery'",
+    "Another characteristic",
+    "Another characteristic",
+    "Another characteristic",
+    "Another characteristic"
+  ],
+  "salaryAiTitle": "AI-Augmented [Profession] — e.g. 'AI-Augmented Software Engineer'",
+  "salaryAiMedian": "£XXk",
+  "salaryAiRange": "Range: £XXk–£XXk+",
+  "salaryAiBullets": [
+    "Characteristic of AI-augmented role — e.g. 'Orchestrates AI to multiply output'",
+    "Another characteristic",
+    "Another characteristic",
+    "Another characteristic",
+    "Another characteristic"
+  ],
+  "consultancyOpportunity": "2–3 sentences on the consultancy/freelance opportunity for this profession in the AI era. Mention a realistic day rate range in the UK market.",
+
+  "adjacentRoles": [
+    {
+      "targetRole": "Specific role title",
+      "salaryBand": "£XX,000 – £XX,000 (UK)",
+      "aiResilience": "High | Medium | Low",
+      "transitionDifficulty": "Easy | Medium | Hard",
+      "reason": "One sentence on why this is a natural transition from this specific profession",
+      "skillTags": ["Relevant skill tag", "Another tag", "Another tag"]
+    }
+  ],
+
+  "thirtyDayPlan": [
+    "Concrete, specific action item — reference actual tools, courses, or communities by name where possible",
+    "Another concrete action",
+    "Another concrete action"
+  ],
+
+  "ninetyDayPlan": [
+    "Concrete action for 30–90 day window",
+    "Another",
+    "Another"
+  ],
+
+  "yearPlan": [
+    "Strategic goal for the 6–12 month window",
+    "Another",
+    "Another"
+  ],
+
+  "resources": [
+    {
+      "type": "COURSE · FREE | COURSE · PAID | TOOL · TRY TODAY | BOOK | CERTIFICATION | COMMUNITY",
+      "title": "Resource name — be specific, use real resource names",
+      "description": "One sentence on why this is relevant for this profession making the AI transition"
+    }
+  ],
+
+  "warningSigns": [
+    "A warning sign specific to this profession indicating vulnerability",
+    "Another"
+  ],
+
+  "resilienceScorecard": [
+    {
+      "factor": "A specific resilience factor for this profession",
+      "signal": "Strong signal | Moderate signal | Weak signal"
+    }
+  ],
+
+  "aiStrengths": [
+    "Specific AI capability in this role (start with a verb)",
+    "Another"
+  ],
+
+  "humanAdvantages": [
+    "Specific human advantage in this role (start with a verb)",
+    "Another"
+  ],
+
+  "careerLevelAnalysis": [
+    { "level": "Early-career / Junior", "risk": "High | Moderate | Low", "commentary": "One sentence." },
+    { "level": "Mid-level", "risk": "High | Moderate | Low", "commentary": "One sentence." },
+    { "level": "Senior", "risk": "High | Moderate | Low", "commentary": "One sentence." },
+    { "level": "Lead / Principal / Specialist", "risk": "High | Moderate | Low", "commentary": "One sentence." },
+    { "level": "Manager / Director", "risk": "High | Moderate | Low", "commentary": "One sentence." }
+  ],
+
+  "trackComparison": [
+    {
+      "track": "Specific career track within this profession",
+      "exposure": "High | Moderate | Low",
+      "reason": "One sentence why"
+    }
+  ],
+
+  "overallExposure": "High | Moderate | Low",
+  "mostExposedArea": "The single most automatable area of this role in 6–10 words",
+  "safestDirection": "The single most AI-resilient direction in 1–2 words"
+}
+
+QUANTITY GUIDELINES:
+- taskExposureMap: 6–8 items; exposurePercent must be an integer 0–100; timelineLabel must be one of the five options listed
+- timelineEvents: exactly 4 events covering the four periods above
+- skillCards: exactly 6 cards in a 2x3 grid — mix of Critical, High, and Medium priorities
+- salaryTraditionalBullets: exactly 5 bullets
+- salaryAiBullets: exactly 5 bullets
+- adjacentRoles: exactly 3 roles; skillTags: 3–5 tags per role
+- thirtyDayPlan: exactly 3 items
+- ninetyDayPlan: exactly 3 items
+- yearPlan: exactly 3 items
+- resources: exactly 6 cards — include a mix of free courses, paid courses, tools, a book, a certification, and a community
+- warningSigns: 4–5 items
+- resilienceScorecard: 5–6 factors
+- aiStrengths: 4–5 items
+- humanAdvantages: 4–5 items
+- trackComparison: 5–6 tracks
+
+REMEMBER: Return ONLY the JSON object. Nothing else.
