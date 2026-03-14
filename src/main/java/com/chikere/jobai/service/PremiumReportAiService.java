@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
@@ -93,6 +92,8 @@ public class PremiumReportAiService {
                 .generatedAt(LocalDateTime.now())
 
                 // KPIs
+                .disruptionWindow(text(root, "disruptionWindow"))
+                .adaptabilityPotential(normaliseToWordLimit(text(root, "adaptabilityPotential"), 2))
                 .overallExposure(text(root, "overallExposure"))
                 .mostExposedArea(text(root, "mostExposedArea"))
                 .safestDirection(text(root, "safestDirection"))
@@ -104,10 +105,24 @@ public class PremiumReportAiService {
 
                 // Tables
                 .taskExposureMap(toTaskRows(root.path("taskExposureMap")))
+                .timelineEvents(toTimelineEvents(root.path("timelineEvents")))
+                .skillCards(toSkillCards(root.path("skillCards")))
                 .careerLevelAnalysis(toCareerLevelRows(root.path("careerLevelAnalysis")))
                 .trackComparison(toTrackRows(root.path("trackComparison")))
                 .adjacentRoles(toTransitionRows(root.path("adjacentRoles")))
                 .resilienceScorecard(toResilienceRows(root.path("resilienceScorecard")))
+                .resources(toResources(root.path("resources")))
+
+                // Salary section
+                .salaryTraditionalTitle(text(root, "salaryTraditionalTitle"))
+                .salaryTraditionalMedian(text(root, "salaryTraditionalMedian"))
+                .salaryTraditionalRange(text(root, "salaryTraditionalRange"))
+                .salaryTraditionalBullets(toStringList(root.path("salaryTraditionalBullets")))
+                .salaryAiTitle(text(root, "salaryAiTitle"))
+                .salaryAiMedian(text(root, "salaryAiMedian"))
+                .salaryAiRange(text(root, "salaryAiRange"))
+                .salaryAiBullets(toStringList(root.path("salaryAiBullets")))
+                .consultancyOpportunity(text(root, "consultancyOpportunity"))
 
                 // Lists
                 .aiStrengths(toStringList(root.path("aiStrengths")))
@@ -128,12 +143,45 @@ public class PremiumReportAiService {
             for (JsonNode n : node) {
                 rows.add(new TaskRow(
                         text(n, "area"),
+                        intValue(n, "exposurePercent"),
                         text(n, "exposure"),
+                        text(n, "timelineLabel"),
                         text(n, "reason")
                 ));
             }
         }
         return rows;
+    }
+
+    private List<TimelineEvent> toTimelineEvents(JsonNode node) {
+        List<TimelineEvent> events = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                events.add(new TimelineEvent(
+                        text(n, "period"),
+                        text(n, "title"),
+                        text(n, "description"),
+                        toStringList(n.path("tags"))
+                ));
+            }
+        }
+        return events;
+    }
+
+    private List<SkillCard> toSkillCards(JsonNode node) {
+        List<SkillCard> cards = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                cards.add(new SkillCard(
+                        text(n, "icon"),
+                        text(n, "name"),
+                        text(n, "description"),
+                        text(n, "priority"),
+                        text(n, "priorityNote")
+                ));
+            }
+        }
+        return cards;
     }
 
     private List<CareerLevelRow> toCareerLevelRows(JsonNode node) {
@@ -173,11 +221,26 @@ public class PremiumReportAiService {
                         text(n, "salaryBand"),
                         text(n, "aiResilience"),
                         text(n, "transitionDifficulty"),
-                        text(n, "reason")
+                        text(n, "reason"),
+                        toStringList(n.path("skillTags"))
                 ));
             }
         }
         return rows;
+    }
+
+    private List<ResourceCard> toResources(JsonNode node) {
+        List<ResourceCard> resources = new ArrayList<>();
+        if (node.isArray()) {
+            for (JsonNode n : node) {
+                resources.add(new ResourceCard(
+                        text(n, "type"),
+                        text(n, "title"),
+                        text(n, "description")
+                ));
+            }
+        }
+        return resources;
     }
 
     private List<ResilienceRow> toResilienceRows(JsonNode node) {
@@ -208,6 +271,54 @@ public class PremiumReportAiService {
     private String text(JsonNode node, String field) {
         JsonNode v = node.path(field);
         return v.isMissingNode() || v.isNull() ? "" : v.asText();
+    }
+
+    private String normaliseToWordLimit(String value, int maxWords) {
+        String cleaned = normalise(value, "").replaceAll("\\s+", " ").trim();
+        if (cleaned.isEmpty() || maxWords <= 0) {
+            return "";
+        }
+
+        String[] words = cleaned.split(" ");
+        if (words.length <= maxWords) {
+            return cleaned;
+        }
+
+        StringBuilder limited = new StringBuilder();
+        for (int i = 0; i < maxWords; i++) {
+            if (i > 0) {
+                limited.append(' ');
+            }
+            limited.append(words[i]);
+        }
+        return limited.toString();
+    }
+
+    private int intValue(JsonNode node, String field) {
+        JsonNode value = node.path(field);
+        if (value.isInt() || value.isLong() || value.isFloat() || value.isDouble()) {
+            return clampPercent(value.asInt());
+        }
+
+        String raw = value.asText("");
+        if (raw.isBlank()) {
+            return 0;
+        }
+
+        String digits = raw.replaceAll("[^0-9]", "");
+        if (digits.isBlank()) {
+            return 0;
+        }
+
+        try {
+            return clampPercent(Integer.parseInt(digits));
+        } catch (NumberFormatException e) {
+            return 0;
+        }
+    }
+
+    private int clampPercent(int value) {
+        return Math.max(0, Math.min(100, value));
     }
 
     /**

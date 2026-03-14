@@ -97,13 +97,55 @@ public class ReportService {
         boolean high = "High".equalsIgnoreCase(riskLevel);
         boolean low  = "Low".equalsIgnoreCase(riskLevel);
         return List.of(
-                new TaskRow("Routine and repetitive tasks",       high ? "High"          : low ? "Low"          : "Moderate–High",  "Predictable, rule-based workflows are the first area AI tools compress at scale."),
-                new TaskRow("Data processing and reporting",      high ? "High"          : low ? "Low–Moderate" : "Moderate–High",  "AI excels at aggregating structured data and drafting standard reports."),
-                new TaskRow("Research and information gathering", high ? "Moderate–High" : low ? "Low"          : "Moderate",       "AI can surface and summarise information quickly, reducing manual search time."),
-                new TaskRow("Analysis and problem-solving",       high ? "Moderate"      : low ? "Low"          : "Moderate",       "Pattern recognition assists analysis, but complex judgement still requires human experience."),
-                new TaskRow("Communication and stakeholder work", high ? "Low–Moderate"  : low ? "Very Low"     : "Low–Moderate",   "Relationship management, negotiation, and nuanced communication remain human-led."),
-                new TaskRow("Strategic planning and decisions",   high ? "Low"           : low ? "Very Low"     : "Low",            "High-stakes decisions with incomplete information continue to rely on human experience."),
-                new TaskRow("Leadership and team management",     "Very Low",                                                        "People leadership, coaching, and organisational influence are not automation targets.")
+                new TaskRow(
+                        "Routine and repetitive tasks",
+                        high ? 84 : low ? 26 : 61,
+                        high ? "High" : low ? "Low" : "Moderate",
+                        high ? "Now" : low ? "3–6 yrs" : "1–3 yrs",
+                        "Predictable, rule-based workflows are the first area AI tools compress at scale."
+                ),
+                new TaskRow(
+                        "Data processing and reporting",
+                        high ? 76 : low ? 30 : 56,
+                        high ? "High" : low ? "Low" : "Moderate",
+                        high ? "Now" : low ? "3–6 yrs" : "1–3 yrs",
+                        "AI excels at aggregating structured data and drafting standard reports."
+                ),
+                new TaskRow(
+                        "Research and information gathering",
+                        high ? 63 : low ? 28 : 48,
+                        high ? "Moderate" : low ? "Low" : "Moderate",
+                        high ? "1–3 yrs" : low ? "3–6 yrs" : "1–3 yrs",
+                        "AI can surface and summarise information quickly, reducing manual search time."
+                ),
+                new TaskRow(
+                        "Analysis and problem-solving",
+                        high ? 52 : low ? 25 : 43,
+                        high ? "Moderate" : low ? "Low" : "Moderate",
+                        high ? "1–3 yrs" : low ? "5–10 yrs" : "3–6 yrs",
+                        "Pattern recognition assists analysis, but complex judgement still requires human experience."
+                ),
+                new TaskRow(
+                        "Communication and stakeholder work",
+                        high ? 34 : low ? 14 : 29,
+                        high ? "Low" : low ? "Very Low" : "Low",
+                        high ? "3–6 yrs" : low ? "10+ yrs" : "5–10 yrs",
+                        "Relationship management, negotiation, and nuanced communication remain human-led."
+                ),
+                new TaskRow(
+                        "Strategic planning and decisions",
+                        high ? 24 : low ? 12 : 20,
+                        high ? "Low" : low ? "Very Low" : "Low",
+                        high ? "5–10 yrs" : low ? "10+ yrs" : "5–10 yrs",
+                        "High-stakes decisions with incomplete information continue to rely on human experience."
+                ),
+                new TaskRow(
+                        "Leadership and team management",
+                        10,
+                        "Very Low",
+                        "10+ yrs",
+                        "People leadership, coaching, and organisational influence are not automation targets."
+                )
         );
     }
 
@@ -151,11 +193,46 @@ public class ReportService {
 
     private List<TransitionRow> adjacentRoles(String profession) {
         return List.of(
-                new TransitionRow("AI Strategy Specialist",    "Higher than baseline", "High",      "Medium",      "Works at the intersection of AI capability and business application — a growing category."),
-                new TransitionRow("Operations Director",       "Higher than baseline", "High",      "Medium–High", "Oversees systems, people, and delivery at a level that requires human leadership."),
-                new TransitionRow("Senior Consultant",         "Higher than baseline", "High",      "Medium",      "Advice-driven roles at senior level rely on trust, context, and judgement."),
-                new TransitionRow("Product or Programme Lead", "Higher than baseline", "High",      "Medium",      "Ownership of complex, multi-stakeholder initiatives is strongly human-led."),
-                new TransitionRow("People and Org Lead",       "Higher than baseline", "Very High", "Medium",      "Talent development, culture, and leadership remain very difficult to automate.")
+                new TransitionRow(
+                        "AI Strategy Specialist",
+                        "Higher than baseline",
+                        "High",
+                        "Medium",
+                        "Works at the intersection of AI capability and business application — a growing category.",
+                        List.of("AI workflow design", "Change leadership", "Business strategy")
+                ),
+                new TransitionRow(
+                        "Operations Director",
+                        "Higher than baseline",
+                        "High",
+                        "Medium–High",
+                        "Oversees systems, people, and delivery at a level that requires human leadership.",
+                        List.of("Process optimisation", "Stakeholder management", "Decision-making")
+                ),
+                new TransitionRow(
+                        "Senior Consultant",
+                        "Higher than baseline",
+                        "High",
+                        "Medium",
+                        "Advice-driven roles at senior level rely on trust, context, and judgement.",
+                        List.of("Client advisory", "Domain expertise", "Problem structuring")
+                ),
+                new TransitionRow(
+                        "Product or Programme Lead",
+                        "Higher than baseline",
+                        "High",
+                        "Medium",
+                        "Ownership of complex, multi-stakeholder initiatives is strongly human-led.",
+                        List.of("Roadmapping", "Cross-functional leadership", "Delivery governance")
+                ),
+                new TransitionRow(
+                        "People and Org Lead",
+                        "Higher than baseline",
+                        "Very High",
+                        "Medium",
+                        "Talent development, culture, and leadership remain very difficult to automate.",
+                        List.of("Coaching", "Organisational design", "Talent strategy")
+                )
         );
     }
 
