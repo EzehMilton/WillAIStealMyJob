@@ -17,18 +17,17 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
     <style>
-        /* CV Upload Section Styles */
         .cv-upload-section {
             display: none;
             margin-top: 1rem;
-            padding: 1.25rem;
-            background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+            padding: 1rem;
+            background: linear-gradient(145deg, rgba(26, 30, 42, 0.95), rgba(19, 22, 30, 0.95));
             border-radius: 12px;
-            border: 1px dashed #c5d0e6;
-            transition: all 0.3s ease;
+            border: 1px dashed rgba(79, 142, 255, 0.35);
+            transition: all 0.25s ease;
         }
 
         .cv-upload-section.show {
@@ -39,7 +38,7 @@
         @keyframes fadeSlideIn {
             from {
                 opacity: 0;
-                transform: translateY(-10px);
+                transform: translateY(-8px);
             }
             to {
                 opacity: 1;
@@ -48,31 +47,7 @@
         }
 
         .cv-upload-section:hover {
-            border-color: #7c8db5;
-            background: linear-gradient(135deg, #f0f4ff 0%, #e8edff 100%);
-        }
-
-        .cv-divider {
-            display: flex;
-            align-items: center;
-            margin: 1.5rem 0;
-            color: #6c757d;
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .cv-divider::before,
-        .cv-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: linear-gradient(to right, transparent, #dee2e6, transparent);
-        }
-
-        .cv-divider span {
-            padding: 0 1rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            border-color: rgba(79, 142, 255, 0.65);
         }
 
         .cv-upload-label {
@@ -81,55 +56,59 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            padding: 1.5rem;
+            padding: 1.4rem;
             border-radius: 10px;
-            background: white;
-            border: 2px dashed #d0d7e5;
-            transition: all 0.3s ease;
+            background: rgba(13, 15, 20, 0.78);
+            border: 1px dashed rgba(122, 128, 153, 0.45);
+            transition: all 0.25s ease;
             min-height: 120px;
         }
 
         .cv-upload-label:hover {
-            border-color: #667eea;
-            background: #fafbff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            border-color: rgba(79, 142, 255, 0.8);
+            background: rgba(17, 22, 39, 0.92);
+            box-shadow: 0 0 0 1px rgba(79, 142, 255, 0.15);
         }
 
         .cv-upload-label.dragover {
-            border-color: #667eea;
-            background: #f0f4ff;
-            transform: scale(1.02);
+            border-color: rgba(79, 142, 255, 0.9);
+            background: rgba(17, 22, 39, 0.96);
+            transform: scale(1.01);
         }
 
         .cv-upload-label .upload-icon {
-            width: 48px;
-            height: 48px;
-            margin-bottom: 0.75rem;
-            color: #667eea;
-            transition: transform 0.3s ease;
+            width: 46px;
+            height: 46px;
+            margin-bottom: 0.6rem;
+            color: var(--accent);
+            transition: transform 0.25s ease;
         }
 
         .cv-upload-label:hover .upload-icon {
-            transform: translateY(-3px);
+            transform: translateY(-2px);
         }
 
         .cv-upload-label .upload-text {
             font-weight: 600;
-            color: #374151;
-            margin-bottom: 0.25rem;
+            color: var(--text);
+            margin-bottom: 0.2rem;
         }
 
         .cv-upload-label .upload-subtext {
-            font-size: 0.813rem;
-            color: #6b7280;
+            font-size: 0.82rem;
+            color: var(--muted);
         }
 
         .cv-upload-label .browse-link {
-            color: #667eea;
+            color: var(--accent);
             font-weight: 600;
             text-decoration: underline;
             text-underline-offset: 2px;
+        }
+
+        .upload-note {
+            color: var(--dim);
+            font-size: 0.75rem;
         }
 
         .cv-file-input {
@@ -139,10 +118,10 @@
         .cv-file-preview {
             display: none;
             align-items: center;
-            padding: 1rem;
-            background: white;
+            padding: 0.95rem;
+            background: rgba(13, 15, 20, 0.65);
             border-radius: 10px;
-            border: 1px solid #e5e7eb;
+            border: 1px solid rgba(37, 42, 56, 0.95);
             margin-top: 0.75rem;
         }
 
@@ -154,7 +133,7 @@
         .cv-file-preview .file-icon {
             width: 40px;
             height: 40px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -164,7 +143,7 @@
         }
 
         .cv-file-preview .file-icon svg {
-            color: white;
+            color: #fff;
             width: 20px;
             height: 20px;
         }
@@ -176,7 +155,7 @@
 
         .cv-file-preview .file-name {
             font-weight: 600;
-            color: #374151;
+            color: var(--text);
             font-size: 0.875rem;
             white-space: nowrap;
             overflow: hidden;
@@ -185,7 +164,7 @@
 
         .cv-file-preview .file-size {
             font-size: 0.75rem;
-            color: #6b7280;
+            color: var(--muted);
         }
 
         .cv-file-preview .remove-file {
@@ -193,31 +172,31 @@
             border: none;
             padding: 0.5rem;
             cursor: pointer;
-            color: #9ca3af;
+            color: var(--muted);
             transition: all 0.2s ease;
             border-radius: 6px;
             margin-left: 0.5rem;
         }
 
         .cv-file-preview .remove-file:hover {
-            color: #ef4444;
-            background: #fef2f2;
+            color: #f08f87;
+            background: rgba(231, 76, 60, 0.12);
         }
 
         .cv-upload-info {
             display: flex;
             align-items: flex-start;
-            margin-top: 1rem;
+            margin-top: 0.9rem;
             padding: 0.75rem;
-            background: #fffbeb;
+            background: rgba(79, 142, 255, 0.08);
             border-radius: 8px;
-            border: 1px solid #fde68a;
+            border: 1px solid rgba(79, 142, 255, 0.25);
         }
 
         .cv-upload-info svg {
             width: 18px;
             height: 18px;
-            color: #d97706;
+            color: var(--accent);
             margin-right: 0.625rem;
             flex-shrink: 0;
             margin-top: 1px;
@@ -225,12 +204,11 @@
 
         .cv-upload-info p {
             font-size: 0.813rem;
-            color: #92400e;
+            color: #b8c0d8;
             margin: 0;
             line-height: 1.4;
         }
 
-        /* Toggle Switch for Input Method */
         .input-method-toggle {
             display: none;
             margin-bottom: 1rem;
@@ -242,21 +220,22 @@
 
         .toggle-buttons {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.4rem;
             padding: 4px;
-            background: #f3f4f6;
+            background: rgba(13, 15, 20, 0.85);
+            border: 1px solid rgba(37, 42, 56, 0.95);
             border-radius: 10px;
         }
 
         .toggle-btn {
             flex: 1;
-            padding: 0.625rem 1rem;
-            border: none;
+            padding: 0.625rem 0.9rem;
+            border: 1px solid transparent;
             background: transparent;
             border-radius: 8px;
             font-size: 0.875rem;
             font-weight: 500;
-            color: #6b7280;
+            color: var(--muted);
             cursor: pointer;
             transition: all 0.2s ease;
             display: flex;
@@ -266,13 +245,14 @@
         }
 
         .toggle-btn:hover {
-            color: #374151;
+            color: #d5daea;
         }
 
         .toggle-btn.active {
-            background: white;
-            color: #667eea;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            background: linear-gradient(145deg, rgba(79, 142, 255, 0.16), rgba(124, 92, 252, 0.16));
+            border-color: rgba(79, 142, 255, 0.4);
+            color: #f2f4fb;
+            box-shadow: 0 8px 20px rgba(10, 14, 22, 0.45);
         }
 
         .toggle-btn svg {
@@ -280,7 +260,6 @@
             height: 18px;
         }
 
-        /* Conditional visibility for text area */
         .role-summary-section {
             transition: opacity 0.3s ease;
         }
@@ -294,9 +273,9 @@
         }
     </style>
 </head>
-<body>
+<body class="page-home">
 <!-- Header -->
-<header class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+<header class="navbar navbar-expand-lg navbar-dark sticky-top">
     <div class="container">
         <a class="navbar-brand fw-bold" href="/">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-shield-check me-2" viewBox="0 0 16 16">
@@ -319,8 +298,9 @@
             <div class="col-lg-7 col-md-9">
                 <!-- Hero Section -->
                 <div class="hero-section text-center mb-5">
+                    <p class="hero-kicker">WillAIStealMyJob.com · Section 00 — Intake</p>
                     <h1 class="display-5 fw-bold mb-3">Is AI Coming for My Job?</h1>
-                    <p class="lead text-muted">Understand your exposure to AI disruption, and take control of your next move.</p>
+                    <p class="lead text-muted">Start your premium AI exposure assessment and get a role-specific risk signal in under a minute.</p>
                 </div>
 
                 <!-- Loading Overlay -->
@@ -335,7 +315,7 @@
                 </div>
 
                 <!-- Form Card -->
-                <div class="card shadow-lg border-0 rounded-4">
+                <div class="card shadow-lg border-0 rounded-4 assessment-form-card">
                     <div class="card-body p-4 p-md-5">
                         <form th:action="@{/assess}" th:object="${riskAssessmentForm}" method="post" id="assessmentForm" enctype="multipart/form-data" onsubmit="return handleFormSubmit()">
 
@@ -441,7 +421,7 @@
                                     </svg>
                                     <span class="upload-text">Drop your CV here</span>
                                     <span class="upload-subtext">or <span class="browse-link">browse</span> to upload</span>
-                                    <span class="upload-subtext mt-1" style="font-size: 0.75rem; color: #9ca3af;">PDF only (Max 5MB)</span>
+                                    <span class="upload-subtext upload-note mt-1">PDF only (Max 5MB)</span>
                                 </label>
                                 <input type="file"
                                        class="cv-file-input"
@@ -482,7 +462,7 @@
 
                             <!-- Submit Button -->
                             <div class="d-grid mt-4">
-                                <button type="submit" class="btn btn-primary btn-lg rounded-pill py-3 fw-semibold">
+                                <button type="submit" class="btn btn-primary btn-lg py-3 fw-semibold assessment-submit-btn">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-lightning-charge-fill me-2" viewBox="0 0 16 16">
                                         <path d="M11.251.068a.5.5 0 0 1 .227.58L9.677 6.5H13a.5.5 0 0 1 .364.843l-8 8.5a.5.5 0 0 1-.842-.49L6.323 9.5H3a.5.5 0 0 1-.364-.843l8-8.5a.5.5 0 0 1 .615-.09z"/>
                                     </svg>
@@ -536,7 +516,7 @@
 </main>
 
 <!-- Footer -->
-<footer class="footer mt-5 py-4 bg-light">
+<footer class="footer mt-5 py-4">
     <div class="container text-center">
         <p class="text-muted mb-0">&copy; 2026 Job AI Risk Assessment. All rights reserved.</p>
     </div>

@@ -17,11 +17,11 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
-<body>
+<body class="page-results">
     <!-- Header -->
-    <header class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
+    <header class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container">
             <a class="navbar-brand fw-bold" href="/">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-shield-check me-2" viewBox="0 0 16 16">
@@ -56,7 +56,8 @@
             <div class="row justify-content-center">
                 <div class="col-lg-8 col-md-10">
                     <!-- Results Hero -->
-                    <div class="text-center mb-5">
+                    <div class="text-center mb-5 results-hero">
+                        <p class="hero-kicker">WillAIStealMyJob.com · Section 01 — Exposure Snapshot</p>
                         <h1 class="display-5 fw-bold text-white mb-3">Your Risk Assessment Results</h1>
                         <p class="lead text-white-50" th:if="${profession}">Analysis for: <span th:text="${profession}">Profession</span></p>
                     </div>
@@ -71,7 +72,7 @@
                     </div>
 
                     <!-- Risk Score Card -->
-                    <div th:if="${success} and ${score != null}" class="card shadow-lg border-0 rounded-4 mb-4">
+                    <div th:if="${success} and ${score != null}" class="card shadow-lg border-0 rounded-4 mb-4 risk-summary-card">
                         <div class="card-body p-5">
                             <div class="row align-items-center">
                                 <div class="col-md-6 text-center mb-4 mb-md-0">
@@ -150,7 +151,7 @@
                     </div>
 
                     <!-- Assessment Results -->
-                    <div th:if="${success} and ${assessment}" class="card shadow-lg border-0 rounded-4 mb-4">
+                    <div th:if="${success} and ${assessment}" class="card shadow-lg border-0 rounded-4 mb-4 assessment-report-card">
                         <div class="card-body p-4 p-md-5">
                             <div class="mb-4">
                                 <h3 class="fw-bold mb-3">
@@ -184,10 +185,10 @@
                             <hr class="my-4">
 
                             <!-- Premium Insights Preview -->
-                            <div class="rounded-4 p-4 mb-4" style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border: 1px solid rgba(99,102,241,0.4);">
+                            <div class="rounded-4 p-4 mb-4 premium-preview">
                                 <div class="d-flex align-items-center mb-2">
                                     <span class="fs-5 me-2">&#128274;</span>
-                                    <h5 class="fw-bold mb-0 text-white">Premium: Unlock your AI Career Survival Plan <span class="badge bg-secondary ms-1" style="font-size: 0.7rem; vertical-align: middle;" th:text="${mode == 'course'} ? '£3 per report' : '£10 per report'">£10 per report</span></h5>
+                                    <h5 class="fw-bold mb-0 text-white">Premium: Unlock your AI Career Survival Plan <span class="badge bg-secondary ms-1 premium-price-badge" th:text="${mode == 'course'} ? '£3 per report' : '£10 per report'">£10 per report</span></h5>
                                 </div>
                                 <p class="text-white-50 small mb-3">Your personalised report includes:</p>
                                 <!-- Profession list -->
@@ -313,7 +314,7 @@
                     </div>
 
                     <!-- No Results Message -->
-                    <div th:if="${!success and error == null}" class="card shadow-lg border-0 rounded-4 mb-4">
+                    <div th:if="${!success and error == null}" class="card shadow-lg border-0 rounded-4 mb-4 empty-state-card">
                         <div class="card-body p-5 text-center">
                             <div class="mb-4">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-info-circle text-muted" viewBox="0 0 16 16">
@@ -335,7 +336,7 @@
                     </div>
 
                     <!-- Info Card -->
-                    <div class="card shadow border-0 rounded-4 bg-light">
+                    <div class="card shadow border-0 rounded-4 guidance-card">
                         <div class="card-body p-4">
                             <h5 class="fw-semibold mb-3">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-lightbulb-fill text-warning me-2" viewBox="0 0 16 16">
@@ -375,7 +376,7 @@
     </main>
 
     <!-- Footer -->
-    <footer class="footer mt-5 py-4 bg-light">
+    <footer class="footer mt-5 py-4">
         <div class="container text-center">
             <p class="text-muted mb-0">&copy; 2026 Job AI Risk Assessment. All rights reserved.</p>
         </div>
@@ -384,25 +385,24 @@
     <!-- Premium Modal -->
     <div class="modal fade" id="premiumModal" tabindex="-1" aria-labelledby="premiumModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden premium-modal-content">
 
                 <!-- Modal Header -->
                 <div class="modal-header border-0 pb-0 pt-4 px-4">
                     <div class="w-100">
                         <div class="d-flex align-items-center justify-content-between mb-1">
-                            <span class="badge rounded-pill px-3 py-2"
-                                  style="background: linear-gradient(135deg, #6366f1, #8b5cf6); font-size: 0.75rem; letter-spacing: 0.03em;">
+                            <span class="badge rounded-pill px-3 py-2 premium-pill">
                                 &#128274; Premium Report
                             </span>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <h5 class="modal-title fw-bold mt-3" id="premiumModalLabel" style="font-size: 1.3rem; color: #111827;">
+                        <h5 class="modal-title fw-bold mt-3 premium-modal-title" id="premiumModalLabel">
                             Unlock Your AI Career Survival Plan
                         </h5>
                         <div class="d-flex align-items-baseline gap-2 mt-1">
-                            <span class="fw-bold" style="font-size: 2rem; color: #1f2937;"
+                            <span class="fw-bold premium-modal-price"
                                   th:text="${mode == 'course'} ? '£3' : '£10'">£10</span>
-                            <span class="text-muted" style="font-size: 0.9rem;">per personalised report</span>
+                            <span class="text-muted premium-modal-price-label">per personalised report</span>
                         </div>
                     </div>
                 </div>
@@ -495,11 +495,10 @@
 
                 <!-- Modal Footer -->
                 <div class="modal-footer flex-column border-0 px-4 pt-2 pb-4 gap-2">
-                    <button type="button" id="payUnlockBtn" class="btn btn-primary w-100 rounded-pill py-3 fw-bold"
-                            style="font-size: 1rem; background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">
+                    <button type="button" id="payUnlockBtn" class="btn btn-primary w-100 py-3 fw-bold premium-pay-btn">
                         Pay &amp; Unlock Report
                     </button>
-                    <p class="text-muted text-center mb-0" style="font-size: 0.8rem;">
+                    <p class="text-muted text-center mb-0 premium-note">
                         &#9679; Instant access &nbsp;&bull;&nbsp; One-time payment &nbsp;&bull;&nbsp; No subscription
                     </p>
                 </div>
