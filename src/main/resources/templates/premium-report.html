@@ -317,18 +317,28 @@
         .resource-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
 
         /* ── FOOTER ── */
-        .report-footer { padding: 40px 0; border-top: 1px solid var(--border); }
-        .footer-inner {
+        .report-footer { padding: 36px 0 48px; border-top: 1px solid var(--border); }
+        .footer-top {
             display: flex; justify-content: space-between; align-items: center;
-            font-size: 12px; color: var(--dim);
+            margin-bottom: 20px;
         }
-        .footer-brand { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.08em; color: var(--muted); }
-        .divider-line { height: 1px; background: var(--border); margin: 8px 0 32px; }
+        .footer-brand {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px; letter-spacing: 0.08em; color: var(--muted);
+        }
+        .footer-actions { display: flex; gap: 10px; align-items: center; flex-shrink: 0; }
+        .footer-meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px; letter-spacing: 0.04em;
+            color: var(--dim); line-height: 1.8;
+        }
+        .footer-meta-sep { margin: 0 10px; opacity: 0.5; }
         .btn-download {
             display: inline-flex; align-items: center; gap: 8px;
             background: var(--accent); color: white;
             padding: 10px 20px; border-radius: 8px;
             font-size: 13px; font-weight: 600; text-decoration: none; transition: opacity 0.2s;
+            border: none; cursor: pointer; font-family: inherit;
         }
         .btn-download:hover { opacity: 0.85; }
 
@@ -397,6 +407,12 @@
         }
         .btn-modal-leave:hover { border-color: var(--muted); color: var(--text); }
 
+        /* ── PRINT ── */
+        @media print {
+            .footer-actions, .leave-overlay { display: none !important; }
+            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+
         /* ── RESPONSIVE ── */
         @media (max-width: 680px) {
             .container { padding: 0 20px; }
@@ -404,7 +420,9 @@
             .cover-stats, .salary-comparison { grid-template-columns: 1fr; }
             .score-visual { flex-direction: column; text-align: center; }
             .pivot-card { grid-template-columns: 1fr; }
-            .footer-inner { flex-direction: column; gap: 12px; text-align: center; }
+            .footer-top { flex-direction: column; gap: 16px; text-align: center; }
+            .footer-meta { text-align: center; }
+            .footer-meta-sep { display: block; height: 0; margin: 2px 0; opacity: 0; }
         }
     </style>
 </head>
@@ -684,20 +702,19 @@
 
     <!-- ══ FOOTER ══════════════════════════════════════════════════════════ -->
     <div class="report-footer">
-        <div class="divider-line"></div>
-        <div class="footer-inner">
+        <div class="footer-top">
             <div class="footer-brand">WillAIStealMyJob.com</div>
-            <div>
-                Report generated <span th:text="${#temporals.format(report.generatedAt, 'dd MMMM yyyy')}">01 January 2026</span>
-                &nbsp;·&nbsp; For personal use only
-                &nbsp;·&nbsp; Assessment based on industry research, AI adoption trends, and task automation data
+            <div class="footer-actions">
+                <button class="btn-home" id="btnBackHome">← Home</button>
+                <button class="btn-download" id="btnPrint" onclick="window.print()">
+                    Print / Save as PDF
+                </button>
             </div>
-            <div style="display:flex; gap:10px; align-items:center;">
-                <button class="btn-home" id="btnBackHome">← Back to Home</button>
-                <a th:href="@{/premium-report/{id}/download(id=${report.reportId})}" class="btn-download">
-                    Download PDF ↓
-                </a>
-            </div>
+        </div>
+        <div class="footer-meta">
+            Report generated <span th:text="${#temporals.format(report.generatedAt, 'dd MMMM yyyy')}">01 January 2026</span>
+            <span class="footer-meta-sep">·</span>For personal use only
+            <span class="footer-meta-sep">·</span>Based on industry research, AI adoption trends, and task automation data
         </div>
     </div>
 
@@ -708,13 +725,11 @@
     <div class="leave-modal">
         <div class="leave-modal-icon">⚠️</div>
         <h2 id="leaveModalTitle">Don't lose your report</h2>
-        <p>Your personalised AI risk report is not saved anywhere. Once you leave this page it will be gone. Download it first to keep a copy.</p>
+        <p>Your personalised AI risk report is not saved anywhere. Once you leave this page it will be gone. Print or save it as a PDF first to keep a copy.</p>
         <div class="leave-modal-actions">
-            <a th:href="@{/premium-report/{id}/download(id=${report.reportId})}"
-               class="btn-modal-download"
-               id="btnModalDownload">
-                ↓ &nbsp;Download My Report
-            </a>
+            <button class="btn-modal-download" id="btnModalDownload">
+                Print / Save as PDF
+            </button>
             <a href="/" class="btn-modal-leave" id="btnModalLeave">No thanks, take me home</a>
         </div>
     </div>
@@ -742,12 +757,10 @@
             if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
         });
 
-        // After download starts, close modal and go home
+        // Close modal then open print dialog
         btnDownload.addEventListener('click', function () {
-            setTimeout(function () {
-                closeModal();
-                window.location.href = '/';
-            }, 1500);
+            closeModal();
+            window.print();
         });
     })();
 </script>

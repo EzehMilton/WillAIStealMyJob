@@ -8,14 +8,12 @@
             size: A4;
             margin: 1.5cm 1.8cm 2cm 1.8cm;
             @bottom-right {
-                content: "Page " counter(page) " of " counter(pages);
+                content: "Page " counter(page);
                 font-size: 7pt;
                 color: #7a8099;
                 font-family: Arial, sans-serif;
             }
         }
-
-        * { box-sizing: border-box; }
 
         html { background-color: #0d0f14; }
 
@@ -197,10 +195,10 @@
 
         .data-table tr.alt td { background-color: #0f1219; }
 
-        /* ── TWO-COLUMN FLOAT LAYOUT ── */
-        .col-left  { width: 49%; float: left;  padding-right: 5pt; }
-        .col-right { width: 49%; float: right; }
-        .clearfix  { clear: both; display: block; }
+        /* ── TWO-COLUMN TABLE LAYOUT ── */
+        .two-col-table { width: 100%; border-collapse: collapse; margin-bottom: 10pt; }
+        .two-col-left  { width: 49%; vertical-align: top; padding-right: 5pt; }
+        .two-col-right { width: 49%; vertical-align: top; }
 
         /* ── LISTS ── */
         ul { margin: 0; padding-left: 12pt; }
@@ -438,23 +436,26 @@
     <div class="section-eyebrow">Section 03 &mdash; Capability Analysis</div>
     <div class="section-title">AI Strengths vs Human Advantages</div>
 
-    <div class="col-left">
-        <div class="card">
-            <div class="card-title" style="color:#e74c3c;">What AI Is Already Strong At</div>
-            <ul>
-                <li th:each="s : ${report.aiStrengths}" th:text="${s}"></li>
-            </ul>
-        </div>
-    </div>
-    <div class="col-right">
-        <div class="card">
-            <div class="card-title" style="color:#2ecc71;">What AI Still Struggles With</div>
-            <ul>
-                <li th:each="h : ${report.humanAdvantages}" th:text="${h}"></li>
-            </ul>
-        </div>
-    </div>
-    <div class="clearfix"></div>
+    <table class="two-col-table">
+        <tr>
+            <td class="two-col-left">
+                <div class="card">
+                    <div class="card-title" style="color:#e74c3c;">What AI Is Already Strong At</div>
+                    <ul>
+                        <li th:each="s : ${report.aiStrengths}" th:text="${s}"></li>
+                    </ul>
+                </div>
+            </td>
+            <td class="two-col-right">
+                <div class="card">
+                    <div class="card-title" style="color:#2ecc71;">What AI Still Struggles With</div>
+                    <ul>
+                        <li th:each="h : ${report.humanAdvantages}" th:text="${h}"></li>
+                    </ul>
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <hr class="divider"/>
 
@@ -618,36 +619,39 @@
     <div class="section-eyebrow">Section 08 &mdash; Warning Signs &amp; Resilience</div>
     <div class="section-title">Signals and Strengths to Watch</div>
 
-    <div class="col-left">
-        <div class="card">
-            <div class="card-title" style="color:#f5a623;">Warning Signs</div>
-            <p style="font-size:8pt;color:#7a8099;margin-bottom:6pt;">Signals your role may be more exposed than average:</p>
-            <ul>
-                <li th:each="w : ${report.warningSigns}" th:text="${w}"></li>
-            </ul>
-        </div>
-    </div>
-    <div class="col-right">
-        <div class="card">
-            <div class="card-title" style="color:#2ecc71;">Resilience Scorecard</div>
-            <p style="font-size:8pt;color:#7a8099;margin-bottom:6pt;">Characteristics that make you safer:</p>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Factor</th>
-                        <th style="width:28%;">Signal</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="row, stat : ${report.resilienceScorecard}" th:classappend="${stat.even} ? 'alt' : ''">
-                        <td th:text="${row.factor}"></td>
-                        <td style="color:#2ecc71;font-weight:bold;" th:text="${row.signal}"></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    <div class="clearfix"></div>
+    <table class="two-col-table">
+        <tr>
+            <td class="two-col-left">
+                <div class="card">
+                    <div class="card-title" style="color:#f5a623;">Warning Signs</div>
+                    <p style="font-size:8pt;color:#7a8099;margin-bottom:6pt;">Signals your role may be more exposed than average:</p>
+                    <ul>
+                        <li th:each="w : ${report.warningSigns}" th:text="${w}"></li>
+                    </ul>
+                </div>
+            </td>
+            <td class="two-col-right">
+                <div class="card">
+                    <div class="card-title" style="color:#2ecc71;">Resilience Scorecard</div>
+                    <p style="font-size:8pt;color:#7a8099;margin-bottom:6pt;">Characteristics that make you safer:</p>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Factor</th>
+                                <th style="width:28%;">Signal</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="row, stat : ${report.resilienceScorecard}" th:classappend="${stat.even} ? 'alt' : ''">
+                                <td th:text="${row.factor}"></td>
+                                <td style="color:#2ecc71;font-weight:bold;" th:text="${row.signal}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </td>
+        </tr>
+    </table>
 
     <hr class="divider"/>
 
