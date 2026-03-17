@@ -332,6 +332,71 @@
         }
         .btn-download:hover { opacity: 0.85; }
 
+        /* ── BACK HOME BUTTON ── */
+        .btn-home {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: transparent; color: var(--muted);
+            padding: 10px 20px; border-radius: 8px;
+            font-size: 13px; font-weight: 600; text-decoration: none;
+            border: 1px solid var(--border); transition: border-color 0.2s, color 0.2s;
+            cursor: pointer; font-family: inherit;
+        }
+        .btn-home:hover { border-color: var(--muted); color: var(--text); }
+
+        /* ── LEAVE MODAL ── */
+        .leave-overlay {
+            display: none; position: fixed; inset: 0; z-index: 9999;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+            align-items: center; justify-content: center; padding: 20px;
+        }
+        .leave-overlay.open { display: flex; }
+        .leave-modal {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px; padding: 40px 36px;
+            max-width: 460px; width: 100%; text-align: center;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+            animation: modal-in 0.2s ease;
+        }
+        @keyframes modal-in {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .leave-modal-icon {
+            width: 56px; height: 56px; border-radius: 50%;
+            background: rgba(231,76,60,0.12); border: 1px solid rgba(231,76,60,0.25);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; margin: 0 auto 20px;
+        }
+        .leave-modal h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 22px; color: var(--text); margin-bottom: 12px; line-height: 1.2;
+        }
+        .leave-modal p {
+            font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 32px;
+        }
+        .leave-modal-actions {
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .btn-modal-download {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: var(--accent); color: white;
+            padding: 13px 24px; border-radius: 10px;
+            font-size: 14px; font-weight: 600; text-decoration: none;
+            border: none; cursor: pointer; font-family: inherit;
+            transition: opacity 0.2s;
+        }
+        .btn-modal-download:hover { opacity: 0.85; }
+        .btn-modal-leave {
+            display: flex; align-items: center; justify-content: center;
+            background: transparent; color: var(--muted);
+            padding: 11px 24px; border-radius: 10px;
+            font-size: 13px; font-weight: 500; text-decoration: none;
+            border: 1px solid var(--border); cursor: pointer; font-family: inherit;
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .btn-modal-leave:hover { border-color: var(--muted); color: var(--text); }
+
         /* ── RESPONSIVE ── */
         @media (max-width: 680px) {
             .container { padding: 0 20px; }
@@ -627,7 +692,8 @@
                 &nbsp;·&nbsp; For personal use only
                 &nbsp;·&nbsp; Assessment based on industry research, AI adoption trends, and task automation data
             </div>
-            <div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <button class="btn-home" id="btnBackHome">← Back to Home</button>
                 <a th:href="@{/premium-report/{id}/download(id=${report.reportId})}" class="btn-download">
                     Download PDF ↓
                 </a>
@@ -636,5 +702,55 @@
     </div>
 
 </div>
+
+<!-- ══ LEAVE MODAL ══════════════════════════════════════════════════════ -->
+<div class="leave-overlay" id="leaveOverlay" role="dialog" aria-modal="true" aria-labelledby="leaveModalTitle">
+    <div class="leave-modal">
+        <div class="leave-modal-icon">⚠️</div>
+        <h2 id="leaveModalTitle">Don't lose your report</h2>
+        <p>Your personalised AI risk report is not saved anywhere. Once you leave this page it will be gone. Download it first to keep a copy.</p>
+        <div class="leave-modal-actions">
+            <a th:href="@{/premium-report/{id}/download(id=${report.reportId})}"
+               class="btn-modal-download"
+               id="btnModalDownload">
+                ↓ &nbsp;Download My Report
+            </a>
+            <a href="/" class="btn-modal-leave" id="btnModalLeave">No thanks, take me home</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const overlay      = document.getElementById('leaveOverlay');
+        const btnBackHome  = document.getElementById('btnBackHome');
+        const btnDownload  = document.getElementById('btnModalDownload');
+        const btnLeave     = document.getElementById('btnModalLeave');
+
+        function openModal()  { overlay.classList.add('open'); }
+        function closeModal() { overlay.classList.remove('open'); }
+
+        btnBackHome.addEventListener('click', openModal);
+
+        // Close on backdrop click
+        overlay.addEventListener('click', function (e) {
+            if (e.target === overlay) closeModal();
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && overlay.classList.contains('open')) closeModal();
+        });
+
+        // After download starts, close modal and go home
+        btnDownload.addEventListener('click', function () {
+            setTimeout(function () {
+                closeModal();
+                window.location.href = '/';
+            }, 1500);
+        });
+    })();
+</script>
+
 </body>
 </html>

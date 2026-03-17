@@ -116,7 +116,7 @@
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-exclamation-octagon-fill me-2" viewBox="0 0 16 16" th:if="${score > 6}">
                                                     <path d="M11.46.146A.5.5 0 0 0 11.107 0H4.893a.5.5 0 0 0-.353.146L.146 4.54A.5.5 0 0 0 0 4.893v6.214a.5.5 0 0 0 .146.353l4.394 4.394a.5.5 0 0 0 .353.146h6.214a.5.5 0 0 0 .353-.146l4.394-4.394a.5.5 0 0 0 .146-.353V4.893a.5.5 0 0 0-.146-.353L11.46.146zM8 4c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995A.905.905 0 0 1 8 4zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
                                                 </svg>
-                                                <span th:text="${score <= 2} ? 'Low Risk' : (${score <= 6} ? 'Moderate Risk' : 'High Risk')">Moderate Risk</span>
+                                                <span th:text="${score <= 2} ? 'Low Impact' : (${score <= 6} ? 'Moderate Impact' : 'High Impact')">Moderate Impact</span>
                                             </span>
                                         </h3>
                                     </div>
@@ -146,7 +146,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <p class="text-muted small text-center mt-4 mb-0">Score based on task-level automation probability, industry AI adoption trends, and role skill composition.</p>
+                            <p class="text-muted small text-center mt-4 mb-0">Score reflects how much of your current work can be automated with today’s AI tools.</p>
                         </div>
                     </div>
 
@@ -190,15 +190,15 @@
                                     <span class="fs-5 me-2">&#128274;</span>
                                     <h5 class="fw-bold mb-0 text-white">Premium: Unlock your AI Career Survival Plan <span class="badge bg-secondary ms-1 premium-price-badge" th:text="${mode == 'course'} ? '£3 per report' : '£10 per report'">£10 per report</span></h5>
                                 </div>
-                                <p class="text-white-50 small mb-3">Your personalised report includes:</p>
+                                <p class="text-white-50 small mb-3">Your personalised report will include:</p>
                                 <!-- Profession list -->
                                 <ul th:if="${mode != 'course'}" class="list-unstyled mb-0">
                                     <li class="mb-3">
                                         <div class="d-flex align-items-start">
                                             <span class="text-success me-2 mt-1">&#10003;</span>
                                             <div>
-                                                <div class="text-white small fw-semibold">AI Automation Breakdown</div>
-                                                <div class="text-white-50" style="font-size: 0.8rem;">Understand which tasks in your job are most likely to be automated.</div>
+                                                <div class="text-white small fw-semibold">Task-Level Impact Analysis</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">A breakdown of your day-to-day tasks and how exposed each one is to AI automation.</div>
                                             </div>
                                         </div>
                                     </li>
@@ -206,8 +206,8 @@
                                         <div class="d-flex align-items-start">
                                             <span class="text-success me-2 mt-1">&#10003;</span>
                                             <div>
-                                                <div class="text-white small fw-semibold">Tasks Most Likely to Be Replaced</div>
-                                                <div class="text-white-50" style="font-size: 0.8rem;">See exactly where AI and robotics could impact your role.</div>
+                                                <div class="text-white small fw-semibold">What Changes First</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Identify which parts of your role are changing first.</div>
                                             </div>
                                         </div>
                                     </li>
@@ -215,7 +215,7 @@
                                         <div class="d-flex align-items-start">
                                             <span class="text-success me-2 mt-1">&#10003;</span>
                                             <div>
-                                                <div class="text-white small fw-semibold">AI-Resistant Skills</div>
+                                                <div class="text-white small fw-semibold">Skills That Stay Valuable</div>
                                                 <div class="text-white-50" style="font-size: 0.8rem;">Discover the skills that will keep your profession valuable.</div>
                                             </div>
                                         </div>
@@ -224,7 +224,7 @@
                                         <div class="d-flex align-items-start">
                                             <span class="text-success me-2 mt-1">&#10003;</span>
                                             <div>
-                                                <div class="text-white small fw-semibold">Safer Career Paths</div>
+                                                <div class="text-white small fw-semibold">Salary & Market Shifts</div>
                                                 <div class="text-white-50" style="font-size: 0.8rem;">Explore related careers with lower automation risk and higher salaries.</div>
                                             </div>
                                         </div>
@@ -240,7 +240,7 @@
                                     </li>
                                 </ul>
                                 <p></p>
-                                <p class="text-white-50 small mb-3">Instant access • One payment per report • No subscription</p>
+                                <p class="text-white-50 small mb-3">Early adaptation increases your advantage.</p>
                                 <!-- Course list -->
                                 <ul th:if="${mode == 'course'}" class="list-unstyled mb-0">
                                     <li class="mb-3">
@@ -307,7 +307,7 @@
                                 </a>
                                 <button type="button" class="btn btn-primary result-action-btn"
                                         data-bs-toggle="modal" data-bs-target="#premiumModal">
-                                    Unlock Premium Insights
+                                    Unlock My Full AI Risk Report
                                 </button>
                             </div>
                         </div>
@@ -433,14 +433,14 @@
                         <li class="d-flex align-items-start gap-2 mb-3">
                             <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
                             <div>
-                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">AI-Resistant Skills</div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Skills That Stay Valuable</div>
                                 <div class="text-muted" style="font-size: 0.8rem;">The skills that will keep you valuable as AI advances.</div>
                             </div>
                         </li>
                         <li class="d-flex align-items-start gap-2 mb-3">
                             <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
                             <div>
-                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Safer Career Paths &amp; Salary Comparison</div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Salary & Market Shifts</div>
                                 <div class="text-muted" style="font-size: 0.8rem;">Related roles with lower automation risk and what they pay.</div>
                             </div>
                         </li>
