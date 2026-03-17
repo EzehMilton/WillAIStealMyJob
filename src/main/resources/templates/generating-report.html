@@ -3,61 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generating Your Report - Job AI</title>
-
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
-          rel="stylesheet"
-          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
-          crossorigin="anonymous">
-
-    <!-- Custom CSS -->
-    <link rel="stylesheet" th:href="@{/css/style.css}">
-
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+    <title>Generating Your Report — WillAIStealMyJob.com</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
-        .gen-card {
-            background: white;
-            border-radius: 24px;
-            padding: 52px 44px;
-            box-shadow: 0 24px 64px rgba(99, 102, 241, 0.13);
-            max-width: 540px;
-            margin: 0 auto;
+        :root {
+            --bg:       #0d0f14;
+            --surface:  #13161e;
+            --surface2: #1a1e2a;
+            --border:   #252a38;
+            --accent:   #4f8eff;
+            --accent2:  #7c5cfc;
+            --amber:    #f5a623;
+            --green:    #2ecc71;
+            --red:      #e74c3c;
+            --text:     #e8eaf0;
+            --muted:    #7a8099;
+            --dim:      #3d4460;
         }
 
-        /* Spinner */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            font-size: 15px;
+            line-height: 1.7;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ── HEADER ── */
+        .site-header {
+            border-bottom: 1px solid var(--border);
+            padding: 18px 40px;
+            display: flex;
+            align-items: center;
+        }
+        .site-brand {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            text-decoration: none;
+        }
+        .site-brand:hover { color: var(--text); }
+        .site-brand em {
+            color: var(--accent);
+            font-style: normal;
+        }
+
+        /* ── MAIN ── */
+        .main-content {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 20px;
+        }
+
+        /* ── CARD ── */
+        .gen-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 52px 48px;
+            max-width: 520px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+        .gen-card::before {
+            content: '';
+            position: absolute; top: -80px; right: -80px;
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(79,142,255,0.06) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* ── SPINNER ── */
         .spinner-ring {
-            width: 68px;
-            height: 68px;
-            border: 5px solid #ede9fe;
-            border-top-color: #6366f1;
+            width: 64px;
+            height: 64px;
+            border: 4px solid var(--surface2);
+            border-top-color: var(--accent);
             border-radius: 50%;
             animation: spin 0.85s linear infinite;
-            margin: 0 auto 30px;
+            margin: 0 auto 32px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Progress bar */
+        /* ── TITLE ── */
+        .gen-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 26px;
+            color: var(--text);
+            text-align: center;
+            margin-bottom: 6px;
+            line-height: 1.2;
+        }
+        .gen-subtitle {
+            font-size: 13px;
+            color: var(--muted);
+            text-align: center;
+            margin-bottom: 0;
+        }
+
+        /* ── PROGRESS BAR ── */
         .progress-bar-track {
-            height: 6px;
-            background: #ede9fe;
+            height: 4px;
+            background: var(--surface2);
             border-radius: 999px;
-            margin: 24px 0 28px;
+            margin: 28px 0 32px;
             overflow: hidden;
         }
         .progress-bar-fill {
             height: 100%;
-            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
             border-radius: 999px;
             width: 0%;
             transition: width 1.3s ease;
         }
 
-        /* Step list */
+        /* ── STEP LIST ── */
         .step-list {
             list-style: none;
             padding: 0;
@@ -68,40 +138,41 @@
             align-items: center;
             gap: 14px;
             padding: 11px 0;
-            border-bottom: 1px solid #f3f4f6;
+            border-bottom: 1px solid var(--border);
             transition: opacity 0.3s;
-            opacity: 0.4;
+            opacity: 0.3;
         }
         .step-item:last-child { border-bottom: none; }
 
         .step-icon {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            font-size: 14px;
-            background: #f3f4f6;
-            color: #9ca3af;
+            font-size: 13px;
+            background: var(--surface2);
+            color: var(--dim);
             transition: all 0.3s;
         }
+
         .step-item.active {
             opacity: 1;
         }
         .step-item.active .step-icon {
-            background: #ede9fe;
-            color: #6366f1;
-            box-shadow: 0 0 0 4px rgba(99,102,241,0.15);
+            background: rgba(79,142,255,0.15);
+            color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(79,142,255,0.1);
             animation: pulse-icon 1.4s ease-in-out infinite;
         }
         .step-item.done {
             opacity: 1;
         }
         .step-item.done .step-icon {
-            background: #dcfce7;
-            color: #16a34a;
+            background: rgba(46,204,113,0.12);
+            color: var(--green);
             animation: none;
         }
         @keyframes pulse-icon {
@@ -110,136 +181,170 @@
         }
 
         .step-label {
-            font-size: 0.88rem;
+            font-size: 13px;
             font-weight: 500;
-            color: #374151;
+            color: var(--muted);
         }
-        .step-item.active .step-label { color: #111827; }
-        .step-item.done  .step-label { color: #374151; }
+        .step-item.active .step-label { color: var(--text); }
+        .step-item.done  .step-label  { color: var(--muted); }
 
-        /* Error state */
+        /* ── ERROR STATE ── */
         .error-state { display: none; }
+        .error-icon {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            background: rgba(231,76,60,0.1);
+            border: 1px solid rgba(231,76,60,0.2);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 22px;
+            margin: 0 auto 20px;
+        }
+        .error-title {
+            font-family: 'DM Serif Display', serif;
+            font-size: 22px;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+        .error-body {
+            font-size: 13px;
+            color: var(--muted);
+            line-height: 1.7;
+            margin-bottom: 28px;
+        }
+        .btn-home-error {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--accent);
+            color: white;
+            padding: 11px 24px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: opacity 0.2s;
+        }
+        .btn-home-error:hover { opacity: 0.85; }
+
+        /* ── FOOTER ── */
+        .site-footer {
+            border-top: 1px solid var(--border);
+            padding: 20px 40px;
+            text-align: center;
+        }
+        .site-footer p {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.08em;
+            color: var(--dim);
+        }
+
+        /* ── RESPONSIVE ── */
+        @media (max-width: 600px) {
+            .gen-card { padding: 36px 24px; }
+            .site-header { padding: 16px 20px; }
+        }
     </style>
 </head>
 <body>
+
     <!-- Header -->
-    <header class="navbar navbar-expand-lg navbar-light bg-white shadow-sm sticky-top">
-        <div class="container">
-            <a class="navbar-brand fw-bold" th:href="@{/}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
-                     class="bi bi-shield-check me-2" viewBox="0 0 16 16">
-                    <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.775 11.775 0 0 1-2.517 2.453 7.159 7.159 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7.158 7.158 0 0 1-1.048-.625 11.777 11.777 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 62.456 62.456 0 0 1 5.072.56z"/>
-                    <path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
-                </svg>
-                Job AI Risk Assessment
-            </a>
-        </div>
+    <header class="site-header">
+        <a th:href="@{/}" class="site-brand">
+            <em>WillAIStealMyJob</em>.com
+        </a>
     </header>
 
     <!-- Main Content -->
     <main class="main-content">
-        <div class="container py-5">
-            <div class="gen-card">
+        <div class="gen-card">
 
-                <!-- Normal (loading) state -->
-                <div id="loading-state">
-                    <div class="spinner-ring"></div>
+            <!-- Loading state -->
+            <div id="loading-state">
+                <div class="spinner-ring"></div>
 
-                    <h2 class="fw-bold text-center mb-1" style="color: #111827; font-size: 1.45rem;">
-                        Generating Your Report
-                    </h2>
-                    <p id="status-text" class="text-muted text-center mb-0" style="font-size: 0.9rem;">
-                        Building your personalised AI Career Survival Plan&hellip;
-                    </p>
+                <h2 class="gen-title">Generating Your Report</h2>
+                <p id="status-text" class="gen-subtitle">Building your personalised AI Career Survival Plan&hellip;</p>
 
-                    <div class="progress-bar-track">
-                        <div class="progress-bar-fill" id="progressBar"></div>
-                    </div>
-
-                    <ul class="step-list">
-                        <li class="step-item" data-step="0">
-                            <div class="step-icon">
-                                <!-- pending icon -->
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-                                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
-                                </svg>
-                            </div>
-                            <span class="step-label">Analyzing profession and tasks</span>
-                        </li>
-                        <li class="step-item" data-step="1">
-                            <div class="step-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-                                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
-                                </svg>
-                            </div>
-                            <span class="step-label">Evaluating AI automation trends</span>
-                        </li>
-                        <li class="step-item" data-step="2">
-                            <div class="step-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-                                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
-                                </svg>
-                            </div>
-                            <span class="step-label">Identifying AI-resistant skills</span>
-                        </li>
-                        <li class="step-item" data-step="3">
-                            <div class="step-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-                                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
-                                </svg>
-                            </div>
-                            <span class="step-label">Generating career survival strategy</span>
-                        </li>
-                        <li class="step-item" data-step="4">
-                            <div class="step-icon">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
-                                    <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
-                                    <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
-                                </svg>
-                            </div>
-                            <span class="step-label">Preparing your report (This may take 1-2 minutes)</span>
-                        </li>
-                    </ul>
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" id="progressBar"></div>
                 </div>
 
-                <!-- Error state -->
-                <div id="error-state" class="error-state text-center py-3">
-                    <div class="mb-3" style="font-size: 3rem;">&#9888;</div>
-                    <h5 class="fw-bold" style="color: #111827;">Something went wrong</h5>
-                    <p class="text-muted small mb-4">We couldn&rsquo;t generate your report right now. Your payment was successful &mdash; please contact support.</p>
-                    <a th:href="@{/}" class="btn btn-primary rounded-pill px-4">Back to Home</a>
-                </div>
-
+                <ul class="step-list">
+                    <li class="step-item" data-step="0">
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                                <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                            </svg>
+                        </div>
+                        <span class="step-label">Analyzing profession and tasks</span>
+                    </li>
+                    <li class="step-item" data-step="1">
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                                <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                            </svg>
+                        </div>
+                        <span class="step-label">Evaluating AI automation trends</span>
+                    </li>
+                    <li class="step-item" data-step="2">
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                                <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                            </svg>
+                        </div>
+                        <span class="step-label">Identifying AI-resistant skills</span>
+                    </li>
+                    <li class="step-item" data-step="3">
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                                <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                            </svg>
+                        </div>
+                        <span class="step-label">Generating career survival strategy</span>
+                    </li>
+                    <li class="step-item" data-step="4">
+                        <div class="step-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
+                                <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+                                <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+                            </svg>
+                        </div>
+                        <span class="step-label">Preparing your report <span style="color:var(--dim); font-weight:400;">(This may take 1–2 minutes)</span></span>
+                    </li>
+                </ul>
             </div>
+
+            <!-- Error state -->
+            <div id="error-state" class="error-state text-center" style="text-align:center;">
+                <div class="error-icon">⚠</div>
+                <h5 class="error-title">Something went wrong</h5>
+                <p class="error-body">We couldn&rsquo;t generate your report right now. Your payment was successful &mdash; please contact support.</p>
+                <a th:href="@{/}" class="btn-home-error">← Back to Home</a>
+            </div>
+
         </div>
     </main>
 
     <!-- Footer -->
-    <footer class="footer mt-5 py-4 bg-light">
-        <div class="container text-center">
-            <p class="text-muted mb-0">&copy; 2026 Job AI Risk Assessment. All rights reserved.</p>
-        </div>
+    <footer class="site-footer">
+        <p>WillAIStealMyJob.com &nbsp;·&nbsp; &copy; 2026</p>
     </footer>
-
-    <!-- Bootstrap 5 JS Bundle -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
-            crossorigin="anonymous"></script>
 
     <script>
         // ─── SVG icons for step states ───────────────────────────────────────────
-        const ICON_PENDING = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+        const ICON_PENDING = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
             <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
             <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/></svg>`;
 
-        const ICON_ACTIVE = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+        const ICON_ACTIVE = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
             <path fill-rule="evenodd" d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm-.354 9.354-3-3a.5.5 0 1 1 .708-.708L8 9.293l4.646-4.647a.5.5 0 0 1 .708.708l-5 5a.5.5 0 0 1-.708 0z"/></svg>`;
 
-        const ICON_DONE = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" viewBox="0 0 16 16">
+        const ICON_DONE = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
             <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
             <path d="M10.97 4.97a.235.235 0 0 0-.02.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-1.071-1.05z"/></svg>`;
 
