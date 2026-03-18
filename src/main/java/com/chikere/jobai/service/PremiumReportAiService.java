@@ -64,12 +64,14 @@ public class PremiumReportAiService {
                 .replace("{score}",         String.format("%.1f", request.getScore()))
                 .replace("{riskLevel}",     normalise(request.getRiskLevel(), "Moderate"));
 
-        log.debug("Premium report prompt built, sending to AI...");
+        log.info("Calling AI: model=gpt-5.4 reportId={} profession=\"{}\"", reportId, profession);
 
+        long start = System.nanoTime();
         String raw = chatClient.prompt(prompt).call().content();
-        String json = extractJson(raw);
+        long durationMs = (System.nanoTime() - start) / 1_000_000;
 
-        log.debug("AI response received, parsing JSON...");
+        log.info("AI call completed: model=gpt-5.4 reportId={} profession=\"{}\" durationMs={}", reportId, profession, durationMs);
+        String json = extractJson(raw);
 
         try {
             JsonNode root = objectMapper.readTree(json);

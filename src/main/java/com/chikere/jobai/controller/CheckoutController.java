@@ -48,7 +48,6 @@ public class CheckoutController {
             @RequestBody CheckoutRequest request,
             @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
         try {
-            analyticsService.record(visitorId, "payment_clicked", request.getProfession(), request.getScore());
             String priceId = "course".equals(request.getMode()) ? coursePriceId : professionPriceId;
 
             SessionCreateParams params = SessionCreateParams.builder()

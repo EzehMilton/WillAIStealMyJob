@@ -77,9 +77,14 @@ public class JobAiService {
         log.debug("Generated prompt for assessment");
 
         ChatClient selectedChatClient = selectAssessmentModel(normalizedMode);
-        log.info("Using model: {}", MODE_COURSE.equals(normalizedMode) ? "gpt-5.4-mini" : "gpt-5.4");
+        String modelName = MODE_COURSE.equals(normalizedMode) ? "gpt-5.4-mini" : "gpt-5.4";
+        log.info("Calling AI: model={} profession=\"{}\"", modelName, normalizedProfession);
 
+        long start = System.nanoTime();
         String response = selectedChatClient.prompt(prompt).call().content();
+        long durationMs = (System.nanoTime() - start) / 1_000_000;
+
+        log.info("AI call completed: model={} profession=\"{}\" durationMs={}", modelName, normalizedProfession, durationMs);
         String cleanedResponse = cleanJsonResponse(response);
 
         log.debug("Received assessment response: {}", cleanedResponse);
