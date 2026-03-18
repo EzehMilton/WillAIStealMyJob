@@ -8,6 +8,7 @@ import com.chikere.jobai.service.RiskAssessmentService.ValidationException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -23,21 +24,37 @@ public class RiskAssessorController {
 
     private final RiskAssessmentService riskAssessmentService;
 
+    @Value("${app.form.role-summary-word-limit:750}")
+    private int roleSummaryWordLimit;
+
     @GetMapping("/")
     public String home(Model model) {
         RiskAssessmentForm form = new RiskAssessmentForm();
         form.setMode("profession");
         model.addAttribute("riskAssessmentForm", form);
+        model.addAttribute("wordLimit", roleSummaryWordLimit);
         return "index";
     }
 
     @PostMapping("/assess")
     public String assessRisk(@Valid @ModelAttribute("riskAssessmentForm") RiskAssessmentForm form,
                              BindingResult bindingResult,
+                             Model model,
                              RedirectAttributes redirectAttributes) {
 
         if (bindingResult.hasErrors()) {
+            model.addAttribute("wordLimit", roleSummaryWordLimit);
             return "index";
+        }
+
+        if ("manual".equals(form.getInputMethod())) {
+            int wordCount = countWords(form.getRoleSummary());
+            if (wordCount > roleSummaryWordLimit) {
+                bindingResult.rejectValue("roleSummary", "error.roleSummary",
+                        "Please keep your description under " + roleSummaryWordLimit + " words (" + wordCount + " used).");
+                model.addAttribute("wordLimit", roleSummaryWordLimit);
+                return "index";
+            }
         }
 
         try {
@@ -46,10 +63,12 @@ public class RiskAssessorController {
 
         } catch (ValidationException e) {
             bindingResult.rejectValue(e.getField(), "error." + e.getField(), e.getMessage());
+            model.addAttribute("wordLimit", roleSummaryWordLimit);
             return "index";
 
         } catch (DocumentParseException e) {
             bindingResult.rejectValue("cvFile", "error.cvFile", e.getMessage());
+            model.addAttribute("wordLimit", roleSummaryWordLimit);
             return "index";
 
         } catch (Exception e) {
@@ -60,6 +79,11 @@ public class RiskAssessorController {
         }
 
         return "redirect:/result";
+    }
+
+    private int countWords(String text) {
+        if (text == null || text.trim().isEmpty()) return 0;
+        return text.trim().split("\\s+").length;
     }
 
     @GetMapping("/result")

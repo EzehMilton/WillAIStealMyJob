@@ -144,7 +144,7 @@ class RiskAssessmentServiceTest {
         );
 
         assertEquals("cvFile", exception.getField());
-        assertTrue(exception.getMessage().contains("File size must be less than 5MB"));
+        assertTrue(exception.getMessage().contains("File size must be less than 2MB"));
         verifyNoInteractions(jobAiService);
         verifyNoInteractions(documentParserService);
     }

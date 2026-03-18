@@ -401,6 +401,7 @@
                                           id="roleSummary"
                                           th:field="*{roleSummary}"
                                           th:classappend="${#fields.hasErrors('roleSummary')} ? 'is-invalid' : ''"
+                                          th:attr="data-word-limit=${wordLimit}"
                                           rows="6"
                                           placeholder="Tell us what you do in your role. Include key responsibilities, tools you use, and typical daily activities..."></textarea>
                                 <div th:if="${#fields.hasErrors('roleSummary')}"
@@ -408,8 +409,13 @@
                                      th:errors="*{roleSummary}">
                                     This field is required
                                 </div>
-                                <div class="form-text" id="formTextHelper">
-                                    More detail = more accurate and personalised results.
+                                <div class="d-flex justify-content-between align-items-center mt-1">
+                                    <div class="form-text" id="formTextHelper">
+                                        More detail = more accurate and personalised results.
+                                    </div>
+                                    <div class="word-counter" id="wordCounter">
+                                        <span id="wordCount">0</span>&hairsp;/&hairsp;<span th:text="${wordLimit}">750</span> words
+                                    </div>
                                 </div>
                                 <div class="report-preview-card mt-3">
                                     <div class="report-preview-header">
@@ -453,7 +459,7 @@
                                     </svg>
                                     <span class="upload-text">Drop your CV here</span>
                                     <span class="upload-subtext">or <span class="browse-link">browse</span> to upload</span>
-                                    <span class="upload-subtext upload-note mt-1">PDF only (Max 5MB)</span>
+                                    <span class="upload-subtext upload-note mt-1">PDF only (Max 2MB)</span>
                                 </label>
                                 <input type="file"
                                        class="cv-file-input"
@@ -559,6 +565,38 @@
         integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
         crossorigin="anonymous"></script>
 
+<!-- Word Counter Script -->
+<script>
+    (function () {
+        const textarea = document.getElementById('roleSummary');
+        const countEl  = document.getElementById('wordCount');
+        const counter  = document.getElementById('wordCounter');
+        if (!textarea || !countEl || !counter) return;
+
+        const limit = parseInt(textarea.dataset.wordLimit, 10) || 750;
+
+        function countWords(text) {
+            const trimmed = text.trim();
+            return trimmed === '' ? 0 : trimmed.split(/\s+/).length;
+        }
+
+        function update() {
+            const count = countWords(textarea.value);
+            countEl.textContent = count;
+            counter.classList.remove('warn', 'over');
+            if (count > limit) {
+                counter.classList.add('over');
+            } else if (count >= limit * 0.9) {
+                counter.classList.add('warn');
+            }
+        }
+
+        textarea.addEventListener('input', update);
+        // Initialise in case the field is pre-filled (e.g. validation error re-render)
+        update();
+    })();
+</script>
+
 <!-- Dynamic Form Label Update Script -->
 <script>
     let currentInputMethod = 'manual';
@@ -636,9 +674,9 @@
     function handleFileSelect(input) {
         const file = input.files[0];
         if (file) {
-            // Validate file size (5MB max)
-            if (file.size > 5 * 1024 * 1024) {
-                alert('File size must be less than 5MB');
+            // Validate file size (2MB max)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('File size must be less than 2MB');
                 input.value = '';
                 return;
             }
