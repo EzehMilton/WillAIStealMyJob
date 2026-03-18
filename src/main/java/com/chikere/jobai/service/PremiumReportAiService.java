@@ -33,9 +33,9 @@ public class PremiumReportAiService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String promptTemplate;
 
-    public PremiumReportAiService(ChatClient gpt54ChatClient,  // reuse your existing bean
+    public PremiumReportAiService(ChatClient gpt54MiniChatClient,  // reuse your existing bean
                                   ResourceLoader resourceLoader) {
-        this.chatClient = gpt54ChatClient;
+        this.chatClient = gpt54MiniChatClient;
         this.resourceLoader = resourceLoader;
         this.promptTemplate = loadResource("classpath:prompts/premium-report-prompt.txt");
         log.info("PremiumReportAiService initialised");
