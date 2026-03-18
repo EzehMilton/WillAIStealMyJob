@@ -16,7 +16,6 @@ public class RiskAssessmentForm {
     @Size(max = 100, message = "Must be less than 100 characters")
     private String profession;
 
-    @Size(max = 1000, message = "Must be less than 1000 characters")
     private String roleSummary;
 
     private String inputMethod = "manual"; // "manual" or "cv"

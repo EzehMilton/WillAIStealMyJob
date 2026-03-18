@@ -160,6 +160,18 @@ textarea.form-control {
     margin-top: 0.5rem;
 }
 
+/* Word Counter */
+.word-counter {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #9ca3af;
+    white-space: nowrap;
+    transition: color 0.2s;
+    flex-shrink: 0;
+}
+.word-counter.warn  { color: #f59e0b; }
+.word-counter.over  { color: #ef4444; font-weight: 600; }
+
 /* Report Preview Card */
 .report-preview-card {
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);

@@ -12,7 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 public class RiskAssessmentService {
 
-    private static final long MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
     private static final int MIN_EXTRACTED_TEXT_LENGTH = 50;
 
     private final JobAiService jobAiService;
@@ -103,7 +103,7 @@ public class RiskAssessmentService {
         }
 
         if (cvFile.getSize() > MAX_FILE_SIZE) {
-            throw new ValidationException("cvFile", "File size must be less than 5MB");
+            throw new ValidationException("cvFile", "File size must be less than 2MB");
         }
 
         String filename = cvFile.getOriginalFilename();
