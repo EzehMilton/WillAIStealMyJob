@@ -1,0 +1,62 @@
+package com.chikere.jobai.controller;
+
+import com.chikere.jobai.service.AnalyticsService;
+import com.stripe.exception.SignatureVerificationException;
+import com.stripe.model.Event;
+import com.stripe.model.StripeObject;
+import com.stripe.model.checkout.Session;
+import com.stripe.net.Webhook;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Map;
+
+@RestController
+@RequiredArgsConstructor
+@Slf4j
+public class WebhookController {
+
+    @Value("${stripe.webhook-secret}")
+    private String webhookSecret;
+
+    private final AnalyticsService analyticsService;
+
+    @PostMapping("/stripe/webhook")
+    public ResponseEntity<String> handleWebhook(
+            @RequestBody String payload,
+            @RequestHeader("Stripe-Signature") String sigHeader) {
+
+        Event event;
+        try {
+            event = Webhook.constructEvent(payload, sigHeader, webhookSecret);
+        } catch (SignatureVerificationException e) {
+            log.warn("Invalid Stripe webhook signature: {}", e.getMessage());
+            return ResponseEntity.badRequest().body("Invalid signature");
+        }
+
+        if ("checkout.session.completed".equals(event.getType())) {
+            StripeObject stripeObject = event.getDataObjectDeserializer()
+                    .getObject().orElse(null);
+
+            if (stripeObject instanceof Session session) {
+                Map<String, String> meta = session.getMetadata();
+                String visitorId  = meta != null ? meta.get("visitorId")  : null;
+                String profession = meta != null ? meta.get("profession") : null;
+                Double score      = null;
+                if (meta != null && meta.get("score") != null) {
+                    try { score = Double.parseDouble(meta.get("score")); }
+                    catch (NumberFormatException ignored) {}
+                }
+                analyticsService.record(visitorId, "payment_completed", profession, score);
+            }
+        }
+
+        return ResponseEntity.ok("received");
+    }
+}

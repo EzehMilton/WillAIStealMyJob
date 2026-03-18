@@ -336,6 +336,21 @@
     </footer>
 
     <script>
+        /* ── Visitor UUID ── */
+        (function () {
+            const KEY = 'visitor_id';
+            let id = localStorage.getItem(KEY);
+            if (!id) {
+                id = crypto.randomUUID();
+                localStorage.setItem(KEY, id);
+                const exp = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+                document.cookie = KEY + '=' + id + '; path=/; expires=' + exp + '; SameSite=Lax';
+            }
+            window.visitorId = id;
+        }());
+    </script>
+
+    <script>
         // ─── SVG icons for step states ───────────────────────────────────────────
         const ICON_PENDING = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
             <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
@@ -413,7 +428,10 @@
 
                 const response = await fetch('/generate-report', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Visitor-Id': window.visitorId || 'unknown'
+                    },
                     body: JSON.stringify({
                         sessionId:   sessionId,
                         profession:  stored.profession  || '',

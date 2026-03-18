@@ -515,6 +515,21 @@
             integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
             crossorigin="anonymous"></script>
 
+    <script>
+        /* ── Visitor UUID ── */
+        (function () {
+            const KEY = 'visitor_id';
+            let id = localStorage.getItem(KEY);
+            if (!id) {
+                id = crypto.randomUUID();
+                localStorage.setItem(KEY, id);
+                const exp = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+                document.cookie = KEY + '=' + id + '; path=/; expires=' + exp + '; SameSite=Lax';
+            }
+            window.visitorId = id;
+        }());
+    </script>
+
     <script th:inline="javascript">
         document.getElementById('payUnlockBtn').addEventListener('click', async function () {
             const btn = this;
@@ -534,9 +549,24 @@
                 // Persist so generating-report page can retrieve it after Stripe redirect
                 sessionStorage.setItem('checkoutPayload', JSON.stringify(payload));
 
-                const response = await fetch('/payment/create-checkout-session', {
+                // Log payment_clicked (fire-and-forget)
+                fetch('/analytics/event', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        visitorId: window.visitorId,
+                        eventType: 'payment_clicked',
+                        profession: payload.profession,
+                        riskScore: payload.score
+                    })
+                }).catch(function () {});
+
+                const response = await fetch('/payment/create-checkout-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Visitor-Id': window.visitorId || 'unknown'
+                    },
                     body: JSON.stringify(payload)
                 });
 

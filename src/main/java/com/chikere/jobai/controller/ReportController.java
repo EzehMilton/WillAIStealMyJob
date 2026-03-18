@@ -3,6 +3,7 @@ package com.chikere.jobai.controller;
 import com.chikere.jobai.model.GenerateReportRequest;
 import com.chikere.jobai.model.GenerateReportResponse;
 import com.chikere.jobai.model.PremiumReport;
+import com.chikere.jobai.service.AnalyticsService;
 import com.chikere.jobai.service.PdfService;
 import com.chikere.jobai.service.ReportService;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 @Controller
 @RequiredArgsConstructor
@@ -21,12 +23,16 @@ public class ReportController {
 
     private final ReportService reportService;
     private final PdfService pdfService;
+    private final AnalyticsService analyticsService;
 
     @PostMapping("/generate-report")
     @ResponseBody
-    public ResponseEntity<GenerateReportResponse> generateReport(@RequestBody GenerateReportRequest request) {
+    public ResponseEntity<GenerateReportResponse> generateReport(
+            @RequestBody GenerateReportRequest request,
+            @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
         log.info("Generating report for profession: {}", request.getProfession());
         PremiumReport report = reportService.generateReport(request);
+        analyticsService.record(visitorId, "report_generated", request.getProfession(), request.getScore());
         return ResponseEntity.ok(new GenerateReportResponse(report.getReportId()));
     }
 
