@@ -2,23 +2,29 @@ package com.chikere.jobai.controller;
 
 import com.chikere.jobai.model.CheckoutRequest;
 import com.chikere.jobai.model.CheckoutResponse;
+import com.chikere.jobai.service.AnalyticsService;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
 import com.stripe.param.checkout.SessionCreateParams;
 import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/payment")
+@RequiredArgsConstructor
 @Slf4j
 public class CheckoutController {
+
+    private final AnalyticsService analyticsService;
 
     @Value("${stripe.secret-key}")
     private String stripeSecretKey;
@@ -38,8 +44,11 @@ public class CheckoutController {
     }
 
     @PostMapping("/create-checkout-session")
-    public ResponseEntity<CheckoutResponse> createCheckoutSession(@RequestBody CheckoutRequest request) {
+    public ResponseEntity<CheckoutResponse> createCheckoutSession(
+            @RequestBody CheckoutRequest request,
+            @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
         try {
+            analyticsService.record(visitorId, "payment_clicked", request.getProfession(), request.getScore());
             String priceId = "course".equals(request.getMode()) ? coursePriceId : professionPriceId;
 
             SessionCreateParams params = SessionCreateParams.builder()
@@ -52,6 +61,7 @@ public class CheckoutController {
                                     .setQuantity(1L)
                                     .build()
                     )
+                    .putMetadata("visitorId", safe(visitorId))
                     .putMetadata("mode", safe(request.getMode()))
                     .putMetadata("profession", truncate(request.getProfession(), 490))
                     .putMetadata("score", String.valueOf(request.getScore()))

@@ -2,6 +2,7 @@ package com.chikere.jobai.controller;
 
 import com.chikere.jobai.model.JobRiskAssessment;
 import com.chikere.jobai.model.RiskAssessmentForm;
+import com.chikere.jobai.service.AnalyticsService;
 import com.chikere.jobai.service.RiskAssessmentService;
 import com.chikere.jobai.service.RiskAssessmentService.DocumentParseException;
 import com.chikere.jobai.service.RiskAssessmentService.ValidationException;
@@ -12,6 +13,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class RiskAssessorController {
 
     private final RiskAssessmentService riskAssessmentService;
+    private final AnalyticsService analyticsService;
 
     @Value("${app.form.role-summary-word-limit:750}")
     private int roleSummaryWordLimit;
@@ -40,7 +43,8 @@ public class RiskAssessorController {
     public String assessRisk(@Valid @ModelAttribute("riskAssessmentForm") RiskAssessmentForm form,
                              BindingResult bindingResult,
                              Model model,
-                             RedirectAttributes redirectAttributes) {
+                             RedirectAttributes redirectAttributes,
+                             @CookieValue(value = "visitor_id", defaultValue = "unknown") String visitorId) {
 
         if (bindingResult.hasErrors()) {
             model.addAttribute("wordLimit", roleSummaryWordLimit);
@@ -59,6 +63,7 @@ public class RiskAssessorController {
 
         try {
             JobRiskAssessment assessment = riskAssessmentService.processAssessment(form);
+            analyticsService.record(visitorId, "summary_generated", form.getProfession(), assessment.getScore());
             addSuccessAttributes(redirectAttributes, form, assessment);
 
         } catch (ValidationException e) {

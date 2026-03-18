@@ -825,5 +825,28 @@
         }, false);
     });
 </script>
+
+<script>
+    /* ── Visitor UUID ── */
+    (function () {
+        const KEY = 'visitor_id';
+        let id = localStorage.getItem(KEY);
+        const isNew = !id;
+        if (!id) {
+            id = crypto.randomUUID();
+            localStorage.setItem(KEY, id);
+            const exp = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
+            document.cookie = KEY + '=' + id + '; path=/; expires=' + exp + '; SameSite=Lax';
+        }
+        window.visitorId = id;
+        if (isNew) {
+            fetch('/analytics/event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ visitorId: id, eventType: 'visit' })
+            }).catch(function () {});
+        }
+    }());
+</script>
 </body>
 </html>
