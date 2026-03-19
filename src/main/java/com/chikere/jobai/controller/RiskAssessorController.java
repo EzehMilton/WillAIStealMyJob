@@ -27,15 +27,18 @@ public class RiskAssessorController {
     private final RiskAssessmentService riskAssessmentService;
     private final AnalyticsService analyticsService;
 
-    @Value("${app.form.role-summary-word-limit:750}")
-    private int roleSummaryWordLimit;
+    @Value("${app.form.role-summary-word-limit.profession:800}")
+    private int professionWordLimit;
+
+    @Value("${app.form.role-summary-word-limit.course:450}")
+    private int courseWordLimit;
 
     @GetMapping("/")
     public String home(Model model) {
         RiskAssessmentForm form = new RiskAssessmentForm();
         form.setMode("profession");
         model.addAttribute("riskAssessmentForm", form);
-        model.addAttribute("wordLimit", roleSummaryWordLimit);
+        addWordLimits(model);
         return "index";
     }
 
@@ -47,16 +50,17 @@ public class RiskAssessorController {
                              @CookieValue(value = "visitor_id", defaultValue = "unknown") String visitorId) {
 
         if (bindingResult.hasErrors()) {
-            model.addAttribute("wordLimit", roleSummaryWordLimit);
+            addWordLimits(model);
             return "index";
         }
 
         if ("manual".equals(form.getInputMethod())) {
+            int limit = "course".equals(form.getMode()) ? courseWordLimit : professionWordLimit;
             int wordCount = countWords(form.getRoleSummary());
-            if (wordCount > roleSummaryWordLimit) {
+            if (wordCount > limit) {
                 bindingResult.rejectValue("roleSummary", "error.roleSummary",
-                        "Please keep your description under " + roleSummaryWordLimit + " words (" + wordCount + " used).");
-                model.addAttribute("wordLimit", roleSummaryWordLimit);
+                        "Please keep your description under " + limit + " words (" + wordCount + " used).");
+                addWordLimits(model);
                 return "index";
             }
         }
@@ -68,12 +72,12 @@ public class RiskAssessorController {
 
         } catch (ValidationException e) {
             bindingResult.rejectValue(e.getField(), "error." + e.getField(), e.getMessage());
-            model.addAttribute("wordLimit", roleSummaryWordLimit);
+            addWordLimits(model);
             return "index";
 
         } catch (DocumentParseException e) {
             bindingResult.rejectValue("cvFile", "error.cvFile", e.getMessage());
-            model.addAttribute("wordLimit", roleSummaryWordLimit);
+            addWordLimits(model);
             return "index";
 
         } catch (Exception e) {
@@ -84,6 +88,11 @@ public class RiskAssessorController {
         }
 
         return "redirect:/result";
+    }
+
+    private void addWordLimits(Model model) {
+        model.addAttribute("wordLimitProfession", professionWordLimit);
+        model.addAttribute("wordLimitCourse", courseWordLimit);
     }
 
     private int countWords(String text) {
