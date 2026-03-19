@@ -298,7 +298,7 @@
             <div class="col-lg-7 col-md-9">
                 <!-- Hero Section -->
                 <div class="hero-section text-center mb-5">
-                    <p class="hero-kicker">WillAIStealMyJob.com · Section 00 — Intake</p>
+                    <p class="hero-kicker">WillAIStealMyJob · Section 00 — Intake</p>
                     <h1 class="display-5 fw-bold mb-3">Is AI Coming for My Job?</h1>
                     <p class="lead text-muted">Most people underestimate how quickly their role is changing. Discover how AI will impact your role or course, what gets automated first, and how to stay ahead before it’s too late.</p>
                 </div>
@@ -401,7 +401,7 @@
                                           id="roleSummary"
                                           th:field="*{roleSummary}"
                                           th:classappend="${#fields.hasErrors('roleSummary')} ? 'is-invalid' : ''"
-                                          th:attr="data-word-limit=${wordLimit}"
+                                          th:attr="data-word-limit-profession=${wordLimitProfession},data-word-limit-course=${wordLimitCourse}"
                                           rows="6"
                                           placeholder="Tell us what you do in your role. Include key responsibilities, tools you use, and typical daily activities..."></textarea>
                                 <div th:if="${#fields.hasErrors('roleSummary')}"
@@ -414,40 +414,56 @@
                                         More detail = more accurate and personalised results.
                                     </div>
                                     <div class="word-counter" id="wordCounter">
-                                        <span id="wordCount">0</span>&hairsp;/&hairsp;<span th:text="${wordLimit}">750</span> words
+                                        <span id="wordCount">0</span>&hairsp;/&hairsp;<span id="wordLimitDisplay" th:text="${wordLimitProfession}">800</span> words
                                     </div>
                                 </div>
                                 <div class="report-preview-card mt-3">
                                     <div class="report-preview-header">
                                         <span class="report-preview-sparkle">✨</span>
-                                        <span class="report-preview-title">What You’ll Discover About Your Role Or Course:</span>
+                                        <span class="report-preview-title">What You’ll Discover (Free Preview):</span>
                                     </div>
                                     <ul class="report-preview-list">
                                         <li>
                                             <span class="report-preview-icon">🎯</span>
-                                            <span><strong>Your Personal AI Risk Score</strong> <span class="report-preview-range">(0–100)</span></span>
+                                            <span class="report-preview-range">Your Personal AI Risk Score (0–100)</span>
                                         </li>
                                         <li>
+                                            <span class="report-preview-icon">📊</span>
+                                            <span class="report-preview-range">A quick summary of your risk level</span>
+                                        </li>
+                                        <li>
+                                            <span class="report-preview-icon">👀</span>
+                                            <span class="report-preview-range">A snapshot of how your role may be affected</span>
+                                        </li>
+                                    </ul>
+                                    <p></p>
+                                    <div class="report-preview-header">
+                                        <span class="report-preview-sparkle">🔒</span>
+                                        <span class="report-preview-title">Unlock Your Full AI Career Survival Plan:</span>
+                                    </div>
+                                    <ul class="report-preview-list">
+                                        <li>
                                             <span class="report-preview-icon">🤖</span>
-                                            <span>Tasks most likely to be <strong>automated</strong></span>
+                                            <span><strong>A deeper breakdown of your role’s exposure to AI </strong></span>
                                         </li>
                                         <li>
                                             <span class="report-preview-icon">📅</span>
-                                            <span><strong>Timeline of disruption</strong> <span class="report-preview-range">(5–10 years)</span></span>
+                                            <span><strong>How your career is likely to eveolve</strong></span>
                                         </li>
                                         <li>
                                             <span class="report-preview-icon">🚀</span>
-                                            <span>Skills to <strong>stay competitive</strong></span>
+                                            <span><strong>What you need to stay competitive</strong></span>
                                         </li>
                                         <li>
                                             <span class="report-preview-icon">🛡️</span>
-                                            <span>A tailored <strong>plan to stay relevant and competitive</strong></span>
-                                        </li>
-                                        <li>
-                                            <span class="report-preview-icon">⏱️</span>
-                                            <span>No signup required <strong>Results in about a minute</strong></span>
+                                            <span><strong>A personalised strategy for your future</strong></span>
                                         </li>
                                     </ul>
+                                    <p></p>
+                                    <div class="report-preview-header">
+                                        <span class="report-preview-sparkle">⏱️</span>
+                                        <span class="report-preview-title">No signup required. Results in less than a minute</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -568,12 +584,17 @@
 <!-- Word Counter Script -->
 <script>
     (function () {
-        const textarea = document.getElementById('roleSummary');
-        const countEl  = document.getElementById('wordCount');
-        const counter  = document.getElementById('wordCounter');
+        const textarea     = document.getElementById('roleSummary');
+        const countEl      = document.getElementById('wordCount');
+        const limitDisplay = document.getElementById('wordLimitDisplay');
+        const counter      = document.getElementById('wordCounter');
         if (!textarea || !countEl || !counter) return;
 
-        const limit = parseInt(textarea.dataset.wordLimit, 10) || 750;
+        function getLimit() {
+            const mode = document.getElementById('modeProfession')?.checked ? 'profession' : 'course';
+            const key  = 'wordLimit' + mode.charAt(0).toUpperCase() + mode.slice(1);
+            return parseInt(textarea.dataset[key], 10) || 800;
+        }
 
         function countWords(text) {
             const trimmed = text.trim();
@@ -581,8 +602,10 @@
         }
 
         function update() {
+            const limit = getLimit();
             const count = countWords(textarea.value);
             countEl.textContent = count;
+            if (limitDisplay) limitDisplay.textContent = limit;
             counter.classList.remove('warn', 'over');
             if (count > limit) {
                 counter.classList.add('over');
@@ -591,8 +614,10 @@
             }
         }
 
+        // Expose so updateFormLabels() can trigger a re-check when mode changes
+        window.updateWordCounter = update;
+
         textarea.addEventListener('input', update);
-        // Initialise in case the field is pre-filled (e.g. validation error re-render)
         update();
     })();
 </script>
@@ -642,6 +667,8 @@
             document.getElementById('inputMethod').value = 'manual';
             roleSummaryInput.required = true;
         }
+
+        if (window.updateWordCounter) window.updateWordCounter();
     }
 
     function setInputMethod(method) {
