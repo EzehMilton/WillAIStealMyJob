@@ -798,6 +798,13 @@
             }
         }
 
+        // Track summary generation attempt
+        fetch('/analytics/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ visitorId: window.visitorId, eventType: 'summary_requested' })
+        }).catch(function () {});
+
         showLoadingOverlay();
         return true;
     }
@@ -875,6 +882,12 @@
                 body: JSON.stringify({ visitorId: id, eventType: 'visit' })
             }).catch(function () {});
         }
+        // Fire landing_page_view on every page load (not just first visit)
+        fetch('/analytics/event', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ visitorId: id, eventType: 'landing_page_view' })
+        }).catch(function () {});
     }());
 </script>
 </body>
