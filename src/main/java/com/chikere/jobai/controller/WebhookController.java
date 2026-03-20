@@ -46,14 +46,13 @@ public class WebhookController {
 
             if (stripeObject instanceof Session session) {
                 Map<String, String> meta = session.getMetadata();
-                String visitorId  = meta != null ? meta.get("visitorId")  : null;
-                String profession = meta != null ? meta.get("profession") : null;
-                Double score      = null;
-                if (meta != null && meta.get("score") != null) {
-                    try { score = Double.parseDouble(meta.get("score")); }
-                    catch (NumberFormatException ignored) {}
-                }
-                analyticsService.record(visitorId, "payment_completed", profession, score);
+                String visitorId = meta != null ? meta.get("visitorId") : null;
+                analyticsService.recordPaymentCompleted(
+                        visitorId,
+                        session.getId(),
+                        session.getAmountTotal(),
+                        session.getCurrency()
+                );
             }
         }
 

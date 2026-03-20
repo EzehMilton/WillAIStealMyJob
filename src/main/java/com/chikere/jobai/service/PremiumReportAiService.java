@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
@@ -32,13 +33,16 @@ public class PremiumReportAiService {
     private final ResourceLoader resourceLoader;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String promptTemplate;
+    private final String modelName;
 
-    public PremiumReportAiService(ChatClient gpt54MiniChatClient,  // reuse your existing bean
-                                  ResourceLoader resourceLoader) {
+    public PremiumReportAiService(ChatClient gpt54MiniChatClient,
+                                  ResourceLoader resourceLoader,
+                                  @Value("${app.ai.model.mini}") String modelName) {
         this.chatClient = gpt54MiniChatClient;
         this.resourceLoader = resourceLoader;
+        this.modelName = modelName;
         this.promptTemplate = loadResource("classpath:prompts/premium-report-prompt.txt");
-        log.info("PremiumReportAiService initialised");
+        log.info("PremiumReportAiService initialised with model={}", modelName);
     }
 
     /**
@@ -64,13 +68,13 @@ public class PremiumReportAiService {
                 .replace("{score}",         String.format("%.1f", request.getScore()))
                 .replace("{riskLevel}",     normalise(request.getRiskLevel(), "Moderate"));
 
-        log.info("Calling AI: model=gpt-5.4 reportId={} profession=\"{}\"", reportId, profession);
+        log.info("Calling AI: model={} reportId={} profession=\"{}\"", modelName, reportId, profession);
 
         long start = System.nanoTime();
         String raw = chatClient.prompt(prompt).call().content();
         long durationMs = (System.nanoTime() - start) / 1_000_000;
 
-        log.info("AI call completed: model=gpt-5.4 reportId={} profession=\"{}\" durationMs={}", reportId, profession, durationMs);
+        log.info("AI call completed: model={} reportId={} profession=\"{}\" durationMs={}", modelName, reportId, profession, durationMs);
         String json = extractJson(raw);
 
         try {

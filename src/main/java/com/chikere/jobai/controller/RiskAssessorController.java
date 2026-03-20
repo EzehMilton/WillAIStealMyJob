@@ -67,21 +67,25 @@ public class RiskAssessorController {
 
         try {
             JobRiskAssessment assessment = riskAssessmentService.processAssessment(form);
-            analyticsService.record(visitorId, "summary_generated", form.getProfession(), assessment.getScore());
+            int freeUsesRemaining = analyticsService.incrementAndGetRemaining(visitorId);
+            analyticsService.recordSummaryGenerated(visitorId, form.getProfession(), assessment.getScore(), freeUsesRemaining);
             addSuccessAttributes(redirectAttributes, form, assessment);
 
         } catch (ValidationException e) {
             bindingResult.rejectValue(e.getField(), "error." + e.getField(), e.getMessage());
+            analyticsService.recordError(visitorId, "validation_error", null, e.getMessage());
             addWordLimits(model);
             return "index";
 
         } catch (DocumentParseException e) {
             bindingResult.rejectValue("cvFile", "error.cvFile", e.getMessage());
+            analyticsService.recordError(visitorId, "document_parse_error", null, e.getMessage());
             addWordLimits(model);
             return "index";
 
         } catch (Exception e) {
             log.error("Error assessing job risk", e);
+            analyticsService.recordError(visitorId, "summary_error", null, e.getMessage());
             redirectAttributes.addFlashAttribute("error",
                     "An error occurred while assessing the risk. Please try again.");
             redirectAttributes.addFlashAttribute("success", false);

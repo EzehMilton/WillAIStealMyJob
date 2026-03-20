@@ -531,6 +531,47 @@
     </script>
 
     <script th:inline="javascript">
+        /* ── Funnel tracking for result page ── */
+        (function () {
+            const hasResult = /*[[${success != null && success}]]*/ false;
+            if (!hasResult) return;
+
+            const profession = /*[[${profession}]]*/ '';
+            const score      = /*[[${score}]]*/ 0;
+
+            // Fire result_viewed once per page load
+            fetch('/analytics/event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    visitorId: window.visitorId,
+                    eventType: 'result_viewed',
+                    profession: profession,
+                    riskScore: score
+                })
+            }).catch(function () {});
+
+            // Track exit without payment
+            let paid = false;
+            document.getElementById('payUnlockBtn').addEventListener('click', function () {
+                paid = true;
+            }, { once: true });
+
+            window.addEventListener('pagehide', function () {
+                if (!paid) {
+                    const payload = JSON.stringify({
+                        visitorId: window.visitorId,
+                        eventType: 'result_exited_without_payment',
+                        profession: profession,
+                        riskScore: score
+                    });
+                    navigator.sendBeacon('/analytics/event',
+                        new Blob([payload], { type: 'application/json' })
+                    );
+                }
+            });
+        }());
+
         document.getElementById('payUnlockBtn').addEventListener('click', async function () {
             const btn = this;
             btn.disabled = true;

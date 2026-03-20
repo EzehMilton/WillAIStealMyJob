@@ -31,9 +31,17 @@ public class ReportController {
             @RequestBody GenerateReportRequest request,
             @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
         log.info("Generating report for profession: {}", request.getProfession());
-        PremiumReport report = reportService.generateReport(request);
-        analyticsService.record(visitorId, "report_generated", request.getProfession(), request.getScore());
-        return ResponseEntity.ok(new GenerateReportResponse(report.getReportId()));
+        long start = System.nanoTime();
+        try {
+            PremiumReport report = reportService.generateReport(request);
+            long durationMs = (System.nanoTime() - start) / 1_000_000;
+            analyticsService.recordReportDelivered(visitorId, report.getReportId(), request.getProfession(), durationMs);
+            return ResponseEntity.ok(new GenerateReportResponse(report.getReportId()));
+        } catch (Exception e) {
+            log.error("Report generation failed for profession={}", request.getProfession(), e);
+            analyticsService.recordError(visitorId, "report_generation_error", null, e.getMessage());
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @GetMapping("/premium-report/{reportId}")
@@ -62,6 +70,7 @@ public class ReportController {
                                 .body(pdf);
                     } catch (Exception e) {
                         log.error("PDF generation failed for reportId={}", reportId, e);
+                        analyticsService.recordError("unknown", "pdf_generation_error", reportId, e.getMessage());
                         return ResponseEntity.internalServerError().<byte[]>build();
                     }
                 })

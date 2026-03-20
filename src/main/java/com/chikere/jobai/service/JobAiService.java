@@ -27,6 +27,8 @@ public class JobAiService {
     private final ResourceLoader resourceLoader;
     private final boolean useDummyMode;
     private final ObjectMapper objectMapper;
+    private final String premiumModelName;
+    private final String miniModelName;
 
     private final String jobAiPromptTemplate;
     private final String professionInstructions;
@@ -35,11 +37,15 @@ public class JobAiService {
     public JobAiService(@Qualifier("gpt54ChatClient") ChatClient gpt54ChatClient,
                         @Qualifier("gpt54MiniChatClient") ChatClient gpt54MiniChatClient,
                         ResourceLoader resourceLoader,
-                        @Value("${app.ai.use-dummy:false}") boolean useDummyMode) {
+                        @Value("${app.ai.use-dummy:false}") boolean useDummyMode,
+                        @Value("${app.ai.model.premium}") String premiumModelName,
+                        @Value("${app.ai.model.mini}") String miniModelName) {
         this.gpt54ChatClient = gpt54ChatClient;
         this.gpt54MiniChatClient = gpt54MiniChatClient;
         this.resourceLoader = resourceLoader;
         this.useDummyMode = useDummyMode;
+        this.premiumModelName = premiumModelName;
+        this.miniModelName = miniModelName;
         this.objectMapper = new ObjectMapper();
 
         this.jobAiPromptTemplate = loadResourceFile("classpath:prompts/jobai.txt");
@@ -58,7 +64,7 @@ public class JobAiService {
         String normalizedProfession = normalizeProfession(profession);
         String normalizedRoleSummary = normalizeRoleSummary(roleSummary);
 
-        log.info("Assessing job risk for mode: {}, profession: {}", normalizedMode, normalizedProfession);
+        log.info("Assessing job risk - Summary Report - for mode: {}, profession: {}", normalizedMode, normalizedProfession);
 
         if (useDummyMode) {
             return buildDummyAssessment(normalizedMode, normalizedProfession, normalizedRoleSummary);
@@ -77,14 +83,14 @@ public class JobAiService {
         log.debug("Generated prompt for assessment");
 
         ChatClient selectedChatClient = selectAssessmentModel(normalizedMode);
-        String modelName = MODE_COURSE.equals(normalizedMode) ? "gpt-5.4-mini" : "gpt-5.4";
+        String modelName = MODE_COURSE.equals(normalizedMode) ? miniModelName : premiumModelName;
         log.info("Calling AI: model={} profession=\"{}\"", modelName, normalizedProfession);
 
         long start = System.nanoTime();
         String response = selectedChatClient.prompt(prompt).call().content();
         long durationMs = (System.nanoTime() - start) / 1_000_000;
 
-        log.info("AI call completed: model={} profession=\"{}\" durationMs={}", modelName, normalizedProfession, durationMs);
+        log.info("AI call completed for Summary Report: model={} profession=\"{}\" durationMs={}", modelName, normalizedProfession, durationMs);
         String cleanedResponse = cleanJsonResponse(response);
 
         log.debug("Received assessment response: {}", cleanedResponse);

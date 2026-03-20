@@ -728,6 +728,26 @@
 </head>
 <body>
 
+<!-- BACK NAV -->
+<div style="position: fixed; top: 18px; left: 22px; z-index: 999;">
+    <a href="/" style="
+        display: inline-flex; align-items: center; gap: 7px;
+        background: rgba(19,22,30,0.85); backdrop-filter: blur(10px);
+        border: 1px solid rgba(79,142,255,0.25); border-radius: 999px;
+        padding: 8px 16px 8px 12px;
+        color: #a0b0d0; text-decoration: none;
+        font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+        transition: border-color 0.2s, color 0.2s;
+    "
+    onmouseover="this.style.borderColor='rgba(79,142,255,0.6)';this.style.color='#e8eaf0'"
+    onmouseout="this.style.borderColor='rgba(79,142,255,0.25)';this.style.color='#a0b0d0'">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8.5 3L4 7.5L8.5 12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back
+    </a>
+</div>
+
 <!-- COVER -->
 <div class="cover">
     <div class="container">
