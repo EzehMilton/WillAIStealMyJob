@@ -18,11 +18,11 @@ public class AnalyticsService {
 
     // ── Summary generated ─────────────────────────────────────────────────────
 
-    public void recordSummaryGenerated(String visitorId, String profession, Double riskScore, int freeUsesRemaining) {
-        ANALYTICS.info("event=summary_generated visitorId={} profession=\"{}\" riskScore={} freeUsesRemaining={} ts={}",
+    public void recordSummaryGenerated(String visitorId, String profession, Double riskScore) {
+        ANALYTICS.info("event=summary_generated visitorId={} profession=\"{}\" riskScore={} ts={} ts={}",
                 safe(visitorId), safe(profession, "-"),
                 riskScore != null ? riskScore : "-",
-                freeUsesRemaining, Instant.now());
+                Instant.now());
     }
 
     // ── Payment completed ─────────────────────────────────────────────────────
@@ -53,12 +53,12 @@ public class AnalyticsService {
     // ── Free usage tracking ───────────────────────────────────────────────────
 
     /** Increments this visitor's summary count and returns how many free uses are left. */
-    public int incrementAndGetRemaining(String visitorId) {
-        int used = summaryUsage
-                .computeIfAbsent(safe(visitorId), k -> new AtomicInteger(0))
-                .incrementAndGet();
-        return Math.max(0, FREE_SUMMARY_LIMIT - used);
-    }
+//    public int incrementAndGetRemaining(String visitorId) {
+//        int used = summaryUsage
+//                .computeIfAbsent(safe(visitorId), k -> new AtomicInteger(0))
+//                .incrementAndGet();
+//        return Math.max(0, FREE_SUMMARY_LIMIT - used);
+//    }
 
     // ── Generic recorder (kept for frontend-initiated events) ─────────────────
 

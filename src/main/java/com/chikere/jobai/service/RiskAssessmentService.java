@@ -7,6 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.Set;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -14,6 +16,7 @@ public class RiskAssessmentService {
 
     private static final long MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
     private static final int MIN_EXTRACTED_TEXT_LENGTH = 50;
+    private static final Set<String> SUPPORTED_CV_EXTENSIONS = Set.of(".pdf", ".doc", ".docx");
 
     private final JobAiService jobAiService;
     private final DocumentParserService documentParserService;
@@ -107,9 +110,13 @@ public class RiskAssessmentService {
         }
 
         String filename = cvFile.getOriginalFilename();
-        if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
-            throw new ValidationException("cvFile", "Please upload a PDF file only");
+        if (filename == null || !hasSupportedCvExtension(filename.toLowerCase())) {
+            throw new ValidationException("cvFile", "Please upload a PDF, DOC, or DOCX file");
         }
+    }
+
+    private boolean hasSupportedCvExtension(String lowerFilename) {
+        return SUPPORTED_CV_EXTENSIONS.stream().anyMatch(lowerFilename::endsWith);
     }
 
     /**

@@ -427,13 +427,13 @@
                                     </svg>
                                     <span class="upload-text">Drop your CV here</span>
                                     <span class="upload-subtext">or <span class="browse-link">browse</span> to upload</span>
-                                    <span class="upload-subtext upload-note mt-1">PDF only (Max 2MB)</span>
+                                    <span class="upload-subtext upload-note mt-1">PDF, DOC, or DOCX (Max 2MB)</span>
                                 </label>
                                 <input type="file"
                                        class="cv-file-input"
                                        id="cvFile"
                                        name="cvFile"
-                                       accept=".pdf,application/pdf"
+                                       accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                                        onchange="handleFileSelect(this)">
 
                                 <!-- File Preview -->
@@ -444,7 +444,7 @@
                                         </svg>
                                     </div>
                                     <div class="file-info">
-                                        <div class="file-name" id="fileName">document.pdf</div>
+                                        <div class="file-name" id="fileName">document.docx</div>
                                         <div class="file-size" id="fileSize">2.4 MB</div>
                                     </div>
                                     <button type="button" class="remove-file" onclick="removeFile()" aria-label="Remove file">
@@ -710,10 +710,13 @@
                 return;
             }
 
-            // Validate file type - PDF only
-            const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-            if (!isPdf) {
-                alert('Please upload a PDF file only');
+            // Validate file type - PDF, DOC, or DOCX
+            const lowerName = file.name.toLowerCase();
+            const allowedExtensions = ['.pdf', '.doc', '.docx'];
+            const hasSupportedExtension = allowedExtensions.some(extension => lowerName.endsWith(extension));
+
+            if (!hasSupportedExtension) {
+                alert('Please upload a PDF, DOC, or DOCX file');
                 input.value = '';
                 return;
             }
