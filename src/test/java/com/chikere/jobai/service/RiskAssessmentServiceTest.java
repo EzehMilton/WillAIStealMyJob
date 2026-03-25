@@ -2,10 +2,10 @@ package com.chikere.jobai.service;
 
 import com.chikere.jobai.model.JobRiskAssessment;
 import com.chikere.jobai.model.RiskAssessmentForm;
-import org.hibernate.validator.internal.IgnoreForbiddenApisErrors;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -150,7 +150,6 @@ class RiskAssessmentServiceTest {
     }
 
     @Test
-    @Disabled
     void processAssessment_cvMode_rejectsInvalidExtension() {
         RiskAssessmentForm form = new RiskAssessmentForm();
         form.setMode("profession");
@@ -167,6 +166,31 @@ class RiskAssessmentServiceTest {
         assertTrue(exception.getMessage().contains("Please upload a PDF, DOC, or DOCX file"));
         verifyNoInteractions(jobAiService);
         verifyNoInteractions(documentParserService);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "resume.doc,application/msword",
+            "resume.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    })
+    void processAssessment_cvMode_acceptsWordDocuments(String filename, String contentType) {
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("profession");
+        form.setProfession("Engineer");
+        form.setInputMethod("cv");
+        MockMultipartFile cvFile = new MockMultipartFile("cvFile", filename, contentType, "doc".getBytes());
+        form.setCvFile(cvFile);
+
+        String extracted = "x".repeat(60);
+        JobRiskAssessment expected = new JobRiskAssessment();
+
+        when(documentParserService.extractText(cvFile)).thenReturn(extracted);
+        when(jobAiService.assessJobRisk("profession", "Engineer", extracted)).thenReturn(expected);
+
+        JobRiskAssessment result = riskAssessmentService.processAssessment(form);
+
+        assertSame(expected, result);
+        verify(documentParserService).extractText(cvFile);
     }
 
     @Test
