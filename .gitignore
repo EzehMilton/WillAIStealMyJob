@@ -33,3 +33,6 @@ application-local.properties
 
 ### Claude / AI tooling (optional) ###
 .claude/
+
+# local secrets
+src/main/resources/application-dev.properties

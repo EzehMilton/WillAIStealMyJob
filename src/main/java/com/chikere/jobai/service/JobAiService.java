@@ -1,9 +1,11 @@
 package com.chikere.jobai.service;
 
+import com.chikere.jobai.model.GenerationMetrics;
 import com.chikere.jobai.model.JobRiskAssessment;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -25,6 +27,7 @@ public class JobAiService {
     private final ChatClient gpt54ChatClient;
     private final ChatClient gpt54MiniChatClient;
     private final ResourceLoader resourceLoader;
+    private final GenerationMetricsService generationMetricsService;
     private final boolean useDummyMode;
     private final ObjectMapper objectMapper;
     private final String premiumModelName;
@@ -37,12 +40,14 @@ public class JobAiService {
     public JobAiService(@Qualifier("gpt54ChatClient") ChatClient gpt54ChatClient,
                         @Qualifier("gpt54MiniChatClient") ChatClient gpt54MiniChatClient,
                         ResourceLoader resourceLoader,
+                        GenerationMetricsService generationMetricsService,
                         @Value("${app.ai.use-dummy:false}") boolean useDummyMode,
                         @Value("${app.ai.model.premium}") String premiumModelName,
                         @Value("${app.ai.model.mini}") String miniModelName) {
         this.gpt54ChatClient = gpt54ChatClient;
         this.gpt54MiniChatClient = gpt54MiniChatClient;
         this.resourceLoader = resourceLoader;
+        this.generationMetricsService = generationMetricsService;
         this.useDummyMode = useDummyMode;
         this.premiumModelName = premiumModelName;
         this.miniModelName = miniModelName;
@@ -60,6 +65,7 @@ public class JobAiService {
     }
 
     public JobRiskAssessment assessJobRisk(String mode, String profession, String roleSummary) {
+        long generationStart = System.nanoTime();
         String normalizedMode = normalizeMode(mode);
         String normalizedProfession = normalizeProfession(profession);
         String normalizedRoleSummary = normalizeRoleSummary(roleSummary);
@@ -67,7 +73,11 @@ public class JobAiService {
         log.info("Assessing job risk - Summary Report - for mode: {}, profession: {}", normalizedMode, normalizedProfession);
 
         if (useDummyMode) {
-            return buildDummyAssessment(normalizedMode, normalizedProfession, normalizedRoleSummary);
+            JobRiskAssessment assessment = buildDummyAssessment(normalizedMode, normalizedProfession, normalizedRoleSummary);
+            GenerationMetrics metrics = generationMetricsService.forLocalGeneration("Summary Report", elapsedMillis(generationStart));
+            assessment.setGenerationMetrics(metrics);
+            logGenerationSummary(normalizedProfession, metrics);
+            return assessment;
         }
 
         PromptContext promptContext = buildPromptContext(normalizedMode);
@@ -86,17 +96,23 @@ public class JobAiService {
         String modelName = MODE_COURSE.equals(normalizedMode) ? miniModelName : premiumModelName;
         log.info("Calling AI: model={} profession=\"{}\"", modelName, normalizedProfession);
 
-        long start = System.nanoTime();
-        String response = selectedChatClient.prompt(prompt).call().content();
-        long durationMs = (System.nanoTime() - start) / 1_000_000;
-
-        log.info("AI call completed for Summary Report: model={} profession=\"{}\" durationMs={}", modelName, normalizedProfession, durationMs);
+        ChatResponse chatResponse = selectedChatClient.prompt(prompt).call().chatResponse();
+        String response = extractContent(chatResponse);
         String cleanedResponse = cleanJsonResponse(response);
 
         log.debug("Received assessment response: {}", cleanedResponse);
 
         try {
-            return objectMapper.readValue(cleanedResponse, JobRiskAssessment.class);
+            JobRiskAssessment assessment = objectMapper.readValue(cleanedResponse, JobRiskAssessment.class);
+            GenerationMetrics metrics = generationMetricsService.fromChatResponse(
+                    "Summary Report",
+                    modelName,
+                    elapsedMillis(generationStart),
+                    chatResponse
+            );
+            assessment.setGenerationMetrics(metrics);
+            logGenerationSummary(normalizedProfession, metrics);
+            return assessment;
         } catch (Exception e) {
             log.error("Failed to parse AI response: {}", response, e);
             throw new RuntimeException("Failed to parse AI response", e);
@@ -159,6 +175,31 @@ public class JobAiService {
         assessment.setAssessment(buildDummyNarrative(mode, profession, roleSummary, score));
 
         return assessment;
+    }
+
+    private String extractContent(ChatResponse chatResponse) {
+        if (chatResponse == null || chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
+            return "";
+        }
+        return chatResponse.getResult().getOutput().getText();
+    }
+
+    private long elapsedMillis(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
+    }
+
+    private void logGenerationSummary(String profession, GenerationMetrics metrics) {
+        log.info(
+                "{} completed for profession=\"{}\": model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostUsd={}",
+                metrics.getReportType(),
+                profession,
+                metrics.getModel(),
+                metrics.getDurationMs(),
+                metrics.getPromptTokens(),
+                metrics.getCompletionTokens(),
+                metrics.getTotalTokens(),
+                metrics.getEstimatedCostUsdLabel()
+        );
     }
 
     private double scoreAdjustment(String content) {

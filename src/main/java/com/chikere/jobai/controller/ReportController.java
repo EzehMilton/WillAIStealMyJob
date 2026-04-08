@@ -36,6 +36,7 @@ public class ReportController {
             PremiumReport report = reportService.generateReport(request);
             long durationMs = (System.nanoTime() - start) / 1_000_000;
             analyticsService.recordReportDelivered(visitorId, report.getReportId(), request.getProfession(), durationMs);
+            analyticsService.recordGenerationCompleted(visitorId, report.getReportId(), request.getProfession(), report.getGenerationMetrics());
             return ResponseEntity.ok(new GenerateReportResponse(report.getReportId()));
         } catch (Exception e) {
             log.error("Report generation failed for profession={}", request.getProfession(), e);
