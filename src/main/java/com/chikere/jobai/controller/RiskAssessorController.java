@@ -68,6 +68,7 @@ public class RiskAssessorController {
         try {
             JobRiskAssessment assessment = riskAssessmentService.processAssessment(form);
             analyticsService.recordSummaryGenerated(visitorId, form.getProfession(), assessment.getScore());
+            analyticsService.recordGenerationCompleted(visitorId, null, form.getProfession(), assessment.getGenerationMetrics());
             addSuccessAttributes(redirectAttributes, form, assessment);
 
         } catch (ValidationException e) {

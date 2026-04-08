@@ -25,6 +25,7 @@ public class PremiumReport {
     private double score;
     private String riskLevel;
     private LocalDateTime generatedAt;
+    private GenerationMetrics generationMetrics;
 
     // ── Cover KPIs ─────────────────────────────────────────────────────────
     private String disruptionWindow;        // e.g. "5–8 yrs"

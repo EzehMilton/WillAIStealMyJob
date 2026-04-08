@@ -8,4 +8,5 @@ public class JobRiskAssessment {
     private String riskLevel;
     private String summary;
     private String assessment;
+    private GenerationMetrics generationMetrics;
 }

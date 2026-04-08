@@ -18,18 +18,29 @@ public class ReportService {
 
     private final Map<String, PremiumReport> store = new ConcurrentHashMap<>();
     private final PremiumReportAiService premiumReportAiService;
+    private final GenerationMetricsService generationMetricsService;
     private final boolean useDummyMode;
 
     public ReportService(PremiumReportAiService premiumReportAiService,
+                         GenerationMetricsService generationMetricsService,
                          @Value("${app.ai.use-dummy:false}") boolean useDummyMode) {
         this.premiumReportAiService = premiumReportAiService;
+        this.generationMetricsService = generationMetricsService;
         this.useDummyMode = useDummyMode;
     }
 
     public PremiumReport generateReport(GenerateReportRequest request) {
-        PremiumReport report = useDummyMode
-                ? buildMockReport(UUID.randomUUID().toString(), request)
-                : premiumReportAiService.generate(request);
+        long generationStart = System.nanoTime();
+        PremiumReport report;
+        if (useDummyMode) {
+            report = buildMockReport(UUID.randomUUID().toString(), request);
+            report.setGenerationMetrics(generationMetricsService.forLocalGeneration(
+                    "Full Report",
+                    (System.nanoTime() - generationStart) / 1_000_000
+            ));
+        } else {
+            report = premiumReportAiService.generate(request);
+        }
         store.put(report.getReportId(), report);
         return report;
     }

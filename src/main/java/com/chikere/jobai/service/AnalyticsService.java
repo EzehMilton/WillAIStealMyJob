@@ -1,5 +1,6 @@
 package com.chikere.jobai.service;
 
+import com.chikere.jobai.model.GenerationMetrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -40,6 +41,27 @@ public class AnalyticsService {
         ANALYTICS.info("event=report_delivered visitorId={} reportId={} profession=\"{}\" durationMs={} ts={}",
                 safe(visitorId), safe(reportId, "-"),
                 safe(profession, "-"), durationMs, Instant.now());
+    }
+
+    public void recordGenerationCompleted(String visitorId, String reportId, String profession, GenerationMetrics metrics) {
+        if (metrics == null) {
+            return;
+        }
+
+        ANALYTICS.info(
+                "event=generation_completed visitorId={} reportType=\"{}\" reportId={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostUsd={} ts={}",
+                safe(visitorId),
+                safe(metrics.getReportType(), "-"),
+                safe(reportId, "-"),
+                safe(profession, "-"),
+                safe(metrics.getModel(), "-"),
+                metrics.getDurationMs(),
+                metrics.getPromptTokens(),
+                metrics.getCompletionTokens(),
+                metrics.getTotalTokens(),
+                metrics.getEstimatedCostUsdLabel(),
+                Instant.now()
+        );
     }
 
     // ── Error ─────────────────────────────────────────────────────────────────

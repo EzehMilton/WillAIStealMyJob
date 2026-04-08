@@ -1,12 +1,14 @@
 package com.chikere.jobai.service;
 
 import com.chikere.jobai.model.GenerateReportRequest;
+import com.chikere.jobai.model.GenerationMetrics;
 import com.chikere.jobai.model.PremiumReport;
 import com.chikere.jobai.model.PremiumReport.*;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -31,14 +33,17 @@ public class PremiumReportAiService {
 
     private final ChatClient chatClient;
     private final ResourceLoader resourceLoader;
+    private final GenerationMetricsService generationMetricsService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String promptTemplate;
     private final String modelName;
 
     public PremiumReportAiService(ChatClient gpt54MiniChatClient,
+                                  GenerationMetricsService generationMetricsService,
                                   ResourceLoader resourceLoader,
                                   @Value("${app.ai.model.mini}") String modelName) {
         this.chatClient = gpt54MiniChatClient;
+        this.generationMetricsService = generationMetricsService;
         this.resourceLoader = resourceLoader;
         this.modelName = modelName;
         this.promptTemplate = loadResource("classpath:prompts/premium-report-prompt.txt");
@@ -49,6 +54,7 @@ public class PremiumReportAiService {
      * Generates a fully AI-populated PremiumReport for the given request.
      */
     public PremiumReport generate(GenerateReportRequest request) {
+        long generationStart = System.nanoTime();
         String reportId = UUID.randomUUID().toString();
         log.info("Generating premium report id={} for profession={}", reportId, request.getProfession());
 
@@ -70,16 +76,22 @@ public class PremiumReportAiService {
 
         log.info("Calling AI: model={} reportId={} profession=\"{}\"", modelName, reportId, profession);
 
-        long start = System.nanoTime();
-        String raw = chatClient.prompt(prompt).call().content();
-        long durationMs = (System.nanoTime() - start) / 1_000_000;
-
-        log.info("AI call completed: model={} reportId={} profession=\"{}\" durationMs={}", modelName, reportId, profession, durationMs);
+        ChatResponse chatResponse = chatClient.prompt(prompt).call().chatResponse();
+        String raw = extractContent(chatResponse);
         String json = extractJson(raw);
 
         try {
             JsonNode root = objectMapper.readTree(json);
-            return mapToReport(reportId, request, root);
+            PremiumReport report = mapToReport(reportId, request, root);
+            GenerationMetrics metrics = generationMetricsService.fromChatResponse(
+                    "Full Report",
+                    modelName,
+                    elapsedMillis(generationStart),
+                    chatResponse
+            );
+            report.setGenerationMetrics(metrics);
+            logGenerationSummary(reportId, profession, metrics);
+            return report;
         } catch (Exception e) {
             log.error("Failed to parse AI response for reportId={}: {}", reportId, raw, e);
             throw new RuntimeException("Failed to parse premium report AI response", e);
@@ -298,6 +310,32 @@ public class PremiumReportAiService {
             limited.append(words[i]);
         }
         return limited.toString();
+    }
+
+    private String extractContent(ChatResponse chatResponse) {
+        if (chatResponse == null || chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
+            return "";
+        }
+        return chatResponse.getResult().getOutput().getText();
+    }
+
+    private long elapsedMillis(long startNanos) {
+        return (System.nanoTime() - startNanos) / 1_000_000;
+    }
+
+    private void logGenerationSummary(String reportId, String profession, GenerationMetrics metrics) {
+        log.info(
+                "{} completed for reportId={} profession=\"{}\": model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostUsd={}",
+                metrics.getReportType(),
+                reportId,
+                profession,
+                metrics.getModel(),
+                metrics.getDurationMs(),
+                metrics.getPromptTokens(),
+                metrics.getCompletionTokens(),
+                metrics.getTotalTokens(),
+                metrics.getEstimatedCostUsdLabel()
+        );
     }
 
     private int intValue(JsonNode node, String field) {
