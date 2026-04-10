@@ -191,7 +191,7 @@
                             <div class="rounded-4 p-4 mb-4 premium-preview">
                                 <div class="d-flex align-items-center mb-2">
                                     <span class="fs-5 me-2">&#128274;</span>
-                                    <h5 class="fw-bold mb-0 text-white">Premium: Unlock your AI Career Survival Plan <span class="badge bg-secondary ms-1 premium-price-badge" th:text="${mode == 'course'} ? '£3 per report' : '£10 per report'">£10 per report</span></h5>
+                                    <h5 class="fw-bold mb-0 text-white">Premium: Unlock your AI Career Survival Plan <span class="badge bg-secondary ms-1 premium-price-badge" th:text="${mode == 'course'} ? '£2.99 per report' : '£4.99 per report'">£4.99 per report</span></h5>
                                 </div>
                                 <p class="text-white-50 small mb-3">Your personalised report will include:</p>
                                 <!-- Profession list -->
@@ -310,7 +310,7 @@
                                 </a>
                                 <button type="button" class="btn btn-primary result-action-btn"
                                         data-bs-toggle="modal" data-bs-target="#premiumModal">
-                                    Unlock My Full AI Risk Report
+                                    Generate My Premium Report
                                 </button>
                             </div>
                         </div>
@@ -395,16 +395,16 @@
                     <div class="w-100">
                         <div class="d-flex align-items-center justify-content-between mb-1">
                             <span class="badge rounded-pill px-3 py-2 premium-pill">
-                                &#128274; Premium Report
+                            &#128274; Premium Report Preview
                             </span>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <h5 class="modal-title fw-bold mt-3 premium-modal-title" id="premiumModalLabel">
-                            Unlock Your AI Career Survival Plan
+                            Generate Your AI Career Survival Plan
                         </h5>
                         <div class="d-flex align-items-baseline gap-2 mt-1">
                             <span class="fw-bold premium-modal-price"
-                                  th:text="${mode == 'course'} ? '£3' : '£10'">£10</span>
+                                  th:text="${mode == 'course'} ? '£2.99' : '£4.99'">£4.99</span>
                             <span class="text-muted premium-modal-price-label">per personalised report</span>
                         </div>
                     </div>
@@ -499,10 +499,10 @@
                 <!-- Modal Footer -->
                 <div class="modal-footer flex-column border-0 px-4 pt-2 pb-4 gap-2">
                     <button type="button" id="payUnlockBtn" class="btn btn-primary w-100 py-3 fw-bold premium-pay-btn">
-                        Pay &amp; Unlock Report
+                        Generate Report Preview
                     </button>
                     <p class="text-muted text-center mb-0 premium-note">
-                        &#9679; Instant access &nbsp;&bull;&nbsp; One-time payment &nbsp;&bull;&nbsp; No subscription
+                        &#9679; Generates your report now &nbsp;&bull;&nbsp; Preview before paying
                     </p>
                 </div>
 
@@ -572,10 +572,10 @@
             });
         }());
 
-        document.getElementById('payUnlockBtn').addEventListener('click', async function () {
+        document.getElementById('payUnlockBtn').addEventListener('click', function () {
             const btn = this;
             btn.disabled = true;
-            btn.textContent = 'Redirecting to checkout\u2026';
+            btn.textContent = 'Generating report, please wait\u2026';
 
             const payload = {
                 mode:       /*[[${mode}]]*/ 'profession',
@@ -586,49 +586,20 @@
                 assessment: /*[[${assessment}]]*/ ''
             };
 
-            try {
-                // Persist so generating-report page can retrieve it after Stripe redirect
-                sessionStorage.setItem('checkoutPayload', JSON.stringify(payload));
+            sessionStorage.setItem('checkoutPayload', JSON.stringify(payload));
 
-                // Log payment_clicked (fire-and-forget)
-                fetch('/analytics/event', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        visitorId: window.visitorId,
-                        eventType: 'payment_clicked',
-                        profession: payload.profession,
-                        riskScore: payload.score
-                    })
-                }).catch(function () {});
+            fetch('/analytics/event', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    visitorId: window.visitorId,
+                    eventType: 'premium_report_generation_started',
+                    profession: payload.profession,
+                    riskScore: payload.score
+                })
+            }).catch(function () {});
 
-                const response = await fetch('/payment/create-checkout-session', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-Visitor-Id': window.visitorId || 'unknown'
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) throw new Error('Session creation failed: ' + response.status);
-
-                const data = await response.json();
-                window.location.href = data.url;
-
-            } catch (err) {
-                console.error('Checkout error:', err);
-                btn.disabled = false;
-                btn.textContent = 'Pay \u0026 Unlock Report';
-                const modal = document.getElementById('premiumModal');
-                const existing = modal.querySelector('.checkout-error');
-                if (!existing) {
-                    const alert = document.createElement('p');
-                    alert.className = 'text-danger text-center small mt-2 checkout-error';
-                    alert.textContent = 'Something went wrong. Please try again.';
-                    btn.insertAdjacentElement('afterend', alert);
-                }
-            }
+            window.location.href = '/generating-report';
         });
     </script>
 </body>

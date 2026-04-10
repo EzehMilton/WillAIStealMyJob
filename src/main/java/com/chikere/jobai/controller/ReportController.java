@@ -2,19 +2,18 @@ package com.chikere.jobai.controller;
 
 import com.chikere.jobai.model.GenerateReportRequest;
 import com.chikere.jobai.model.GenerateReportResponse;
-import com.chikere.jobai.model.PremiumReport;
 import com.chikere.jobai.service.AnalyticsService;
 import com.chikere.jobai.service.PdfService;
 import com.chikere.jobai.service.ReportService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.bind.annotation.RequestHeader;
 
 @Controller
 @RequiredArgsConstructor
@@ -30,14 +29,15 @@ public class ReportController {
     public ResponseEntity<GenerateReportResponse> generateReport(
             @RequestBody GenerateReportRequest request,
             @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
-        log.info("Generating report for profession: {}", request.getProfession());
+        log.info("Generating persisted premium report for profession={}", request.getProfession());
         long start = System.nanoTime();
         try {
-            PremiumReport report = reportService.generateReport(request);
+            reportService.purgeExpiredUnpaidReports();
+            ReportService.StoredReport storedReport = reportService.generateAndStoreReport(request);
             long durationMs = (System.nanoTime() - start) / 1_000_000;
-            analyticsService.recordReportDelivered(visitorId, report.getReportId(), request.getProfession(), durationMs);
-            analyticsService.recordGenerationCompleted(visitorId, report.getReportId(), request.getProfession(), report.getGenerationMetrics());
-            return ResponseEntity.ok(new GenerateReportResponse(report.getReportId()));
+            analyticsService.recordReportDelivered(visitorId, storedReport.reportId(), request.getProfession(), durationMs);
+            analyticsService.recordGenerationCompleted(visitorId, storedReport.reportId(), request.getProfession(), storedReport.report().getGenerationMetrics());
+            return ResponseEntity.ok(new GenerateReportResponse(storedReport.reportId()));
         } catch (Exception e) {
             log.error("Report generation failed for profession={}", request.getProfession(), e);
             analyticsService.recordError(visitorId, "report_generation_error", null, e.getMessage());
@@ -45,20 +45,39 @@ public class ReportController {
         }
     }
 
-    @GetMapping("/premium-report/{reportId}")
-    public String viewReport(@PathVariable String reportId, Model model) {
-        return reportService.getReport(reportId)
-                .map(report -> {
-                    model.addAttribute("report", report);
-                    return "premium-report";
-                })
-                .orElse("redirect:/");
+    @GetMapping({"/report/{reportId}", "/premium-report/{reportId}"})
+    public String viewReport(@PathVariable String reportId,
+                             @RequestParam(value = "checkout", required = false) String checkoutState,
+                             Model model) {
+        try {
+            reportService.purgeExpiredUnpaidReports();
+            if ("success".equals(checkoutState)) {
+                reportService.syncPaymentStatusIfNeeded(reportId);
+            }
+            return reportService.getReportView(reportId)
+                    .map(reportView -> {
+                        model.addAttribute("report", reportView.report());
+                        model.addAttribute("reportId", reportView.reportId());
+                        model.addAttribute("reportLocked", reportView.reportLocked());
+                        model.addAttribute("paymentStatus", reportView.paymentStatus());
+                        model.addAttribute("expiresAt", reportView.expiresAt());
+                        model.addAttribute("checkoutState", checkoutState);
+                        log.info("{} report page rendered reportId={} profession={}",
+                                reportView.reportLocked() ? "Locked" : "Unlocked",
+                                reportView.reportId(),
+                                reportView.profession());
+                        return "premium-report";
+                    })
+                    .orElse("redirect:/");
+        } catch (ReportService.ReportNotFoundException ex) {
+            return "redirect:/";
+        }
     }
 
-    @GetMapping("/premium-report/{reportId}/download")
+    @GetMapping({"/report/{reportId}/download", "/premium-report/{reportId}/download"})
     @ResponseBody
     public ResponseEntity<byte[]> downloadReport(@PathVariable String reportId) {
-        return reportService.getReport(reportId)
+        return reportService.getUnlockedReport(reportId)
                 .map(report -> {
                     try {
                         byte[] pdf = pdfService.generateReportPdf(report);
@@ -75,6 +94,6 @@ public class ReportController {
                         return ResponseEntity.internalServerError().<byte[]>build();
                     }
                 })
-                .orElse(ResponseEntity.notFound().build());
+                .orElse(ResponseEntity.status(HttpStatus.FORBIDDEN).build());
     }
 }

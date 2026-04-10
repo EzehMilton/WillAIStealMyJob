@@ -50,7 +50,7 @@ New `@RestController` with a single `POST /payment/create-checkout-session` endp
 
 **Why:**
 - Stripe Checkout requires a server-side API call to create a session — the secret key must never be exposed to the browser.
-- The endpoint receives the assessment payload (profession, score, risk level, mode), picks the correct Stripe Price ID based on mode (`profession` = £10, `course` = £3), attaches metadata to the session, and returns the hosted Checkout URL to the client.
+- The endpoint receives the assessment payload (profession, score, risk level, mode), picks the correct Stripe Price ID based on mode (`profession` = £4.99, `course` = £2.99), attaches metadata to the session, and returns the hosted Checkout URL to the client.
 - Metadata is stored on the session so the backend can recover profession and risk data after the payment redirect, without needing server-side session state.
 - `@PostConstruct` is used to initialise `Stripe.apiKey` once at startup rather than setting it on every request.
 

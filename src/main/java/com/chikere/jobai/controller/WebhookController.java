@@ -1,6 +1,7 @@
 package com.chikere.jobai.controller;
 
 import com.chikere.jobai.service.AnalyticsService;
+import com.chikere.jobai.service.ReportService;
 import com.stripe.exception.SignatureVerificationException;
 import com.stripe.model.Event;
 import com.stripe.model.StripeObject;
@@ -26,6 +27,7 @@ public class WebhookController {
     private String webhookSecret;
 
     private final AnalyticsService analyticsService;
+    private final ReportService reportService;
 
     @PostMapping("/stripe/webhook")
     public ResponseEntity<String> handleWebhook(
@@ -41,18 +43,27 @@ public class WebhookController {
         }
 
         if ("checkout.session.completed".equals(event.getType())) {
-            StripeObject stripeObject = event.getDataObjectDeserializer()
-                    .getObject().orElse(null);
+            StripeObject stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
 
             if (stripeObject instanceof Session session) {
                 Map<String, String> meta = session.getMetadata();
+                String reportId = meta != null ? meta.get("reportId") : null;
                 String visitorId = meta != null ? meta.get("visitorId") : null;
-                analyticsService.recordPaymentCompleted(
-                        visitorId,
-                        session.getId(),
-                        session.getAmountTotal(),
-                        session.getCurrency()
-                );
+
+                if (reportId != null && !reportId.isBlank()) {
+                    reportService.markPaidFromWebhook(reportId, session.getId());
+                    analyticsService.recordPaymentCompleted(
+                            visitorId,
+                            session.getId(),
+                            session.getAmountTotal(),
+                            session.getCurrency()
+                    );
+                }
+            }
+        } else if ("checkout.session.expired".equals(event.getType())) {
+            StripeObject stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
+            if (stripeObject instanceof Session session) {
+                reportService.markFailedBySessionId(session.getId());
             }
         }
 
