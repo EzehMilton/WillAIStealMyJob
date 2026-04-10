@@ -1,8 +1,7 @@
 package com.chikere.jobai.controller;
 
-import com.chikere.jobai.model.CheckoutRequest;
 import com.chikere.jobai.model.CheckoutResponse;
-import com.chikere.jobai.service.AnalyticsService;
+import com.chikere.jobai.service.ReportService;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
@@ -12,19 +11,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/payment")
 @RequiredArgsConstructor
 @Slf4j
 public class CheckoutController {
 
-    private final AnalyticsService analyticsService;
+    private final ReportService reportService;
 
     @Value("${stripe.secret-key}")
     private String stripeSecretKey;
@@ -43,42 +37,53 @@ public class CheckoutController {
         Stripe.apiKey = stripeSecretKey;
     }
 
-    @PostMapping("/create-checkout-session")
+    @PostMapping("/api/report/{reportId}/checkout-session")
     public ResponseEntity<CheckoutResponse> createCheckoutSession(
-            @RequestBody CheckoutRequest request,
+            @PathVariable String reportId,
             @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
         try {
-            String priceId = "course".equals(request.getMode()) ? coursePriceId : professionPriceId;
+            ReportService.StoredReportView reportView = reportService.getReportView(reportId)
+                    .orElseThrow(() -> new ReportService.ReportNotFoundException(reportId));
+
+            if (!reportView.reportLocked()) {
+                return ResponseEntity.ok(new CheckoutResponse(baseUrl + "/report/" + reportId));
+            }
 
             SessionCreateParams params = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.PAYMENT)
-                    .setSuccessUrl(baseUrl + "/generating-report?session_id={CHECKOUT_SESSION_ID}")
-                    .setCancelUrl(baseUrl + "/result")
+                    .setSuccessUrl(baseUrl + "/report/" + reportId + "?checkout=success")
+                    .setCancelUrl(baseUrl + "/report/" + reportId + "?checkout=cancelled")
                     .addLineItem(
                             SessionCreateParams.LineItem.builder()
-                                    .setPrice(priceId)
+                                    .setPrice(resolvePriceId(reportView.report().getMode()))
                                     .setQuantity(1L)
                                     .build()
                     )
                     .putMetadata("visitorId", safe(visitorId))
-                    .putMetadata("mode", safe(request.getMode()))
-                    .putMetadata("profession", truncate(request.getProfession(), 490))
-                    .putMetadata("score", String.valueOf(request.getScore()))
-                    .putMetadata("risk_level", safe(request.getRiskLevel()))
-                    .putMetadata("summary", truncate(request.getSummary(), 490))
+                    .putMetadata("reportId", reportId)
+                    .putMetadata("profession", truncate(reportView.profession(), 490))
                     .build();
 
             Session session = Session.create(params);
+            reportService.attachStripeSession(reportId, session.getId());
+            log.info("Checkout session created reportId={} sessionId={}", reportId, session.getId());
             return ResponseEntity.ok(new CheckoutResponse(session.getUrl()));
-
+        } catch (ReportService.ReportNotFoundException e) {
+            return ResponseEntity.notFound().build();
         } catch (StripeException e) {
-            log.error("Stripe checkout session creation failed", e);
+            log.error("Stripe checkout session creation failed reportId={}", reportId, e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
+    private String resolvePriceId(String mode) {
+        return "course".equals(mode) ? coursePriceId : professionPriceId;
+    }
+
     private String truncate(String value, int maxLength) {
-        if (value == null) return "";
+        if (value == null) {
+            return "";
+        }
         return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 
