@@ -15,6 +15,9 @@ public class ReportPreviewService {
         preview.setMode(report.getMode());
         preview.setScore(report.getScore());
         preview.setRiskLevel(report.getRiskLevel());
+        preview.setPremiumScore(report.getPremiumScore());
+        preview.setPremiumRiskLevel(report.getPremiumRiskLevel());
+        preview.setScoreRationale(report.getScoreRationale());
         preview.setGeneratedAt(report.getGeneratedAt());
         preview.setDisruptionWindow(report.getDisruptionWindow());
         preview.setAdaptabilityPotential(report.getAdaptabilityPotential());

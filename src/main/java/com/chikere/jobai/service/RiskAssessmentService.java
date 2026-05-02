@@ -1,5 +1,7 @@
 package com.chikere.jobai.service;
 
+import com.chikere.jobai.model.AssessmentProcessingResult;
+import com.chikere.jobai.model.JourneyType;
 import com.chikere.jobai.model.JobRiskAssessment;
 import com.chikere.jobai.model.RiskAssessmentForm;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ public class RiskAssessmentService {
 
     private final JobAiService jobAiService;
     private final DocumentParserService documentParserService;
+    private final JourneyConfigRegistry journeyConfigRegistry;
 
     /**
      * Process the risk assessment form and return the assessment result.
@@ -30,6 +33,12 @@ public class RiskAssessmentService {
      * @throws DocumentParseException if CV parsing fails
      */
     public JobRiskAssessment processAssessment(RiskAssessmentForm form) {
+        return processAssessmentWithDetails(form).assessment();
+    }
+
+    public AssessmentProcessingResult processAssessmentWithDetails(RiskAssessmentForm form) {
+        validateSubject(form);
+
         String roleSummary;
         try {
             roleSummary = extractRoleSummary(form);
@@ -48,11 +57,20 @@ public class RiskAssessmentService {
         
         log.info("Processing risk assessment for mode: {}, profession: {}", 
                 form.getMode(), form.getProfession());
-        
-        return jobAiService.assessJobRisk(
+
+        JobRiskAssessment assessment = jobAiService.assessJobRisk(
                 form.getMode(),
                 form.getProfession(),
                 roleSummary
+        );
+
+        JourneyType journeyType = journeyConfigRegistry.get(form.getMode()).journeyType();
+        return new AssessmentProcessingResult(
+                assessment,
+                roleSummary,
+                form.getProfession(),
+                journeyType,
+                form.getMode()
         );
     }
 
@@ -60,12 +78,19 @@ public class RiskAssessmentService {
         if (isCvUploadMode(form)) {
             return extractFromCv(form.getCvFile());
         } else {
-            return extractFromManualInput(form.getRoleSummary());
+            return extractFromManualInput(form);
         }
     }
 
     private boolean isCvUploadMode(RiskAssessmentForm form) {
-        return "cv".equals(form.getInputMethod()) && "profession".equals(form.getMode());
+        return "cv".equals(form.getInputMethod()) && journeyConfigRegistry.get(form.getMode()).cvUploadAllowed();
+    }
+
+    private void validateSubject(RiskAssessmentForm form) {
+        if (form.getProfession() == null || form.getProfession().isBlank()) {
+            JourneyType journeyType = journeyConfigRegistry.get(form.getMode()).journeyType();
+            throw new ValidationException("profession", subjectRequiredMessage(journeyType));
+        }
     }
 
     private String extractFromCv(MultipartFile cvFile) {
@@ -93,11 +118,33 @@ public class RiskAssessmentService {
         }
     }
 
-    private String extractFromManualInput(String roleSummary) {
+    private String extractFromManualInput(RiskAssessmentForm form) {
+        String roleSummary = form.getRoleSummary();
         if (roleSummary == null || roleSummary.isBlank()) {
-            throw new ValidationException("roleSummary", "Please describe your role or upload a CV");
+            JourneyType journeyType = journeyConfigRegistry.get(form.getMode()).journeyType();
+            throw new ValidationException("roleSummary", detailsRequiredMessage(journeyType));
         }
         return roleSummary;
+    }
+
+    private String subjectRequiredMessage(JourneyType journeyType) {
+        if (journeyType == JourneyType.UNIVERSITY_STUDENT) {
+            return "Please enter the course or degree you are studying or considering";
+        }
+        if (journeyType == JourneyType.A_LEVEL_UNDECIDED) {
+            return "Please enter the subjects you are considering or interested in";
+        }
+        return "Please enter your profession";
+    }
+
+    private String detailsRequiredMessage(JourneyType journeyType) {
+        if (journeyType == JourneyType.UNIVERSITY_STUDENT) {
+            return "Please describe your course goals or expected career path";
+        }
+        if (journeyType == JourneyType.A_LEVEL_UNDECIDED) {
+            return "Please describe your interests, strengths, subject ideas, or future preferences";
+        }
+        return "Please describe your role or upload a CV";
     }
 
     private void validateCvFile(MultipartFile cvFile) {

@@ -1,12 +1,14 @@
 package com.chikere.jobai.service;
 
+import com.chikere.jobai.model.AssessmentProcessingResult;
 import com.chikere.jobai.model.JobRiskAssessment;
+import com.chikere.jobai.model.JourneyType;
 import com.chikere.jobai.model.RiskAssessmentForm;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
@@ -29,8 +31,16 @@ class RiskAssessmentServiceTest {
     @Mock
     private DocumentParserService documentParserService;
 
-    @InjectMocks
     private RiskAssessmentService riskAssessmentService;
+
+    @BeforeEach
+    void setUp() {
+        riskAssessmentService = new RiskAssessmentService(
+                jobAiService,
+                documentParserService,
+                new JourneyConfigRegistry(800, 450, 350)
+        );
+    }
 
     @Test
     void processAssessment_manualInput_callsJobAiService() {
@@ -47,6 +57,65 @@ class RiskAssessmentServiceTest {
 
         assertSame(expected, result);
         verifyNoInteractions(documentParserService);
+    }
+
+    @Test
+    void processAssessmentWithDetails_preservesManualProfessionalDetails() {
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("profession");
+        form.setProfession("Engineer");
+        form.setRoleSummary("Builds safety-critical systems");
+        form.setInputMethod("manual");
+
+        JobRiskAssessment expected = new JobRiskAssessment();
+        when(jobAiService.assessJobRisk("profession", "Engineer", "Builds safety-critical systems"))
+                .thenReturn(expected);
+
+        AssessmentProcessingResult result = riskAssessmentService.processAssessmentWithDetails(form);
+
+        assertSame(expected, result.assessment());
+        assertEquals("Builds safety-critical systems", result.resolvedDetails());
+        assertEquals("Engineer", result.subject());
+        assertEquals(JourneyType.PROFESSIONAL, result.journeyType());
+        assertEquals("profession", result.mode());
+    }
+
+    @Test
+    void processAssessmentWithDetails_preservesCourseDetails() {
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("course");
+        form.setProfession("Computer Science");
+        form.setRoleSummary("I want to work in software or product engineering");
+        form.setInputMethod("manual");
+
+        JobRiskAssessment expected = new JobRiskAssessment();
+        when(jobAiService.assessJobRisk("course", "Computer Science", "I want to work in software or product engineering"))
+                .thenReturn(expected);
+
+        AssessmentProcessingResult result = riskAssessmentService.processAssessmentWithDetails(form);
+
+        assertSame(expected, result.assessment());
+        assertEquals("I want to work in software or product engineering", result.resolvedDetails());
+        assertEquals(JourneyType.UNIVERSITY_STUDENT, result.journeyType());
+    }
+
+    @Test
+    void processAssessmentWithDetails_preservesALevelDetails() {
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("a_level");
+        form.setProfession("Maths, Psychology, Business");
+        form.setRoleSummary("I enjoy problem solving, people, and business ideas");
+        form.setInputMethod("manual");
+
+        JobRiskAssessment expected = new JobRiskAssessment();
+        when(jobAiService.assessJobRisk("a_level", "Maths, Psychology, Business", "I enjoy problem solving, people, and business ideas"))
+                .thenReturn(expected);
+
+        AssessmentProcessingResult result = riskAssessmentService.processAssessmentWithDetails(form);
+
+        assertSame(expected, result.assessment());
+        assertEquals("I enjoy problem solving, people, and business ideas", result.resolvedDetails());
+        assertEquals(JourneyType.A_LEVEL_UNDECIDED, result.journeyType());
     }
 
     @Test
@@ -76,6 +145,33 @@ class RiskAssessmentServiceTest {
     }
 
     @Test
+    void processAssessmentWithDetails_usesExtractedCvTextAsResolvedDetails() {
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("profession");
+        form.setProfession("Designer");
+        form.setInputMethod("cv");
+        MockMultipartFile cvFile = new MockMultipartFile(
+                "cvFile",
+                "resume.pdf",
+                "application/pdf",
+                "pdf".getBytes()
+        );
+        form.setCvFile(cvFile);
+
+        String extracted = "Extracted CV text ".repeat(5);
+        JobRiskAssessment expected = new JobRiskAssessment();
+
+        when(documentParserService.extractText(cvFile)).thenReturn(extracted);
+        when(jobAiService.assessJobRisk("profession", "Designer", extracted)).thenReturn(expected);
+
+        AssessmentProcessingResult result = riskAssessmentService.processAssessmentWithDetails(form);
+
+        assertSame(expected, result.assessment());
+        assertEquals(extracted, result.resolvedDetails());
+        verify(documentParserService).extractText(cvFile);
+    }
+
+    @Test
     void processAssessment_courseModeIgnoresCvInput() {
         RiskAssessmentForm form = new RiskAssessmentForm();
         form.setMode("course");
@@ -91,6 +187,81 @@ class RiskAssessmentServiceTest {
         JobRiskAssessment result = riskAssessmentService.processAssessment(form);
 
         assertSame(expected, result);
+        verifyNoInteractions(documentParserService);
+    }
+
+    @Test
+    void processAssessment_aLevelMode_acceptsManualInput() {
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("a_level");
+        form.setProfession("Maths, Psychology, Business");
+        form.setRoleSummary("I like problem solving and helping people");
+        form.setInputMethod("manual");
+
+        JobRiskAssessment expected = new JobRiskAssessment();
+        when(jobAiService.assessJobRisk("a_level", "Maths, Psychology, Business", "I like problem solving and helping people"))
+                .thenReturn(expected);
+
+        JobRiskAssessment result = riskAssessmentService.processAssessment(form);
+
+        assertSame(expected, result);
+        verifyNoInteractions(documentParserService);
+    }
+
+    @Test
+    void processAssessment_aLevelModeRequiresManualDetails() {
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("a_level");
+        form.setProfession("Maths and Biology");
+        form.setInputMethod("manual");
+        form.setRoleSummary(" ");
+
+        RiskAssessmentService.ValidationException exception = assertThrows(
+                RiskAssessmentService.ValidationException.class,
+                () -> riskAssessmentService.processAssessment(form)
+        );
+
+        assertEquals("roleSummary", exception.getField());
+        assertTrue(exception.getMessage().contains("interests, strengths, subject ideas, or future preferences"));
+        verifyNoInteractions(jobAiService);
+        verifyNoInteractions(documentParserService);
+    }
+
+    @Test
+    void processAssessment_aLevelModeIgnoresCvInput() {
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("a_level");
+        form.setProfession("Maths and Computer Science");
+        form.setRoleSummary("I enjoy logic and creative projects");
+        form.setInputMethod("cv");
+        form.setCvFile(new MockMultipartFile("cvFile", "resume.pdf", "application/pdf", "pdf".getBytes()));
+
+        JobRiskAssessment expected = new JobRiskAssessment();
+        when(jobAiService.assessJobRisk("a_level", "Maths and Computer Science", "I enjoy logic and creative projects"))
+                .thenReturn(expected);
+
+        JobRiskAssessment result = riskAssessmentService.processAssessment(form);
+
+        assertSame(expected, result);
+        verifyNoInteractions(documentParserService);
+    }
+
+    @Test
+    void processAssessment_requiresSubjectField() {
+        RiskAssessmentForm form = new RiskAssessmentForm();
+        form.setMode("a_level");
+        form.setProfession(" ");
+        form.setRoleSummary("I enjoy science");
+        form.setInputMethod("manual");
+
+        RiskAssessmentService.ValidationException exception = assertThrows(
+                RiskAssessmentService.ValidationException.class,
+                () -> riskAssessmentService.processAssessment(form)
+        );
+
+        assertEquals("profession", exception.getField());
+        assertTrue(exception.getMessage().contains("subjects you are considering or interested in"));
+        verifyNoInteractions(jobAiService);
         verifyNoInteractions(documentParserService);
     }
 

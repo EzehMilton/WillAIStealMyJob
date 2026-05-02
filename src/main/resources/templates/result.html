@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Assessment Results - Job AI</title>
+    <title th:text="${mode == 'a_level'} ? 'Future Study Path Results - Job AI' : (${mode == 'course'} ? 'Degree Outlook Results - Job AI' : 'Job Risk Assessment Results - Job AI')">Assessment Results - Job AI</title>
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
@@ -13,13 +13,249 @@
 
     <!-- Custom CSS -->
     <link rel="stylesheet" th:href="@{/css/style.css}">
+    <style>
+        .impact-signal-card {
+            position: relative;
+            overflow: hidden;
+            padding: 28px;
+            border-radius: 22px;
+            color: #f8fafc;
+            background:
+                    radial-gradient(circle at 14% 0%, rgba(124, 58, 237, 0.18), transparent 30%),
+                    radial-gradient(circle at 92% 0%, rgba(79, 142, 255, 0.16), transparent 28%),
+                    linear-gradient(145deg, rgba(10, 14, 24, 0.98), rgba(21, 27, 43, 0.98));
+            border: 1px solid rgba(147, 197, 253, 0.22);
+            box-shadow: 0 18px 54px rgba(5, 8, 18, 0.42), 0 0 34px rgba(96, 165, 250, 0.1);
+        }
+
+        .impact-signal-card::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            background: linear-gradient(115deg, rgba(255, 255, 255, 0.08), transparent 28%, transparent 70%, rgba(124, 58, 237, 0.08));
+        }
+
+        .impact-signal-card > * {
+            position: relative;
+            z-index: 1;
+        }
+
+        .impact-signal-top {
+            display: grid;
+            gap: 18px;
+        }
+
+        .impact-signal-kicker {
+            margin-bottom: 8px;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+            color: rgba(191, 219, 254, 0.82);
+        }
+
+        .impact-signal-title {
+            margin: 0;
+            font-family: "DM Serif Display", serif;
+            font-size: clamp(2.35rem, 6vw, 3.75rem);
+            line-height: 1.02;
+            letter-spacing: 0;
+        }
+
+        .impact-signal-title.low {
+            color: #4ade80;
+            text-shadow: 0 0 22px rgba(74, 222, 128, 0.34);
+        }
+
+        .impact-signal-title.moderate {
+            color: #fbbf24;
+            text-shadow: 0 0 24px rgba(251, 191, 36, 0.34);
+        }
+
+        .impact-signal-title.high {
+            color: #f87171;
+            text-shadow: 0 0 26px rgba(248, 113, 113, 0.38);
+        }
+
+        .impact-context {
+            margin: 10px 0 0;
+            color: rgba(226, 232, 240, 0.7);
+            font-size: 0.96rem;
+            line-height: 1.55;
+        }
+
+        .snapshot-insight {
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 18px 20px;
+            background: rgba(3, 7, 18, 0.34);
+        }
+
+        .snapshot-insight-label {
+            margin-bottom: 8px;
+            font-family: "JetBrains Mono", monospace;
+            font-size: 0.68rem;
+            font-weight: 800;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: rgba(147, 197, 253, 0.8);
+        }
+
+        .snapshot-insight p {
+            margin: 0;
+            color: rgba(248, 250, 252, 0.92);
+            font-size: 1.03rem;
+            line-height: 1.72;
+        }
+
+        .impact-signal-bottom {
+            margin-top: 24px;
+            padding-top: 22px;
+            border-top: 1px solid rgba(255, 255, 255, 0.09);
+        }
+
+        .impact-scale {
+            position: relative;
+            padding-top: 10px;
+        }
+
+        .impact-scale-track {
+            position: relative;
+            height: 9px;
+            border-radius: 999px;
+            background: linear-gradient(90deg, rgba(34, 197, 94, 0.95), rgba(245, 158, 11, 0.95), rgba(239, 68, 68, 0.95));
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 0 22px rgba(96, 165, 250, 0.1);
+        }
+
+        .impact-scale-indicator {
+            position: absolute;
+            top: 50%;
+            width: 17px;
+            height: 17px;
+            border-radius: 999px;
+            transform: translate(-50%, -50%);
+            background: #f8fafc;
+            border: 3px solid rgba(15, 23, 42, 0.95);
+            box-shadow: 0 0 0 5px rgba(248, 250, 252, 0.18), 0 0 24px rgba(248, 250, 252, 0.42);
+        }
+
+        .impact-scale-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+            color: rgba(226, 232, 240, 0.56);
+            font-size: 0.76rem;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+
+        .impact-scale-labels .active.low {
+            color: #4ade80;
+        }
+
+        .impact-scale-labels .active.moderate {
+            color: #fbbf24;
+        }
+
+        .impact-scale-labels .active.high {
+            color: #f87171;
+        }
+
+        .premium-teaser-strip {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-top: 20px;
+            padding: 15px 16px;
+            border-radius: 16px;
+            background: rgba(79, 142, 255, 0.08);
+            border: 1px solid rgba(147, 197, 253, 0.16);
+            color: rgba(226, 232, 240, 0.78);
+            text-decoration: none;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+        }
+
+        .premium-teaser-strip:hover {
+            color: #f8fafc;
+            border-color: rgba(147, 197, 253, 0.28);
+            background: rgba(79, 142, 255, 0.12);
+        }
+
+        .premium-teaser-strip span:first-child {
+            font-size: 0.93rem;
+            line-height: 1.5;
+        }
+
+        .premium-teaser-action {
+            flex: 0 0 auto;
+            color: #bfdbfe;
+            font-size: 0.88rem;
+            font-weight: 800;
+        }
+
+        .premium-score-teaser {
+            border-left: 3px solid rgba(79, 142, 255, 0.9);
+            background: rgba(79, 142, 255, 0.08);
+            border-radius: 12px;
+            padding: 14px 16px;
+        }
+
+        @media (max-width: 767.98px) {
+            .impact-signal-card {
+                padding: 22px 18px;
+            }
+
+            .impact-signal-title {
+                font-size: clamp(2.05rem, 11vw, 2.8rem);
+            }
+
+            .impact-context {
+                font-size: 0.92rem;
+            }
+
+            .snapshot-insight {
+                padding: 16px;
+            }
+
+            .snapshot-insight p {
+                font-size: 0.98rem;
+            }
+
+            .premium-teaser-strip {
+                align-items: flex-start;
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 </head>
-<body class="page-results">
+<body class="page-results"
+      th:with="isCourse=${mode == 'course'},
+               isALevel=${mode == 'a_level'},
+               resultTitle=${mode == 'a_level' ? 'Your Future Study Path Results' : (mode == 'course' ? 'Your Degree Outlook Results' : 'Your Job Risk Assessment Results')},
+               analysisLabel=${mode == 'a_level' ? 'Analysis for subjects / interests' : (mode == 'course' ? 'Analysis for course' : 'Analysis for')},
+               subjectLabel=${mode == 'a_level' ? 'Subjects / Interests' : (mode == 'course' ? 'Course' : 'Profession')},
+               premiumTitle=${mode == 'a_level' ? 'Premium: Unlock your AI-Ready Study &amp; Career Plan' : (mode == 'course' ? 'Premium: Unlock your AI Degree &amp; Career Strategy' : 'Premium: Unlock your AI Career Survival Plan')},
+               premiumPrice=${mode == 'a_level' ? '£0.99' : (mode == 'course' ? '£2.99' : '£4.99')},
+               modalTitle=${mode == 'a_level' ? 'Generate Your AI-Ready Study &amp; Career Plan' : (mode == 'course' ? 'Generate Your AI Degree &amp; Career Strategy' : 'Generate Your AI Career Survival Plan')},
+               indicatorPosition=${score == null ? 2 : (score <= 0 ? 2 : (score >= 10 ? 98 : 2 + score * 9.6))},
+               impactTitle=${mode == 'a_level' ? 'Your Future Path Impact Zone' : (mode == 'course' ? 'Your Degree Impact Zone' : 'Your AI Impact Zone')},
+               impactScope=${mode == 'a_level' ? 'Future Path Exposure' : (mode == 'course' ? 'Degree Path Exposure' : 'AI Impact')},
+               impactSubtitle=${mode == 'a_level' ? 'This is a quick snapshot of how AI may affect the study and career paths connected to your subject interests.' : (mode == 'course' ? 'This is a quick snapshot of how AI may affect the career paths linked to this course.' : 'This is a quick snapshot of how AI may affect your current role.')},
+               impactHelper=${mode == 'a_level' ? 'Your exact future-readiness score and subject-path breakdown are included in the premium report.' : (mode == 'course' ? 'Your exact course-linked exposure score and career-path breakdown are included in the premium report.' : 'Your exact exposure score and task-by-task breakdown will be included in the premium report.')},
+               premiumSignalCta=${mode == 'a_level' ? 'Unlock the exact score, subject-path map, and next steps.' : (mode == 'course' ? 'Unlock the exact score, career-path map, and study strategy.' : 'Unlock the exact score, task map, and 30/90/365-day plan.')},
+               premiumScoreTeaser=${mode == 'a_level' ? 'Unlock your exact future-readiness score, subject-combination guidance, career clusters, and practical next steps.' : (mode == 'course' ? 'Unlock your exact course-linked exposure score, career-path risk map, safer specialisations, and study strategy.' : 'Unlock your exact exposure score, task-level risk map, what changes first, and a practical career survival plan.')},
+               lockedSnapshotNote=${mode == 'a_level' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact future-readiness score, subject-path risks, and next steps.' : (mode == 'course' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact course-linked score, career-path risks, and study strategy.' : '🔒 This is only a high-level snapshot. Your premium report reveals your exact exposure score, task-level risks, and what to do next.')}">
     <!-- Header -->
     <header class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container">
@@ -58,8 +294,8 @@
                     <!-- Results Hero -->
                     <div class="text-center mb-5 results-hero">
                         <p class="hero-kicker">WillAIStealMyJob · Section 01 — Exposure Snapshot</p>
-                        <h1 class="display-5 fw-bold text-white mb-3">Your Risk Assessment Results</h1>
-                        <p class="lead text-white-50" th:if="${profession}">Analysis for: <span th:text="${profession}">Profession</span></p>
+                        <h1 class="display-5 fw-bold text-white mb-3" th:text="${resultTitle}">Your Job Risk Assessment Results</h1>
+                        <p class="lead text-white-50" th:if="${profession}"><span th:text="${analysisLabel}">Analysis for</span>: <span th:text="${profession}">Profession</span></p>
                     </div>
 
                     <!-- Error Message -->
@@ -71,82 +307,48 @@
                         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
 
-                    <!-- Risk Score Card -->
-                    <div th:if="${success} and ${score != null}" class="card shadow-lg border-0 rounded-4 mb-4 risk-summary-card">
-                        <div class="card-body p-5">
-                            <div class="row align-items-center">
-                                <div class="col-md-6 text-center mb-4 mb-md-0">
-                                    <h5 class="text-muted mb-3 fw-semibold">Risk Exposure</h5>
+                    <!-- Impact Signal Card -->
+                    <div th:if="${success} and ${score != null}" class="mb-4 impact-signal-card"
+                         th:attr="aria-label=${impactTitle}">
+                        <div class="impact-signal-top">
+                            <div>
+                                <div class="impact-signal-kicker">AI IMPACT SIGNAL</div>
+                                <h2 class="impact-signal-title"
+                                    th:classappend="${score <= 2.9} ? ' low' : (${score <= 6.9} ? ' moderate' : ' high')"
+                                    th:text="${score <= 2.9} ? 'Low Impact Detected' : (${score <= 6.9} ? 'Moderate Impact Detected' : 'High Impact Detected')">
+                                    Moderate Impact Detected
+                                </h2>
+                                <p class="impact-context">
+                                    <span th:text="${impactScope}">AI Impact</span>
+                                    <span> · </span>
+                                    <span th:text="${impactSubtitle}">This is a quick snapshot of how AI may affect your current role.</span>
+                                </p>
+                            </div>
 
-                                    <!-- Circular Progress Indicator -->
-                                    <div class="position-relative d-inline-block">
-                                        <svg width="200" height="200" class="risk-score-circle">
-                                            <!-- Background circle -->
-                                            <circle cx="100" cy="100" r="80" fill="none" stroke="#e9ecef" stroke-width="15"/>
-                                            <!-- Progress circle -->
-                                            <circle cx="100" cy="100" r="80" fill="none"
-                                                    th:attr="stroke=${score <= 2} ? '#28a745' : (${score <= 6} ? '#ffc107' : '#dc3545')"
-                                                    stroke-width="15"
-                                                    stroke-linecap="round"
-                                                    th:style="'stroke-dasharray: ' + (502.4 * ${score} / 10) + ' 502.4; stroke-dashoffset: 0; transform: rotate(-90deg); transform-origin: center;'"
-                                                    class="risk-progress-path"/>
-                                        </svg>
-                                        <div class="position-absolute top-50 start-50 translate-middle text-center">
-                                            <div class="h1 fw-bold mb-0"
-                                                 th:classappend="${score <= 2} ? 'text-success' : (${score <= 6} ? 'text-warning' : 'text-danger')"
-                                                 th:text="${#numbers.formatInteger(score * 10, 0)} + '%'">40%</div>
-<!--                                            <div class="small text-muted">Risk Score: <span th:text="${score}">4.0</span>/10</div>-->
-                                        </div>
-                                    </div>
+                            <div th:if="${summary}" class="snapshot-insight">
+                                <div class="snapshot-insight-label">Snapshot Insight</div>
+                                <p th:text="${summary}">This profession faces a moderate level of automation risk.</p>
+                            </div>
+                        </div>
+
+                        <div class="impact-signal-bottom">
+                            <div class="impact-scale" aria-label="AI impact diagnostic scale">
+                                <div class="impact-scale-track">
+                                    <span class="impact-scale-indicator"
+                                          th:style="'left: ' + ${#numbers.formatDecimal(indicatorPosition, 1, 1)} + '%;'"></span>
                                 </div>
-
-                                <div class="col-md-6">
-                                    <div class="mb-4">
-                                        <h3 class="fw-bold mb-3">
-                                            <span class="badge rounded-pill fs-5 px-4 py-2"
-                                                  th:classappend="${score <= 2} ? 'bg-success' : (${score <= 6} ? 'bg-warning text-dark' : 'bg-danger')">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-shield-check me-2" viewBox="0 0 16 16" th:if="${score <= 2}">
-                                                    <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.775 11.775 0 0 1-2.517 2.453 7.159 7.159 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7.158 7.158 0 0 1-1.048-.625 11.777 11.777 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 62.456 62.456 0 0 1 5.072.56z"/>
-                                                    <path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
-                                                </svg>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-exclamation-triangle me-2" viewBox="0 0 16 16" th:if="${score > 2 and score <= 6}">
-                                                    <path d="M7.938 2.016A.13.13 0 0 1 8.002 2a.13.13 0 0 1 .063.016.146.146 0 0 1 .054.057l6.857 11.667c.036.06.035.124.002.183a.163.163 0 0 1-.054.06.116.116 0 0 1-.066.017H1.146a.115.115 0 0 1-.066-.017.163.163 0 0 1-.054-.06.176.176 0 0 1 .002-.183L7.884 2.073a.147.147 0 0 1 .054-.057zm1.044-.45a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566z"/>
-                                                    <path d="M7.002 12a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 5.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995z"/>
-                                                </svg>
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-exclamation-octagon-fill me-2" viewBox="0 0 16 16" th:if="${score > 6}">
-                                                    <path d="M11.46.146A.5.5 0 0 0 11.107 0H4.893a.5.5 0 0 0-.353.146L.146 4.54A.5.5 0 0 0 0 4.893v6.214a.5.5 0 0 0 .146.353l4.394 4.394a.5.5 0 0 0 .353.146h6.214a.5.5 0 0 0 .353-.146l4.394-4.394a.5.5 0 0 0 .146-.353V4.893a.5.5 0 0 0-.146-.353L11.46.146zM8 4c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995A.905.905 0 0 1 8 4zm.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2z"/>
-                                                </svg>
-                                                <span th:text="${score <= 2} ? 'Low Impact' : (${score <= 6} ? 'Moderate Impact' : 'High Impact')">Moderate Impact</span>
-                                            </span>
-                                        </h3>
-                                    </div>
-
-                                    <!-- Summary -->
-                                    <div th:if="${summary}" class="mb-3">
-                                        <p class="lead mb-0" th:text="${summary}">This profession faces a moderate level of automation risk.</p>
-                                    </div>
-
-                                    <!-- Progress Bar with Scale -->
-                                    <div class="mt-4">
-                                        <div class="progress" style="height: 30px; border-radius: 15px;">
-                                            <div class="progress-bar"
-                                                 th:classappend="${score <= 2} ? 'bg-success' : (${score <= 6} ? 'bg-warning' : 'bg-danger')"
-                                                 role="progressbar"
-                                                 th:style="'width: ' + (${score} * 10) + '%'"
-                                                 th:attr="aria-valuenow=${score * 10}, aria-valuemin=0, aria-valuemax=100">
-                                            </div>
-                                        </div>
-                                        <div class="d-flex justify-content-between mt-2 small text-muted">
-                                            <span>0%</span>
-                                            <span>Low</span>
-                                            <span>Moderate</span>
-                                            <span>High</span>
-                                            <span>100%</span>
-                                        </div>
-                                    </div>
+                                <div class="impact-scale-labels">
+                                    <span class="low" th:classappend="${score <= 2.9} ? ' active'">Low</span>
+                                    <span class="moderate" th:classappend="${score > 2.9 and score <= 6.9} ? ' active'">Moderate</span>
+                                    <span class="high" th:classappend="${score >= 7.0} ? ' active'">High</span>
                                 </div>
                             </div>
-                            <p class="text-muted small text-center mt-4 mb-0">Score reflects how much of your current work can be automated with today’s AI tools.</p>
+
+                            <button type="button" class="premium-teaser-strip w-100"
+                                    data-bs-toggle="modal" data-bs-target="#premiumModal">
+                                <span th:text="${premiumSignalCta}">Unlock the exact score, task map, and 30/90/365-day plan.</span>
+                                <span class="premium-teaser-action">View premium breakdown →</span>
+                            </button>
                         </div>
                     </div>
 
@@ -172,7 +374,7 @@
                                             <path d="M6.5 1A1.5 1.5 0 0 0 5 2.5V3H1.5A1.5 1.5 0 0 0 0 4.5v1.384l7.614 2.03a1.5 1.5 0 0 0 .772 0L16 5.884V4.5A1.5 1.5 0 0 0 14.5 3H11v-.5A1.5 1.5 0 0 0 9.5 1h-3zm0 1h3a.5.5 0 0 1 .5.5V3H6v-.5a.5.5 0 0 1 .5-.5z"/>
                                             <path d="M0 12.5A1.5 1.5 0 0 0 1.5 14h13a1.5 1.5 0 0 0 1.5-1.5V6.85L8.129 8.947a.5.5 0 0 1-.258 0L0 6.85v5.65z"/>
                                         </svg>
-                                        <span th:text="${mode == 'course'} ? 'Course' : 'Profession'">Profession</span>
+                                        <span th:text="${subjectLabel}">Profession</span>
                                     </h5>
                                     <p class="mb-0" th:text="${profession}">Profession name</p>
                                 </div>
@@ -180,8 +382,8 @@
                                 <div class="assessment-text" style="white-space: pre-wrap; line-height: 1.8;" th:text="${assessment}">
                                     Assessment content will appear here
                                 </div>
-                                <p class="mt-3 mb-0" style="font-size: 0.9rem; color: #6c757d;">
-                                    🔒 This is only a high-level snapshot. Your premium report reveals the exact drivers, risks, and what to do next.
+                                <p class="mt-3 mb-0" style="font-size: 0.9rem; color: #6c757d;" th:text="${lockedSnapshotNote}">
+                                    🔒 This is only a high-level snapshot. Your premium report reveals your exact exposure score, task-level risks, and what to do next.
                                 </p>
                             </div>
 
@@ -191,11 +393,12 @@
                             <div class="rounded-4 p-4 mb-4 premium-preview">
                                 <div class="d-flex align-items-center mb-2">
                                     <span class="fs-5 me-2">&#128274;</span>
-                                    <h5 class="fw-bold mb-0 text-white">Premium: Unlock your AI Career Survival Plan <span class="badge bg-secondary ms-1 premium-price-badge" th:text="${mode == 'course'} ? '£2.99 per report' : '£4.99 per report'">£4.99 per report</span></h5>
+                                    <h5 class="fw-bold mb-0 text-white"><span th:text="${premiumTitle}">Premium: Unlock your AI Career Survival Plan</span> <span class="badge bg-secondary ms-1 premium-price-badge" th:text="${premiumPrice + ' per report'}">£4.99 per report</span></h5>
                                 </div>
+                                <p class="text-white-50 small mb-3 premium-score-teaser" th:text="${premiumScoreTeaser}">Unlock your exact exposure score, task-level risk map, what changes first, and a practical career survival plan.</p>
                                 <p class="text-white-50 small mb-3">Your personalised report will include:</p>
                                 <!-- Profession list -->
-                                <ul th:if="${mode != 'course'}" class="list-unstyled mb-0">
+                                <ul th:if="${!isCourse and !isALevel}" class="list-unstyled mb-0">
                                     <li class="mb-3">
                                         <div class="d-flex align-items-start">
                                             <span class="text-success me-2 mt-1">&#10003;</span>
@@ -245,7 +448,7 @@
                                 <p></p>
                                 <p class="text-white-50 small mb-3">Early adaptation increases your advantage.</p>
                                 <!-- Course list -->
-                                <ul th:if="${mode == 'course'}" class="list-unstyled mb-0">
+                                <ul th:if="${isCourse}" class="list-unstyled mb-0">
                                     <li class="mb-3">
                                         <div class="d-flex align-items-start">
                                             <span class="text-success me-2 mt-1">&#10003;</span>
@@ -288,6 +491,54 @@
                                             <div>
                                                 <div class="text-white small fw-semibold">Personalised Career Strategy</div>
                                                 <div class="text-white-50" style="font-size: 0.8rem;">Clear guidance on how to adapt your studies and skill development to stay competitive.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                </ul>
+                                <!-- A-Level list -->
+                                <ul th:if="${isALevel}" class="list-unstyled mb-0">
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Suggested A-Level / Subject Combinations</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">See subject mixes that keep options open while matching your interests.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Career Clusters That Match Your Interests</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Explore broad future directions without needing to choose one career too early.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">AI Exposure of Possible Future Paths</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Understand which routes may face more AI disruption and which build resilient skills.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li class="mb-3">
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Skills to Build While Still in School</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Focus on practical, transferable strengths that help across degrees, apprenticeships, and jobs.</div>
+                                            </div>
+                                        </div>
+                                    </li>
+                                    <li>
+                                        <div class="d-flex align-items-start">
+                                            <span class="text-success me-2 mt-1">&#10003;</span>
+                                            <div>
+                                                <div class="text-white small fw-semibold">Practical Next Steps for Choosing Subjects</div>
+                                                <div class="text-white-50" style="font-size: 0.8rem;">Get clear actions for comparing subjects, entry requirements, and future options.</div>
                                             </div>
                                         </div>
                                     </li>
@@ -399,12 +650,12 @@
                             </span>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
-                        <h5 class="modal-title fw-bold mt-3 premium-modal-title" id="premiumModalLabel">
+                        <h5 class="modal-title fw-bold mt-3 premium-modal-title" id="premiumModalLabel" th:text="${modalTitle}">
                             Generate Your AI Career Survival Plan
                         </h5>
                         <div class="d-flex align-items-baseline gap-2 mt-1">
                             <span class="fw-bold premium-modal-price"
-                                  th:text="${mode == 'course'} ? '£2.99' : '£4.99'">£4.99</span>
+                                  th:text="${premiumPrice}">£4.99</span>
                             <span class="text-muted premium-modal-price-label">per personalised report</span>
                         </div>
                     </div>
@@ -418,7 +669,7 @@
                     </p>
 
                     <!-- Profession feature list -->
-                    <ul th:if="${mode != 'course'}" class="list-unstyled mb-0">
+                    <ul th:if="${!isCourse and !isALevel}" class="list-unstyled mb-0">
                         <li class="d-flex align-items-start gap-2 mb-3">
                             <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
                             <div>
@@ -457,7 +708,7 @@
                     </ul>
 
                     <!-- Course feature list -->
-                    <ul th:if="${mode == 'course'}" class="list-unstyled mb-0">
+                    <ul th:if="${isCourse}" class="list-unstyled mb-0">
                         <li class="d-flex align-items-start gap-2 mb-3">
                             <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
                             <div>
@@ -491,6 +742,45 @@
                             <div>
                                 <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Personalised Career Strategy</div>
                                 <div class="text-muted" style="font-size: 0.8rem;">Guidance on adapting your studies and skill development to stay competitive.</div>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <!-- A-Level feature list -->
+                    <ul th:if="${isALevel}" class="list-unstyled mb-0">
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Suggested A-Level / Subject Combinations</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Subject mixes that fit your interests and keep future routes open.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Career Clusters That Match Your Interests</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Broad career directions to explore before committing to a degree or job path.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">AI Exposure of Possible Future Paths</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">How AI may affect the paths your subject choices could lead toward.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Skills to Build While Still in School</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">The transferable skills that make future study and work options more resilient.</div>
+                            </div>
+                        </li>
+                        <li class="d-flex align-items-start gap-2 mb-3">
+                            <span class="text-success fw-bold mt-1" style="font-size: 1rem;">&#10003;</span>
+                            <div>
+                                <div class="fw-semibold" style="color: #111827; font-size: 0.9rem;">Practical Next Steps for Choosing Subjects</div>
+                                <div class="text-muted" style="font-size: 0.8rem;">Actions to compare choices, ask better questions, and test possible directions.</div>
                             </div>
                         </li>
                     </ul>
@@ -583,7 +873,8 @@
                 score:      /*[[${score}]]*/ 0,
                 riskLevel:  /*[[${riskLevel}]]*/ '',
                 summary:    /*[[${summary}]]*/ '',
-                assessment: /*[[${assessment}]]*/ ''
+                assessment: /*[[${assessment}]]*/ '',
+                originalDetails: /*[[${originalDetails}]]*/ ''
             };
 
             sessionStorage.setItem('checkoutPayload', JSON.stringify(payload));

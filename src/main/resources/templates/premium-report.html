@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="'AI Risk Report — ' + ${report.profession}">AI Risk Report</title>
+    <title th:text="${report.mode == 'a_level' ? 'AI-Ready Study &amp; Career Plan' : (report.mode == 'course' ? 'AI Degree &amp; Career Strategy' : 'AI Career Survival Plan')} + ' — ' + ${report.profession}">AI Risk Report</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -505,6 +505,76 @@
             opacity: 0.9;
         }
 
+        .premium-preview-shell {
+            position: relative;
+        }
+
+        .premium-preview-shell.locked {
+            margin-top: 8px;
+        }
+
+        .preview-clear {
+            padding: 32px 0 10px;
+            color: var(--muted);
+            max-width: 680px;
+        }
+
+        .preview-clear h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 28px;
+            color: var(--text);
+            margin-bottom: 8px;
+        }
+
+        .premium-preview-shell.locked .blurred-content {
+            filter: blur(6px);
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .locked-preview-overlay {
+            display: none;
+        }
+
+        .premium-preview-shell.locked .locked-preview-overlay {
+            display: block;
+            position: sticky;
+            top: 96px;
+            z-index: 5;
+            max-width: 520px;
+            margin: 0 auto -190px;
+            padding: 30px 28px;
+            text-align: center;
+            background: rgba(19, 22, 30, 0.94);
+            border: 1px solid rgba(79, 142, 255, 0.28);
+            border-radius: 18px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.56);
+            backdrop-filter: blur(10px);
+        }
+
+        .locked-preview-overlay h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 30px;
+            color: var(--text);
+            line-height: 1.15;
+            margin-bottom: 10px;
+        }
+
+        .locked-preview-overlay p {
+            color: var(--muted);
+            margin-bottom: 20px;
+        }
+
+        .premium-preview-shell.locked::after {
+            content: '';
+            position: absolute;
+            inset: 90px 0 0;
+            pointer-events: none;
+            background:
+                linear-gradient(180deg, rgba(13, 15, 20, 0) 0%, rgba(13, 15, 20, 0.42) 12%, rgba(13, 15, 20, 0.72) 100%);
+            z-index: 2;
+        }
+
         @media print {
             .footer-actions, .leave-overlay, .unlock-panel, .status-banner, .soft-note { display: none !important; }
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -519,7 +589,38 @@
         }
     </style>
 </head>
-<body>
+<body th:with="isCourse=${report.mode == 'course'},
+               isALevel=${report.mode == 'a_level'},
+               reportTitle=${report.mode == 'a_level' ? 'Your AI-Ready Study &amp; Career Plan' : (report.mode == 'course' ? 'Your AI Degree &amp; Career Strategy' : 'Your AI Career Survival Plan')},
+               subjectLabel=${report.mode == 'a_level' ? 'Subjects / Interests' : (report.mode == 'course' ? 'Course' : 'Profession')},
+               premiumPrice=${report.mode == 'a_level' ? '£0.99' : (report.mode == 'course' ? '£2.99' : '£4.99')},
+               scoreLabel=${report.mode == 'a_level' ? 'Exposure Score' : 'Overall Risk Score'},
+               displayScore=${report.premiumScore != null ? report.premiumScore : report.score},
+               displayRiskLevel=${report.premiumRiskLevel != null and !#strings.isEmpty(report.premiumRiskLevel) ? report.premiumRiskLevel : report.riskLevel},
+               exposureSectionLabel=${report.mode == 'a_level' ? 'Future Path Analysis' : (report.mode == 'course' ? 'Career Path Analysis' : 'Task Analysis')},
+               exposureMapTitle=${report.mode == 'a_level' ? 'Future Path Exposure Map' : (report.mode == 'course' ? 'Career Path Exposure Map' : 'Task Exposure Map')},
+               exposureTitle=${report.mode == 'a_level' ? 'Which Future Paths Face More AI Exposure' : (report.mode == 'course' ? 'How Course-Linked Career Paths Are Exposed' : 'What Gets Automated First')},
+               exposureAreaHeader=${report.mode == 'a_level' ? 'Path / Cluster' : (report.mode == 'course' ? 'Career Area' : 'Task')},
+               exposureIntro=${report.mode == 'a_level' ? 'This preview shows how possible future paths linked to your subject choices and interests may be exposed to AI disruption.' : (report.mode == 'course' ? 'This preview shows how career paths linked to this course may be exposed to AI disruption.' : 'This preview shows a sample of the task-level analysis included in your full report for ' + report.profession + '.')},
+               lockedTimelineCopy=${report.mode == 'a_level' ? 'See how AI pressure may reach different future paths and career clusters over time.' : (report.mode == 'course' ? 'See the disruption timeline for career paths this course may lead to.' : 'See the disruption timeline, likely inflection points, and the order in which AI pressure reaches different parts of your role.')},
+               lockedSkillsCopy=${report.mode == 'a_level' ? 'Get a priority-ranked set of skills to build while still in school, tailored to your interests and current exposure level.' : (report.mode == 'course' ? 'Get a priority-ranked set of skills to build during your course, tailored to likely career paths and current exposure level.' : 'Get a priority-ranked set of defensible capabilities to build, with explanations tailored to your profession and current risk level.')},
+               lockedMarketTitle=${report.mode == 'a_level' ? 'Career clusters and future options' : (report.mode == 'course' ? 'Career paths and market shifts' : 'Salary divergence and market shifts')},
+               lockedMarketCopy=${report.mode == 'a_level' ? 'Explore possible future clusters, how AI may affect them, and which choices keep more options open.' : (report.mode == 'course' ? 'Compare course-linked paths and see where demand, pay, and resilience are separating.' : 'Compare traditional versus AI-augmented paths and see where pay and resilience are separating.')},
+               lockedActionTitle=${report.mode == 'a_level' ? 'Your subject-choice next steps' : (report.mode == 'course' ? 'Your study and career action plan' : 'Your 90-day survival plan')},
+               lockedActionCopy=${report.mode == 'a_level' ? 'Unlock practical next steps for comparing subjects, testing interests, building skills, and exploring future paths.' : (report.mode == 'course' ? 'Unlock a structured plan covering course choices, projects, skills, and early career positioning.' : 'Unlock a structured action plan covering immediate changes, medium-term positioning, and longer-term leverage.')},
+               timelineIntro=${report.mode == 'a_level' ? 'AI disruption across possible future paths is not a single event — it depends on the subject choices, skills, and routes you explore.' : (report.mode == 'course' ? 'AI disruption across course-linked career paths is not a single event — it changes by specialisation and skill mix.' : 'AI disruption in ' + report.profession + ' is not a single event — it is a rolling wave.')},
+               skillsTitle=${report.mode == 'a_level' ? 'Skills to Build While Still in School' : (report.mode == 'course' ? 'Skills to Build During Your Course' : 'The Skills That Keep You Irreplaceable')},
+               skillsIntro=${report.mode == 'a_level' ? 'These are practical, transferable capabilities that keep more future study and career paths open.' : (report.mode == 'course' ? 'These are the specific capabilities that can make graduates in this field more resilient and employable.' : 'These are the specific capabilities that AI cannot replicate in the near term, and which already command salary premiums where present.')},
+               salaryIntro=${report.mode == 'a_level' ? 'These figures give broad market context for possible future routes, not a prediction of one fixed career.' : (report.mode == 'course' ? 'AI disruption is already changing earning potential across career paths linked to this course.' : 'AI disruption is already creating a salary divergence in ' + report.profession + '.')},
+               adjacentSectionTitle=${report.mode == 'a_level' ? 'Possible Career Clusters' : (report.mode == 'course' ? 'Related Career Paths' : 'Adjacent Roles')},
+               adjacentTitle=${report.mode == 'a_level' ? 'Future Clusters That Match Your Interests' : (report.mode == 'course' ? 'Related Paths That Build on This Course' : 'Lower-Risk Roles That Leverage Your Skills')},
+               adjacentIntro=${report.mode == 'a_level' ? 'These possible career clusters can help you compare subject choices, interests, and AI-resilient directions without pretending you need a fixed career now.' : (report.mode == 'course' ? 'These related career paths can help you reduce AI exposure while making the most of this course and the skills it develops.' : 'If you want to reduce your automation exposure while maximising your existing experience as a ' + report.profession + ', these adjacent roles represent strong transitions.')},
+               actionTitle=${report.mode == 'a_level' ? 'Subject Choice &amp; Skills Action Plan' : (report.mode == 'course' ? 'Study &amp; Career Action Plan' : 'Career Action Plan')},
+               actionIntro=${report.mode == 'a_level' ? 'Three phases. Concrete steps for choosing subjects, testing interests, and building useful skills.' : (report.mode == 'course' ? 'Three phases. Concrete steps for strengthening your course choices, projects, skills, and career options.' : 'Three phases. Concrete steps. Starting from where you are today as a ' + report.profession + '.')},
+               resourcesIntro=${report.mode == 'a_level' ? 'Curated for your subject choices, interests, and early study/career exploration.' : (report.mode == 'course' ? 'Curated for this course, likely career paths, and the skills that improve graduate resilience.' : 'Curated specifically for ' + report.profession + ' making the AI transition.')},
+               unlockTitle=${report.mode == 'a_level' ? 'Unlock your full AI-ready study plan' : (report.mode == 'course' ? 'Unlock your full AI degree strategy' : 'Unlock your full AI career report')},
+               unlockCopy=${report.mode == 'a_level' ? 'Your personalised study and future-path report is complete and waiting for you. Unlock it now to see subject combinations, career clusters, exposure analysis, and next steps.' : (report.mode == 'course' ? 'Your personalised AI degree and career strategy is complete and waiting for you. Unlock it now to see career-path exposure, specialisations, skills, and next steps.' : 'Your personalised AI career report is complete and waiting for you. Unlock it now to see your full breakdown, future outlook, and the exact steps to stay ahead.')},
+               topUnlockCopy=${report.mode == 'a_level' ? 'Unlock your complete future-path analysis, subject-choice guidance, skills to build, and practical next steps — ready to view, print, and save.' : (report.mode == 'course' ? 'Unlock your complete degree outlook, career-path analysis, skill priorities, and practical action plan — ready to view, print, and save.' : 'Unlock your complete analysis, future outlook, safer career paths, and practical action plan — ready to view, print, and save.')}">
 <div class="cover">
     <div class="container">
         <div class="cover-meta">
@@ -527,7 +628,7 @@
             <span th:text="${reportLocked} ? 'Premium Preview' : 'Premium Report'">Premium Report</span> ·
             <span th:text="${#temporals.format(report.generatedAt, 'MMMM yyyy')}">March 2026</span>
         </div>
-        <h1>AI Exposure Report<br><em th:text="${report.profession}">Software Developer</em></h1>
+        <h1><span th:text="${reportTitle}">Your AI Career Survival Plan</span><br><em th:text="${report.profession}">Software Developer</em></h1>
         <p class="cover-sub" th:text="${reportLocked} ? 'Your full report has been generated and saved temporarily on the server. Review the preview below, then unlock the full report when you are ready.' : 'Your full personalised report is now unlocked. Print or save it now if you want a permanent copy.'">
             A personalised analysis of your automation risk, future-proof skills, salary trajectory, and career survival plan over the next decade.
         </p>
@@ -535,9 +636,9 @@
         <div class="cover-stats">
             <div class="stat-box">
                 <div class="stat-value"
-                     th:style="${report.riskLevel == 'High' ? 'color:var(--red)' : (report.riskLevel == 'Low' ? 'color:var(--green)' : 'color:var(--amber)')}"
-                     th:text="${#numbers.formatDecimal(report.score * 10, 1, 0)} + '%'">41%</div>
-                <div class="stat-label">Overall Risk Score</div>
+                     th:style="${displayRiskLevel == 'High' ? 'color:var(--red)' : (displayRiskLevel == 'Low' ? 'color:var(--green)' : 'color:var(--amber)')}"
+                     th:text="${#numbers.formatDecimal(displayScore * 10, 1, 0)} + '%'">41%</div>
+                <div class="stat-label" th:text="${scoreLabel}">Overall Risk Score</div>
             </div>
             <div class="stat-box">
                 <div class="stat-value" style="color:var(--accent);" th:text="${report.disruptionWindow ?: '–'}">5–8 yrs</div>
@@ -564,13 +665,13 @@
             <div class="unlock-panel-copy">
                 <p></p>
                 <h3>Unlock the full report</h3>
-                <p>Unlock your complete analysis, future outlook, safer career paths, and practical action plan — ready to view, print, and save.</p>
+                <p th:text="${topUnlockCopy}">Unlock your complete analysis, future outlook, safer career paths, and practical action plan — ready to view, print, and save.</p>
                 <p class="unlock-reassurance">Secure payment. Instant access when you return.</p>
             </div>
             <button
                     class="btn-primary"
                     id="unlockReportBtn"
-                    th:text="${'Unlock my full report — ' + (report.mode == 'course' ? '£2.99' : '£4.99')}">
+                    th:text="${'Unlock my full report — ' + premiumPrice}">
                 Unlock my full report — £4.99
             </button>
         </div>
@@ -585,28 +686,31 @@
     <div class="section">
         <div class="section-label">Section 01 — Overview</div>
         <div class="section-title">Your Situation at a Glance</div>
+        <p class="section-intro"><span th:text="${subjectLabel}">Profession</span>: <span th:text="${report.profession}">Software Developer</span></p>
 
         <div class="score-visual">
             <div class="score-gauge">
                 <svg width="130" height="130" viewBox="0 0 130 130">
                     <circle cx="65" cy="65" r="54" fill="none" stroke="#1a1e2a" stroke-width="10"/>
                     <circle cx="65" cy="65" r="54" fill="none" stroke-width="10" stroke-dasharray="339.3" stroke-linecap="round"
-                            th:attr="stroke=${report.riskLevel == 'High' ? '#e74c3c' : (report.riskLevel == 'Low' ? '#2ecc71' : '#f5a623')},stroke-dashoffset=${339.3 * (1.0 - report.score / 10.0)}"/>
+                            th:attr="stroke=${displayRiskLevel == 'High' ? '#e74c3c' : (displayRiskLevel == 'Low' ? '#2ecc71' : '#f5a623')},stroke-dashoffset=${339.3 * (1.0 - displayScore / 10.0)}"/>
                 </svg>
                 <div class="score-number">
                     <div class="score-pct"
-                         th:style="${report.riskLevel == 'High' ? 'color:var(--red)' : (report.riskLevel == 'Low' ? 'color:var(--green)' : 'color:var(--amber)')}"
-                         th:text="${#numbers.formatDecimal(report.score * 10, 1, 0)} + '%'">41%</div>
+                         th:style="${displayRiskLevel == 'High' ? 'color:var(--red)' : (displayRiskLevel == 'Low' ? 'color:var(--green)' : 'color:var(--amber)')}"
+                         th:text="${#numbers.formatDecimal(displayScore * 10, 1, 0)} + '%'">41%</div>
                     <div class="score-pct-label">RISK</div>
                 </div>
             </div>
             <div class="score-text">
                 <h3>
-                    <span th:text="${report.riskLevel} + ' Risk'">Moderate Risk</span>
-                    <span th:class="${report.riskLevel == 'High' ? 'badge badge-red' : (report.riskLevel == 'Low' ? 'badge badge-green' : 'badge badge-amber')}"
-                          style="font-size:11px; vertical-align:middle;" th:text="${report.riskLevel}">Moderate</span>
+                    <span th:text="${displayRiskLevel} + ' Risk'">Moderate Risk</span>
+                    <span th:class="${displayRiskLevel == 'High' ? 'badge badge-red' : (displayRiskLevel == 'Low' ? 'badge badge-green' : 'badge badge-amber')}"
+                          style="font-size:11px; vertical-align:middle;" th:text="${displayRiskLevel}">Moderate</span>
                 </h3>
                 <p th:text="${report.executiveSummary}">Summary...</p>
+                <p th:if="${report.scoreRationale != null and !#strings.isEmpty(report.scoreRationale)}"
+                   th:text="${report.scoreRationale}">Score rationale...</p>
             </div>
         </div>
 
@@ -615,15 +719,34 @@
         </div>
     </div>
 
+    <div class="premium-preview-shell" th:classappend="${reportLocked} ? ' locked'">
+        <div class="preview-clear" th:if="${reportLocked}">
+            <h2>Your full report is ready</h2>
+            <p>Here is a preview of the detailed insights and personalised plan already generated for you. Unlock the report to read every section clearly.</p>
+        </div>
+
+        <div class="locked-preview-overlay" th:if="${reportLocked}">
+            <span class="badge badge-blue">Premium Report Ready</span>
+            <h2>Your full report is ready</h2>
+            <p>Unlock detailed insights and your personalised plan.</p>
+            <button
+                    class="btn-primary"
+                    id="unlockReportBtnSecondary"
+                    th:text="${'Unlock your full report for ' + premiumPrice}">
+                Unlock your full report for £4.99
+            </button>
+        </div>
+
+        <div class="blurred-content">
     <div class="section">
-        <div class="section-label" th:text="${reportLocked} ? 'Preview Section — Task Analysis' : 'Section 02 — Task Analysis'">Section 02 — Task Analysis</div>
-        <div class="section-title">What Gets Automated First</div>
-        <p class="section-intro">This preview shows a sample of the task-level analysis included in your full report for <span th:text="${report.profession}">your profession</span>.</p>
+        <div class="section-label" th:text="${reportLocked} ? 'Preview Section — ' + exposureSectionLabel : 'Section 02 — ' + exposureMapTitle">Section 02 — Task Analysis</div>
+        <div class="section-title" th:text="${exposureMapTitle}">Task Exposure Map</div>
+        <p class="section-intro" th:text="${exposureIntro}">This preview shows a sample of the task-level analysis included in your full report.</p>
 
         <table class="task-table">
             <thead>
             <tr>
-                <th style="width:38%">Task</th>
+                <th style="width:38%" th:text="${exposureAreaHeader}">Task</th>
                 <th style="width:30%">Automation Risk</th>
                 <th style="width:18%">Risk Level</th>
                 <th style="width:14%">Timeline</th>
@@ -654,48 +777,10 @@
         </table>
     </div>
 
-    <div class="section" th:if="${reportLocked}">
-        <div class="section-label">Locked Sections</div>
-        <div class="section-title">What unlocks next</div>
-        <p class="section-intro">The full report is already generated and stored for this report ID. Unlocking reveals the remaining premium analysis and enables print/save.</p>
-
-        <div class="teaser-grid">
-            <div class="teaser-card">
-                <span class="tag">Timeline</span>
-                <h4>What changes, and when</h4>
-                <p>See the disruption timeline, likely inflection points, and the order in which AI pressure reaches different parts of your role.</p>
-            </div>
-            <div class="teaser-card">
-                <span class="tag">Skills</span>
-                <h4>The skills that keep you valuable</h4>
-                <p>Get a priority-ranked set of defensible capabilities to build, with explanations tailored to your profession and current risk level.</p>
-            </div>
-            <div class="teaser-card">
-                <span class="tag">Salary</span>
-                <h4>Salary divergence and market shifts</h4>
-                <p>Compare traditional versus AI-augmented paths and see where pay and resilience are separating.</p>
-            </div>
-            <div class="teaser-card">
-                <span class="tag">Action Plan</span>
-                <h4>Your 90-day survival plan</h4>
-                <p>Unlock a structured action plan covering immediate changes, medium-term positioning, and longer-term leverage.</p>
-            </div>
-        </div>
-
-        <div class="unlock-panel" id="unlockTextPanel">
-            <div class="unlock-panel-copy">
-                <span class="badge badge-blue">Saved Report</span>
-                <h3>Unlock your full AI career report</h3>
-                <p>Your personalised AI career report is complete and waiting for you. Unlock it now to see your full breakdown, future outlook, and the exact steps to stay ahead.</p>
-                <p>👉 Secure payment — instant full report when you return</p>
-            </div>
-        </div>
-    </div>
-
-    <div class="section" th:if="${!reportLocked and report.timelineEvents != null}">
+    <div class="section" th:if="${report.timelineEvents != null}">
         <div class="section-label">Section 03 — Timeline</div>
         <div class="section-title">What Changes, and When</div>
-        <p class="section-intro">AI disruption in <span th:text="${report.profession}">this profession</span> is not a single event — it's a rolling wave.</p>
+        <p class="section-intro" th:text="${timelineIntro}">AI disruption in this profession is not a single event — it's a rolling wave.</p>
         <div class="timeline">
             <div class="timeline-event" th:each="event : ${report.timelineEvents}">
                 <div class="timeline-dot"></div>
@@ -709,10 +794,10 @@
         </div>
     </div>
 
-    <div class="section" th:if="${!reportLocked and report.skillCards != null}">
+    <div class="section" th:if="${report.skillCards != null}">
         <div class="section-label">Section 04 — Skills Intelligence</div>
-        <div class="section-title">The Skills That Keep You Irreplaceable</div>
-        <p class="section-intro">These are the specific capabilities that AI cannot replicate in the near term, and which already command salary premiums where present.</p>
+        <div class="section-title" th:text="${skillsTitle}">The Skills That Keep You Irreplaceable</div>
+        <p class="section-intro" th:text="${skillsIntro}">These are the specific capabilities that AI cannot replicate in the near term, and which already command salary premiums where present.</p>
         <div class="skills-grid">
             <div class="skill-card" th:each="skill : ${report.skillCards}">
                 <div class="skill-card-icon" th:text="${skill.icon}">🔧</div>
@@ -726,10 +811,10 @@
         </div>
     </div>
 
-    <div class="section" th:if="${!reportLocked and report.salaryTraditionalMedian != null}">
+    <div class="section" th:if="${report.salaryTraditionalMedian != null}">
         <div class="section-label">Section 05 — Salary Intelligence</div>
         <div class="section-title">What the Transition Means for Your Earnings</div>
-        <p class="section-intro">AI disruption is already creating a salary divergence in <span th:text="${report.profession}">this profession</span>.</p>
+        <p class="section-intro" th:text="${salaryIntro}">AI disruption is already creating a salary divergence in this profession.</p>
         <div class="salary-comparison">
             <div class="salary-col">
                 <div class="salary-col-label" th:text="${report.salaryTraditionalTitle}">Traditional Role</div>
@@ -754,11 +839,10 @@
         </div>
     </div>
 
-    <div class="section" th:if="${!reportLocked}">
-        <div class="section-label">Section 06 — Adjacent Career Paths</div>
-        <div class="section-title">Lower-Risk Roles That Leverage Your Skills</div>
-        <p class="section-intro"
-           th:text="'If you want to reduce your automation exposure while maximising your existing experience as a ' + ${report.profession} + ', these adjacent roles represent strong transitions.'">
+    <div class="section">
+        <div class="section-label" th:text="'Section 06 — ' + ${adjacentSectionTitle}">Section 06 — Adjacent Roles</div>
+        <div class="section-title" th:text="${adjacentTitle}">Lower-Risk Roles That Leverage Your Skills</div>
+        <p class="section-intro" th:text="${adjacentIntro}">
             Intro...
         </p>
         <div class="pivot-card" th:each="role : ${report.adjacentRoles}">
@@ -778,10 +862,10 @@
         </div>
     </div>
 
-    <div class="section" th:if="${!reportLocked}">
-        <div class="section-label">Section 07 — Personal Action Plan</div>
-        <div class="section-title">Your 90-Day Survival Plan</div>
-        <p class="section-intro">Three phases. Concrete steps. Starting from where you are today as a <span th:text="${report.profession}">professional</span>.</p>
+    <div class="section">
+        <div class="section-label" th:text="'Section 07 — ' + ${actionTitle}">Section 07 — Personal Action Plan</div>
+        <div class="section-title" th:text="${actionTitle}">Career Action Plan</div>
+        <p class="section-intro" th:text="${actionIntro}">Three phases. Concrete steps. Starting from where you are today.</p>
         <div class="action-plan">
             <div class="action-phase phase-1">
                 <div class="phase-header">
@@ -807,16 +891,18 @@
         </div>
     </div>
 
-    <div class="section" th:if="${!reportLocked and report.resources != null}">
+    <div class="section" th:if="${report.resources != null}">
         <div class="section-label">Section 08 — Recommended Resources</div>
         <div class="section-title">Where to Learn What Matters</div>
-        <p class="section-intro">Curated specifically for <span th:text="${report.profession}">your profession</span> making the AI transition.</p>
+        <p class="section-intro" th:text="${resourcesIntro}">Curated specifically for your profession making the AI transition.</p>
         <div class="resources-grid">
             <div class="resource-card" th:each="r : ${report.resources}">
                 <div class="resource-type" th:text="${r.type}">COURSE · FREE</div>
                 <div class="resource-title" th:text="${r.title}">Resource Title</div>
                 <div class="resource-desc" th:text="${r.description}">Description</div>
             </div>
+        </div>
+    </div>
         </div>
     </div>
 
@@ -827,14 +913,14 @@
                 <a class="btn-home" th:if="${reportLocked}" href="/">← Home</a>
                 <button class="btn-home" th:if="${!reportLocked}" id="btnBackHome">← Home</button>
                 <button class="btn-download" th:if="${!reportLocked}" id="btnPrint" onclick="window.print()">Print / Save as PDF</button>
-                <button class="btn-primary" th:if="${reportLocked}" id="unlockReportBtnFooter" th:text="${'See full AI risk breakdown – ' + (report.mode == 'course' ? '£2.99' : '£4.99')}">See full AI risk breakdown – £4.99</button>
+                <button class="btn-primary" th:if="${reportLocked}" id="unlockReportBtnFooter" th:text="${'See full AI risk breakdown – ' + premiumPrice}">See full AI risk breakdown – £4.99</button>
             </div>
         </div>
         <div class="footer-meta">
             Report generated <span th:text="${#temporals.format(report.generatedAt, 'dd MMMM yyyy')}">01 January 2026</span>
             <span class="footer-meta-sep">·</span>
             <span th:text="${reportLocked} ? 'Stored temporarily until expiry' : 'Print or save this report now'">For personal use only</span>
-            <span class="footer-meta-sep">·</span>Based on industry research, AI adoption trends, and task automation data
+            <span class="footer-meta-sep">·</span><span th:text="${isALevel ? 'Based on education choices, AI adoption trends, and future-path exposure data' : (isCourse ? 'Based on course pathways, AI adoption trends, and career exposure data' : 'Based on industry research, AI adoption trends, and task automation data')}">Based on industry research, AI adoption trends, and task automation data</span>
         </div>
     </div>
 </div>

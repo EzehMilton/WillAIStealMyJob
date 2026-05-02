@@ -59,18 +59,6 @@ public class GenerationMetricsService {
                 .build();
     }
 
-    public GenerationMetrics forLocalGeneration(String reportType, long durationMs) {
-        return GenerationMetrics.builder()
-                .reportType(reportType)
-                .model("dummy")
-                .durationMs(durationMs)
-                .promptTokens(0)
-                .completionTokens(0)
-                .totalTokens(0)
-                .estimatedCostUsd(0.0)
-                .build();
-    }
-
     private double estimateCostUsd(String modelName, int promptTokens, int completionTokens) {
         Pricing pricing = pricingForModel(modelName);
         return (promptTokens / 1_000_000.0) * pricing.inputCostPer1M()

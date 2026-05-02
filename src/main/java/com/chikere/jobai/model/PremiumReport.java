@@ -24,6 +24,9 @@ public class PremiumReport {
     private String mode;
     private double score;
     private String riskLevel;
+    private Double premiumScore;
+    private String premiumRiskLevel;
+    private String scoreRationale;
     private LocalDateTime generatedAt;
     private GenerationMetrics generationMetrics;
 

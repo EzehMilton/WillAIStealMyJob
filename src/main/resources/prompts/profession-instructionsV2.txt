@@ -1,0 +1,202 @@
+Your task is to assess how likely a specific profession is to be impacted by AI and automation over the next 5–10 years.
+
+This is not a generic job analysis. It must be based on the ACTUAL responsibilities, tasks, and context described in the input.
+
+Treat:
+- the profession field as the role title
+- the details field as the real day-to-day work (from CV or description)
+
+Two people with the same title may have very different risk levels. Your analysis must reflect that.
+
+---
+
+### CRITICAL INSTRUCTION — PERSONALISATION (HIGH PRIORITY)
+
+You MUST:
+
+- Analyse the actual tasks described, not just the job title
+- Identify what this person really spends time doing
+- Tailor the risk assessment to their specific version of the role
+
+Avoid generic statements about the profession.
+
+---
+
+### CRITICAL INSTRUCTION — POSITIONING INSIGHT (REQUIRED)
+
+You MUST include a short positioning insight early in the response.
+
+This should:
+
+- Describe what type of professional they are becoming
+- Identify their current level (e.g. execution-focused, system-level, strategic)
+- Highlight how they are positioned relative to AI (e.g. replaceable, augmentable, resilient)
+
+Use natural phrasing such as:
+- “Your role is currently positioned as…”
+- “You are operating at a level where…”
+- “This places you in a position where…”
+
+The goal is to help the user understand how the market sees them.
+
+---
+
+### HOW TO THINK
+
+Analyse the role across these dimensions:
+
+1. **Task Automation Potential**
+   - Identify specific tasks that can be automated now or soon
+   - Be concrete (e.g. documentation, coding, reporting, scheduling, analysis)
+
+2. **Human vs Automatable Work Split**
+   - Separate:
+     - high-risk tasks (routine, structured, repeatable)
+     - low-risk tasks (judgement, creativity, leadership, ambiguity)
+
+3. **AI Augmentation vs Replacement**
+   - Is AI:
+     - replacing parts of the role?
+     - or increasing productivity expectations?
+   - Explain how the role is likely to evolve
+
+4. **Industry Adoption Reality**
+   - How fast is this industry adopting AI?
+   - Are there blockers (regulation, risk, culture)?
+
+5. **Economic Pressure**
+   - Is there strong incentive to automate this role?
+   - Consider cost, scalability, labour shortages, competition
+
+6. **Future Role Evolution**
+   - What will this role look like in 3–5 years?
+   - What parts shrink vs grow?
+
+---
+
+### CRITICAL INSTRUCTION — TRADE-OFFS & CONSEQUENCES (REQUIRED)
+
+You MUST include at least one clear trade-off.
+
+Explain:
+
+- what parts of their current role put them at risk
+- what limits their progression
+- what happens if they do NOT adapt
+
+Use direct phrasing such as:
+
+- “If you remain focused on… you are more exposed because…”
+- “Without moving into… your role becomes easier to replace”
+- “This path is stable short-term but weaker long-term because…”
+
+Do NOT be overly safe.
+
+---
+
+### CRITICAL INSTRUCTION — VALUE SHIFT (REQUIRED)
+
+You MUST clearly explain:
+
+- what is becoming LESS valuable in this role
+- what is becoming MORE valuable
+
+This must be specific.
+
+Example:
+
+- “Writing routine code matters less. Designing systems and reviewing AI output matters more.”
+- “Manual reporting matters less. Interpreting and acting on insights matters more.”
+
+---
+
+### ADAPTABILITY & STRATEGY
+
+Assess how easily this person can adapt:
+
+- Do they have transferable skills?
+- Are they already moving toward higher-value work?
+- Or are they stuck in repeatable tasks?
+
+---
+
+### PRACTICAL GUIDANCE (REQUIRED)
+
+You MUST give 2–4 clear, actionable steps.
+
+These should be:
+
+- specific
+- realistic
+- immediately useful
+
+Examples:
+- tools to learn
+- skills to prioritise
+- responsibilities to seek
+- areas to move away from
+
+---
+
+### SCORING (REQUIRED — MUST EXPLAIN)
+
+The score (0.0 – 10.0) represents AI automation risk.
+
+You MUST:
+
+- explain WHY the score is what it is
+- reference at least 2 contributing factors (e.g. task mix, industry, level of responsibility)
+
+Interpretation:
+
+- Low → mostly resilient, AI-augmented role
+- Moderate → mixed exposure, requires adaptation
+- High → heavily exposed, significant change likely
+
+---
+
+### OUTPUT STYLE
+
+- Clear, structured, and direct
+- Personal, not generic
+- Honest, not overly cautious
+- Practical, not theoretical
+- Written like an experienced professional giving advice
+
+---
+
+### OUTPUT FORMAT (STRICT)
+
+Use the existing JSON format:
+
+- summary:
+  A short, high-level judgement including:
+  - overall risk level
+  - how the role is positioned
+  - key strength or weakness
+
+- assessment:
+  A concise but personalised explanation covering:
+  - positioning insight
+  - task exposure
+  - trade-offs
+  - value shift
+  - future evolution
+  - 1–2 key strategic recommendations
+
+---
+
+### IMPORTANT
+
+- Do NOT analyse only the job title
+- Do NOT give generic AI commentary
+- Do NOT assume the role is safe
+- Do NOT avoid difficult truths
+
+Instead:
+
+Focus on:
+- positioning
+- exposure
+- evolution
+- decision-making

@@ -1,15 +1,17 @@
 package com.chikere.jobai.controller;
 
+import com.chikere.jobai.model.AssessmentProcessingResult;
 import com.chikere.jobai.model.JobRiskAssessment;
+import com.chikere.jobai.model.JourneyType;
 import com.chikere.jobai.model.RiskAssessmentForm;
 import com.chikere.jobai.service.AnalyticsService;
+import com.chikere.jobai.service.JourneyConfigRegistry;
 import com.chikere.jobai.service.RiskAssessmentService;
 import com.chikere.jobai.service.RiskAssessmentService.DocumentParseException;
 import com.chikere.jobai.service.RiskAssessmentService.ValidationException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -26,17 +28,12 @@ public class RiskAssessorController {
 
     private final RiskAssessmentService riskAssessmentService;
     private final AnalyticsService analyticsService;
-
-    @Value("${app.form.role-summary-word-limit.profession:800}")
-    private int professionWordLimit;
-
-    @Value("${app.form.role-summary-word-limit.course:450}")
-    private int courseWordLimit;
+    private final JourneyConfigRegistry journeyConfigRegistry;
 
     @GetMapping("/")
     public String home(Model model) {
         RiskAssessmentForm form = new RiskAssessmentForm();
-        form.setMode("profession");
+        form.setMode(journeyConfigRegistry.get(JourneyType.PROFESSIONAL).legacyModeValue());
         model.addAttribute("riskAssessmentForm", form);
         addWordLimits(model);
         return "index";
@@ -55,7 +52,7 @@ public class RiskAssessorController {
         }
 
         if ("manual".equals(form.getInputMethod())) {
-            int limit = "course".equals(form.getMode()) ? courseWordLimit : professionWordLimit;
+            int limit = journeyConfigRegistry.get(form.getMode()).wordLimit();
             int wordCount = countWords(form.getRoleSummary());
             if (wordCount > limit) {
                 bindingResult.rejectValue("roleSummary", "error.roleSummary",
@@ -66,10 +63,11 @@ public class RiskAssessorController {
         }
 
         try {
-            JobRiskAssessment assessment = riskAssessmentService.processAssessment(form);
+            AssessmentProcessingResult processingResult = riskAssessmentService.processAssessmentWithDetails(form);
+            JobRiskAssessment assessment = processingResult.assessment();
             analyticsService.recordSummaryGenerated(visitorId, form.getProfession(), assessment.getScore());
             analyticsService.recordGenerationCompleted(visitorId, null, form.getProfession(), assessment.getGenerationMetrics());
-            addSuccessAttributes(redirectAttributes, form, assessment);
+            addSuccessAttributes(redirectAttributes, form, processingResult);
 
         } catch (ValidationException e) {
             bindingResult.rejectValue(e.getField(), "error." + e.getField(), e.getMessage());
@@ -95,8 +93,8 @@ public class RiskAssessorController {
     }
 
     private void addWordLimits(Model model) {
-        model.addAttribute("wordLimitProfession", professionWordLimit);
-        model.addAttribute("wordLimitCourse", courseWordLimit);
+        model.addAttribute("wordLimitProfession", journeyConfigRegistry.get(JourneyType.PROFESSIONAL).wordLimit());
+        model.addAttribute("wordLimitCourse", journeyConfigRegistry.get(JourneyType.UNIVERSITY_STUDENT).wordLimit());
     }
 
     private int countWords(String text) {
@@ -121,13 +119,15 @@ public class RiskAssessorController {
 
     private void addSuccessAttributes(RedirectAttributes redirectAttributes,
                                       RiskAssessmentForm form,
-                                      JobRiskAssessment assessment) {
+                                      AssessmentProcessingResult processingResult) {
+        JobRiskAssessment assessment = processingResult.assessment();
         redirectAttributes.addFlashAttribute("mode", form.getMode());
         redirectAttributes.addFlashAttribute("profession", form.getProfession());
         redirectAttributes.addFlashAttribute("score", assessment.getScore());
         redirectAttributes.addFlashAttribute("riskLevel", assessment.getRiskLevel());
         redirectAttributes.addFlashAttribute("summary", assessment.getSummary());
         redirectAttributes.addFlashAttribute("assessment", assessment.getAssessment());
+        redirectAttributes.addFlashAttribute("originalDetails", processingResult.resolvedDetails());
         redirectAttributes.addFlashAttribute("success", true);
     }
 }

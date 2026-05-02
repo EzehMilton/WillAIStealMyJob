@@ -1,0 +1,38 @@
+### UNIVERSAL REPORT QUALITY RULES
+
+This report must help the user make a better decision, not simply understand a topic.
+
+You MUST include:
+
+1. Clear Verdict
+Give a direct judgement on the path.
+Use language such as:
+- “This is a strong path if…”
+- “This is viable, but only if…”
+- “This path carries risk because…”
+
+2. Personal Positioning
+Describe where the user is currently positioned.
+This should feel specific to their inputs, not generic.
+
+3. One Hard Trade-Off
+State one clear consequence of their current direction.
+Example:
+- “If you stay generalist, progression becomes harder.”
+- “If you avoid data skills, this path becomes weaker.”
+- “This option keeps X open, but limits Y.”
+
+4. Value Shift
+Explain what AI makes less valuable and what becomes more valuable.
+Use a direct contrast:
+- “Routine X matters less. Human Y matters more.”
+
+5. Direct Guidance
+Give at least one clear instruction:
+- “Prioritise…”
+- “Avoid…”
+- “Build evidence of…”
+- “Move toward…”
+
+Avoid overly safe, balanced, or generic advice.
+The report should feel like experienced guidance, not a neutral summary.
