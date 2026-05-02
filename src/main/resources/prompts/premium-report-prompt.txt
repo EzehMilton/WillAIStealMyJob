@@ -10,7 +10,13 @@ Journey: {journeyDisplayName}
 {detailsLabel}: {roleSummary}
 Risk Score: {score}/10
 Risk Level: {riskLevel}
-Note: the Risk Score and Risk Level above are initial free-summary estimates only. For this premium report, independently calculate a premiumScore from the full details and your detailed analysis. The premiumScore may match or differ from the initial estimate, but it must be justified.
+
+CRITICAL SCORE RULE:
+You must not create, adjust, or reinterpret the score.
+The official score is {score}/10 and the official risk level is {riskLevel}.
+Use this score exactly.
+Your job is to explain why this score makes sense, expand it into task-level analysis, and provide practical strategy.
+Do not output premiumScore or premiumRiskLevel.
 
 JOURNEY FRAMING:
 {reportFraming}
@@ -29,10 +35,9 @@ INSTRUCTIONS:
 - Salary figures, where relevant, must reflect the current UK market. If this is a student journey, use salary fields for broad future-path market context rather than implying the user already holds a job.
 - Reference real tools, frameworks, technologies, subjects, courses, or learning resources relevant to this journey.
 - Tone: honest, empowering, and actionable. Not alarmist. Not vague.
-- The executive summary must reference the independently calculated premiumScore, not just the initial estimate.
-- premiumScore must be a number from 0.0 to 10.0.
-- premiumRiskLevel must align to premiumScore: 0.0-3.9 = Low, 4.0-6.9 = Moderate, 7.0-10.0 = High.
-- scoreRationale must briefly explain why the premiumScore was chosen, using evidence from the detailed report.
+- The executive summary must reference the official score of {score}/10 and official risk level of {riskLevel}.
+- Do not output premiumScore or premiumRiskLevel anywhere in the JSON.
+- scoreRationale must briefly explain why the official score makes sense, using evidence from the detailed report. It must not claim to calculate a new score.
 - For profession mode: focus on task-level automation, career survival planning, skills that stay valuable, adjacent roles, and salary/market shifts.
 - For course mode: focus on degree/course relevance, likely career paths, AI exposure of those paths, specialisations to consider, and skills to build during the course.
 - For a_level mode: focus on suggested subject/A-Level combinations, career clusters, AI exposure of possible paths, skills to build while still in school, practical next steps for choosing subjects, and uncertainty. Do not pretend certainty.
@@ -42,11 +47,7 @@ You must respond ONLY with valid JSON. No preamble. No explanation. No markdown 
 Return exactly this JSON structure:
 
 {
-  "premiumScore": 6.4,
-
-  "premiumRiskLevel": "Low | Moderate | High",
-
-  "scoreRationale": "2-3 sentences explaining why the premium score is higher, lower, or the same as the initial estimate. Reference the strongest evidence from the detailed task/path exposure map, skills, and journey context.",
+  "scoreRationale": "2-3 sentences explaining why the official score of {score}/10 and risk level of {riskLevel} make sense. Reference the strongest evidence from the detailed task/path exposure map, skills, and journey context.",
 
   "disruptionWindow": "X–Y yrs (e.g. '5–8 yrs', '2–4 yrs', '10+ yrs'). The realistic window before this role, course-linked path, or possible future path is significantly disrupted.",
 

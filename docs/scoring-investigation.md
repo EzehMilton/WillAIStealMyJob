@@ -1,51 +1,112 @@
 # Scoring Investigation — WillAIStealMyJob
 
-**Date:** 2026-05-01  
+**Updated:** 2026-05-02  
 **Branch:** feature/multi-journey-assessment  
 **Status:** Investigation only — no production code changed
+
+> This document supersedes the original 2026-05-01 version. The scoring architecture changed significantly: the AI no longer determines the headline risk score. A deterministic rule-based model replaced it. All findings, risks, and recommendations have been updated accordingly.
 
 ---
 
 ## Table of Contents
 
 1. [Scoring Architecture Overview](#1-scoring-architecture-overview)
-2. [Full Score Data Flow Diagram](#2-full-score-data-flow-diagram)
-3. [Free Summary Score Generation](#3-free-summary-score-generation)
-4. [Premium Report Score](#4-premium-report-score)
-5. [Same Browser Session — Multiple Journeys](#5-same-browser-session--multiple-journeys)
-6. [Mode-Specific Scoring](#6-mode-specific-scoring)
-7. [Likely Causes of Similar Scores (58–59%)](#7-likely-causes-of-similar-scores-5859)
-8. [Risks](#8-risks)
-9. [Test Gaps](#9-test-gaps)
-10. [Recommended Fixes](#10-recommended-fixes)
-11. [Suggested Next Implementation Steps](#11-suggested-next-implementation-steps)
+2. [How Many AI Calls Are Made?](#2-how-many-ai-calls-are-made)
+3. [Full Score Data Flow Diagram](#3-full-score-data-flow-diagram)
+4. [Free Summary Score Generation](#4-free-summary-score-generation)
+5. [Premium Report Score](#5-premium-report-score)
+6. [Same Browser Session — Multiple Journeys](#6-same-browser-session--multiple-journeys)
+7. [Mode-Specific Scoring](#7-mode-specific-scoring)
+8. [Likely Causes of Similar Scores](#8-likely-causes-of-similar-scores)
+9. [Risks](#9-risks)
+10. [Test Coverage](#10-test-coverage)
+11. [Recommended Fixes](#11-recommended-fixes)
+12. [Suggested Next Steps](#12-suggested-next-steps)
 
 ---
 
 ## 1. Scoring Architecture Overview
 
-The application uses a **single-score model**: the score is generated once during the free assessment, then copied into all subsequent structures (flash attributes → sessionStorage → GenerateReportRequest → PremiumReport → ReportRequest entity → HTML templates → PDF).
+The application uses a **two-score model**:
 
-The premium AI does **not** recalculate the headline score. It receives the original score as context in its prompt and outputs all other fields (disruption window, task exposure, timeline, skills, salary, etc.). The `score` field in the JSON response schema for `premium-report-prompt.txt` does not exist — there is no `score` output field in that prompt's response.
+1. **Free summary score** — produced by a deterministic rule-based engine (`RiskScoringService`), not the AI. The AI generates narrative text; the score and risk level are computed server-side and override whatever the AI returns.
+
+2. **Premium score** — produced independently by the AI inside the premium report prompt. It outputs `premiumScore`, `premiumRiskLevel`, and `scoreRationale` as part of the full report JSON. This is separate from the free summary score.
 
 ```
-FREE ASSESSMENT                     PREMIUM REPORT
-─────────────────                   ──────────────────────────────────────────────
-POST /assess                        POST /generate-report
-  → JobAiService                      → PremiumReportAiService
-      → AI model                          → AI model (receives score as context)
-          → { score: 5.8 }               → No score in output — copies req.getScore()
+FREE ASSESSMENT                          PREMIUM REPORT
+────────────────────                     ──────────────────────────────────────
+POST /assess                             POST /generate-report
+  → JobAiService                           → PremiumReportAiService
+      → AI call 1 (narrative only)             → AI call 2 (full report)
+          AI returns { score, riskLevel,            AI returns { premiumScore,
+            summary, assessment }                     premiumRiskLevel,
+          ↓                                           scoreRationale, ... }
+      → RiskScoringService OVERRIDES              ↓
+          score, riskLevel, summary           report.premiumScore = AI output
+          AI's assessment text kept              (independent of free score)
                 ↓                                             ↓
-     stored in flash attrs           report.score = request.score (same value)
-                ↓                                             ↓
-     result.html shows 58%          premium-report.html shows 58%
+     result.html shows score from          premium-report.html shows
+     RiskScoringService (not AI)           premiumScore from AI
 ```
 
-There is **one exception**: in `dummy mode`, a separate local algorithm generates the score for the free assessment AND the mock premium report also copies `req.getScore()` — so the same value flows through.
+**Key facts:**
+- The free summary score the user sees is **never the AI's score**. The AI's numeric score is discarded.
+- The AI's 2-sentence `assessment` narrative is the only AI output kept unchanged from Call 1.
+- The premium report's headline score (`premiumScore`) is genuinely AI-generated and may differ from the free summary score.
+- There is no dummy mode active for `JobAiService` (it was removed). `ReportService` retains a `app.ai.use-dummy` fallback defaulting to `false`.
 
 ---
 
-## 2. Full Score Data Flow Diagram
+## 2. How Many AI Calls Are Made?
+
+**Two calls total — one per report.**
+
+### Call 1 — Free summary (`POST /assess`)
+
+**Class:** `JobAiService.assessJobRisk()`  
+**Model:** gpt-5.4 (Professional) or gpt-5.4-mini (University/School)  
+**Temperature:** 0.2  
+**Prompt:** `jobai.txt` + journey-specific instructions (V2/V3)
+
+The AI receives:
+- The user's profession/subject/interests
+- Their role description (manual text or CV-extracted)
+
+The AI returns `{ score, riskLevel, summary, assessment }`.
+
+After parsing, `RiskScoringService.score()` is called immediately and **replaces** `score`, `riskLevel`, and `summary`. Only `assessment` (the 2-sentence narrative) survives from the AI.
+
+---
+
+### Call 2 — Premium report (`POST /generate-report`)
+
+**Class:** `PremiumReportAiService.generate()`  
+**Model:** gpt-5.4-mini  
+**Temperature:** 0.2  
+**Prompt:** `premium-report-prompt.txt` + journey framing + section emphasis + journey instructions + `report-quality-booster.txt`
+
+The AI receives:
+- The same profession and role description (from `sessionStorage.checkoutPayload.originalDetails`)
+- The free summary score and riskLevel as **context** (`Risk Score: {score}/10`)
+
+The AI returns a large JSON object with all 8 report sections plus its own `premiumScore`, `premiumRiskLevel`, and `scoreRationale`. This score is kept as-is — it is not overridden.
+
+---
+
+### Summary
+
+| | Call 1 (Free Summary) | Call 2 (Premium Report) |
+|---|---|---|
+| Triggered by | `POST /assess` | `POST /generate-report` |
+| Input | profession + role description | same + free score as context |
+| AI output used | `assessment` text only | all fields including `premiumScore` |
+| Score source | `RiskScoringService` (overrides AI) | AI output directly |
+| Model | gpt-5.4 / gpt-5.4-mini | gpt-5.4-mini |
+
+---
+
+## 3. Full Score Data Flow Diagram
 
 ```
 [1] User submits POST /assess
@@ -56,595 +117,586 @@ There is **one exception**: in `dummy mode`, a separate local algorithm generate
     Calls: JobAiService.assessJobRisk(mode, profession, roleSummary)
          │
          ▼
-[3] JobAiService.assessJobRisk()
-    ┌─── dummy mode: buildDummyAssessment() → deterministic score from hash + keyword adjustments
-    └─── live mode:  chatClient.prompt(prompt).call() → AI returns JSON → parsed to JobRiskAssessment
-                                                         { score: 5.8, riskLevel: "Moderate", summary: "...", assessment: "..." }
+[3] JobAiService — AI CALL 1
+    selectedChatClient.prompt(prompt).call()
+    AI returns JSON:
+      { score: X, riskLevel: "...", summary: "...", assessment: "..." }
+         │
+         ▼ ← AI score/riskLevel/summary DISCARDED here
+[4] RiskScoringService.score(journeyType, profession, roleSummary, aiSummary)
+    → RiskDimensionCalculator.calculate() → RiskDimensions (5 scores, 0–10 each)
+    → weightedBaseScore = (taskRepeatability × 0.30) + (digitalExecution × 0.25)
+                        + (humanInteraction × 0.20) + (creativityExecution × 0.15)
+                        + (environmentComplexity × 0.10)
+    → RiskAdjustmentService.protectiveAdjustment() → subtract up to 3.5
+    → finalScore = clamp(baseScore − protective, 0.0, 10.0)
+    → RiskSanityValidator.riskLevel(finalScore): ≤3.4=Low, 3.5–6.9=Moderate, ≥7.0=High
+    → RiskSanityValidator.alignedSummary(...)
+    Returns: RiskScoringResult{ score, riskLevel, summary, dimensions, baseScore, protectiveAdjustment }
          │
          ▼
-[4] AssessmentProcessingResult{ assessment(score=5.8), resolvedDetails, profession, journeyType, mode }
+[5] assessment.setScore(scoringResult.score())        ← DETERMINISTIC value
+    assessment.setRiskLevel(scoringResult.riskLevel()) ← DETERMINISTIC value
+    assessment.setSummary(scoringResult.summary())     ← DETERMINISTIC value
+    assessment.setAssessment(...)                      ← kept from AI (unchanged)
          │
          ▼
-[5] RiskAssessorController.addSuccessAttributes()
-    Flash attributes stored:
-      score      = 5.8
-      riskLevel  = "Moderate"
-      summary    = "..."
-      assessment = "..."
-      profession = "..."
-      mode       = "profession"
-      originalDetails = "...(role summary text)..."
+[6] AssessmentProcessingResult{
+      assessment (score=X from RiskScoringService),
+      resolvedDetails (original role text),
+      profession, journeyType, mode
+    }
+         │
+         ▼
+[7] RiskAssessorController.addSuccessAttributes()
+    Flash attributes stored (one-time, consumed on next GET):
+      score           = X    ← from RiskScoringService
+      riskLevel       = "..."← from RiskSanityValidator
+      summary         = "..."← from RiskSanityValidator
+      assessment      = "..."← from AI (unchanged)
+      profession      = "..."
+      mode            = "profession"
+      originalDetails = "...(user's actual role text)..."
          │
          ▼ redirect
-[6] GET /result  →  result.html
-    Displays: score * 10 = 58% (as circular gauge and progress bar)
-    NOTE: formatInteger(score * 10) — multiply by 10 only for display
+[8] GET /result → result.html
+    Displays: score * 10 as %  (e.g., 5.8 → 58%)
+    Score is from RiskScoringService, not the AI.
          │
-         ▼ user clicks "Generate My Premium Report"
-[7] result.html JavaScript saves to sessionStorage.checkoutPayload:
+         ▼ user clicks modal button "Generate Report Preview"
+[9] result.html JavaScript saves to sessionStorage.checkoutPayload:
     {
       mode:            "profession",
       profession:      "Software Engineer",
-      score:           5.8,             ← raw AI score, NOT percentage
-      riskLevel:       "Moderate",
+      score:           X,               ← deterministic score, NOT AI score
+      riskLevel:       "...",
       summary:         "...",
       assessment:      "...",
-      originalDetails: "...(role summary text)..."
+      originalDetails: "...(role text)..."
     }
     window.location.href = '/generating-report'
          │
          ▼
-[8] GET /generating-report  →  generating-report.html
-    On load, JS reads sessionStorage.checkoutPayload and calls:
-    POST /generate-report with body:
-    {
-      profession:  stored.profession,
-      description: stored.originalDetails || stored.details || stored.assessment || stored.summary || '',
-      score:       stored.score,       ← 5.8 passed unchanged
-      riskLevel:   stored.riskLevel,
-      mode:        stored.mode
-    }
+[10] GET /generating-report → generating-report.html
+     On load, JS reads sessionStorage.checkoutPayload and fires:
+     POST /generate-report with body:
+     {
+       profession:  stored.profession,
+       description: stored.originalDetails || stored.assessment || stored.summary || '',
+       score:       stored.score,       ← deterministic score passed as context
+       riskLevel:   stored.riskLevel,
+       mode:        stored.mode
+     }
          │
          ▼
-[9] ReportController.generateReport()
-    → ReportService.generateAndStoreReport(request)
-    → PremiumReportAiService.generate(request)
-      Builds premium prompt with {score} = "5.8" and {riskLevel} = "Moderate"
-      AI returns JSON with all sections BUT no new score field
-      mapToReport() copies:
-        report.score     = req.getScore()      ← 5.8 (unchanged)
-        report.riskLevel = req.getRiskLevel()  ← "Moderate" (unchanged)
+[11] ReportController.generateReport()
+     → ReportService.generateAndStoreReport(request)
+     → PremiumReportAiService.generate(request) — AI CALL 2
+       Prompt includes: "{score}/10" as context for the AI
+       AI returns full JSON including:
+         premiumScore     ← AI's own independent score
+         premiumRiskLevel ← must align to premiumScore
+         scoreRationale   ← AI's explanation
+         + all 8 report sections
+       mapToReport() sets:
+         report.score           = req.getScore()      ← carried from free summary
+         report.riskLevel       = req.getRiskLevel()  ← carried from free summary
+         report.premiumScore    = AI output           ← independent AI score
+         report.premiumRiskLevel= AI output
+         report.scoreRationale  = AI output
          │
          ▼
-[10] ReportService.generateAndStoreReport()
-     stored.setRiskScore(fullReport.getScore())  ← 5.8 written to DB column
+[12] ReportService.generateAndStoreReport()
+     stored.setRiskScore(fullReport.getScore())      ← free summary score in DB column
      stored.setRiskLevel(fullReport.getRiskLevel())
-     objectMapper.writeValueAsString(fullReport)  ← full JSON with score=5.8 stored in reportJson LOB
+     objectMapper.writeValueAsString(fullReport)     ← full JSON (inc. premiumScore) stored
          │
          ▼
-[11] GET /report/{reportId}  →  premium-report.html
-     Displays: report.score * 10 = 58%
-     Locked preview: score still visible (ReportPreviewService retains score field)
-     Unlocked: full report with same score
+[13] GET /premium-report/{reportId} → premium-report.html
+     Displays: report.score * 10 as % (free summary score — for context)
+     Also displays: report.premiumScore and report.scoreRationale (unlocked section)
+     Locked preview: score visible; premiumScore visible in cover; narrative hidden
          │
          ▼
-[12] GET /report/{reportId}/download  →  premium-report-pdf.html
-     Thymeleaf renders same report.score → PDF shows 58%
+[14] GET /report/{reportId}/download → premium-report-pdf.html
+     Same report object → PDF shows both scores
 ```
 
 ---
 
-## 3. Free Summary Score Generation
+## 4. Free Summary Score Generation
 
-### Where it is generated
+### Where it comes from
 
-**Class:** `JobAiService`  
-**Method:** `assessJobRisk(String mode, String profession, String roleSummary)` — line 71  
-**File:** `src/main/java/com/chikere/jobai/service/JobAiService.java`
+**Class:** `RiskScoringService`  
+**Called from:** `JobAiService.assessJobRisk()` after the AI call  
+**File:** `src/main/java/com/chikere/jobai/service/RiskScoringService.java`
 
-### Live mode (default)
+The score is **deterministic** — given the same inputs, it always produces the same result. It does not change between runs.
 
-The score is entirely determined by the AI model. The prompt (`jobai.txt`) instructs the model:
+### The 5-dimension model
 
-```
-Score Range | Risk Level | Interpretation
-0.0 – 2.9   | Low        | ...
-3.0 – 6.9   | Moderate   | ...
-7.0 – 10.0  | High       | ...
-```
+`RiskDimensionCalculator.calculate()` scores 5 dimensions from the combined subject + details text:
 
-The AI must return a JSON object `{ "score": X.X, "riskLevel": "...", ... }`. There is no server-side post-processing of the score value itself. Whatever the AI returns is used directly.
+| Dimension | Weight | What it measures |
+|---|---|---|
+| `taskRepeatability` | 30% | How predictable and rule-based the work is |
+| `digitalExecution` | 25% | How much the work lives in digital systems AI can access |
+| `humanInteraction` | 20% | How much deep interpersonal judgement is required |
+| `creativityExecution` | 15% | How much original thought vs execution of known patterns |
+| `environmentComplexity` | 10% | How structured vs unpredictable the real-world setting is |
 
-```java
-// JobAiService.java:96–103
-ChatResponse chatResponse = selectedChatClient.prompt(prompt).call().chatResponse();
-String response = extractContent(chatResponse);
-String cleanedResponse = cleanJsonResponse(response);
-JobRiskAssessment assessment = objectMapper.readValue(cleanedResponse, JobRiskAssessment.class);
-// assessment.getScore() is whatever the AI returned
-```
+**Baselines by journey type:**
 
-**AI model behaviour note:** Real language models are calibrated to avoid extremes. In the absence of a strongly high-risk or low-risk profession, models commonly return scores in the 4.5–6.5 range. This produces displayed percentages of 45–65%, clustering around 58–60% for moderate-risk professions.
-
-### Dummy mode (`app.ai.use-dummy=true`)
-
-**Method:** `buildDummyAssessment(String mode, String profession, String roleSummary)` — line 172
-
-```java
-double score = (Math.floorMod(
-    Objects.hash(mode, profession.toLowerCase(), content), 71
-) / 10.0) + 1.5;
-
-score += scoreAdjustment(content);
-score = Math.max(0.5, Math.min(9.5, Math.round(score * 10.0) / 10.0));
-
-String riskLevel = score <= 2 ? "Low" : (score <= 6 ? "Moderate" : "High");
-```
-
-**Score range analysis:**
-
-| Component | Min | Max | Mean |
+| Dimension | Professional | University | School/A-Level |
 |---|---|---|---|
-| Hash % 71 | 0 | 70 | ~35 |
-| Divided by 10 | 0.0 | 7.0 | ~3.5 |
-| Plus 1.5 (offset) | 1.5 | 8.5 | **~5.0** |
-| After common adjustments (+0.8 for analysis/documentation) | 2.3 | 9.3 | **~5.8** |
-| Clamped | 0.5 | 9.5 | ~5.8 |
+| taskRepeatability | 4.8 | 4.3 | 4.0 |
+| digitalExecution | 5.0 | 4.4 | 4.0 |
+| humanInteraction | 5.0 | 4.5 | 4.2 |
+| creativityExecution | 4.8 | 4.3 | 4.0 |
+| environmentComplexity | 4.7 | 4.2 | 4.0 |
 
-**Keyword adjustments applied:**
+**Default weighted base score (no keyword matches):**
 
-| Keywords present | Adjustment |
+| Journey | Approximate default score | Displayed as |
+|---|---|---|
+| Professional | ~4.9 | ~49% |
+| University | ~4.3 | ~43% |
+| School / A-Level | ~4.0 | ~40% |
+
+### Keyword adjustments
+
+Keywords in the text trigger additive adjustments to individual dimensions:
+
+| Trigger keywords | Dimension affected | Adjustment |
+|---|---|---|
+| "data entry", "admin", "scheduling", "routine", "repetitive", "transcription" | taskRepeatability | +2.6 |
+| "documentation", "reporting", "testing", "debugging", "processing" | taskRepeatability | +1.4 |
+| "leadership", "strategy", "nurse", "electrician", "singer", "social care" | taskRepeatability | −2.0 |
+| "software", "developer", "coding", "analyst", "spreadsheet", "online" | digitalExecution | +3.0 |
+| "electrician", "nurse", "care", "physical", "hands-on", "field work" | digitalExecution | −3.0 |
+| "data entry", "admin", "processing", "forms", "reporting" | humanInteraction | +2.2 |
+| "nurse", "care", "empathy", "teaching", "negotiation", "leadership" | humanInteraction | −2.4 |
+| "data entry", "scripted", "routine", "documentation", "testing" | creativityExecution | +2.1 |
+| "creative", "brand", "concept", "strategy", "leadership" | creativityExecution | −2.0 |
+| "structured", "scripted", "rules-based", "forms", "processing" | environmentComplexity | +2.1 |
+| "unpredictable", "emergency", "field work", "patient", "live performance" | environmentComplexity | −2.1 |
+
+Keyword matches cap at 2× per rule (a second matching keyword doubles the adjustment; a third does not add more).
+
+### Role hard caps
+
+Certain role types have their dimensions clamped to fixed ranges regardless of keyword content:
+
+| Role category | Effect |
 |---|---|
-| "repetitive", "data entry", "admin", "scheduling", "routine", "transcription" | +1.4 |
-| "analysis", "reporting", "documentation", "support", "compliance" | +0.8 |
-| "leadership", "negotiation", "teaching", "creative", "strategy", "hands-on", "care" | −1.2 |
-| "field work", "manual", "stakeholder", "coaching", "customer relationship" | −0.6 |
+| Singer, choir, vocalist | All dimensions capped at very low values (≤2.4) |
+| Nurse / nursing | Dimensions clamped to narrow low-moderate ranges |
+| Electrician | taskRepeatability ≤ 3.4, digitalExecution ≤ 1.8 |
+| CEO / chief executive | taskRepeatability ≤ 2.6, humanInteraction ≤ 2.2 |
+| **Data entry clerk** | All dimensions floored to 8.4–9.2 (extreme high risk) |
+| **Call center agent** | All dimensions floored to 7.2–8.4 |
+| Software developer | digitalExecution floored at 8.8; others range-clamped |
+| Graphic designer | digitalExecution floored at 8.0; creativity range-clamped |
 
-**Finding:** The most common words appearing in role descriptions ("I do analysis", "I handle documentation", "I provide support") trigger the +0.8 adjustment. Combined with a mean base of 5.0, the expected dummy score for a typical role description is approximately **5.8 → 58% displayed**. This is very likely the primary cause of similar 58–59% scores if the app is running in dummy mode.
+### Protective adjustment
 
-### Risk level derived from score
+`RiskAdjustmentService.protectiveAdjustment()` subtracts up to 3.5 from the base score:
 
-In **live mode** / the prompt, the thresholds are:
+| Trigger keywords | Reduction |
+|---|---|
+| "live performance", "performer", "singer", "choir", "audience" | −1.1 |
+| "physical presence", "hands-on", "site", "field work", "patient", "ward", "electrician" | −0.9 |
+| "real-time", "coordination", "stakeholder", "leadership", "ceo" | −0.8 |
+| "emotional intelligence", "empathy", "safeguarding", "care", "nurse", "counselling" | −0.9 |
+| "unpredictable", "chaotic", "emergency", "home visit", "real-world" | −0.8 |
+
+Hard caps on adjustment: call center max −0.6, nurse max −1.0.
+
+### Risk level thresholds
+
+`RiskSanityValidator.riskLevel()`:
 
 | Score | Risk Level |
 |---|---|
-| 0.0 – 2.9 | Low |
-| 3.0 – 6.9 | Moderate |
+| 0.0 – 3.4 | Low |
+| 3.5 – 6.9 | Moderate |
 | 7.0 – 10.0 | High |
 
-In **dummy mode**, the threshold is **different**:
+### Aligned summary generation
 
-```java
-String riskLevel = score <= 3 ? "Low" : (score <= 6 ? "Moderate" : "High");
-```
+`RiskSanityValidator.alignedSummary()` generates the displayed summary. It:
+- Names the user's subject.
+- States the impact level ("low/moderate/high AI impact").
+- Explains the dominant dimension that drove the score.
+- Notes protective factors if the adjustment was ≥ 0.8.
+- Appends a journey-specific teaser for the premium report.
+- **Never exposes the numeric score or percentage in the text.**
 
-| Score | Dummy riskLevel | Prompt riskLevel |
-|---|---|---|
-| 2.1–2.9 | **Moderate** | Low (discrepancy) |
-| 6.1–6.9 | **High** | Moderate (discrepancy) |
+### What the AI's `assessment` field does
 
-**Finding:** Dummy mode uses stricter thresholds (≤2 for Low, ≤6 for Moderate) than what the prompt instructs the AI to use (≤2.9 for Low, ≤6.9 for Moderate). A score of 2.5 would display as "Moderate" in dummy mode but "Low" in live mode. A score of 6.5 would display as "High" in dummy mode but "Moderate" in live mode.
-
-### Does the prompt explicitly ask for a score?
-
-Yes. The `jobai.txt` prompt in `<output_requirements>` explicitly requires:
-
-```json
-{
-  "score": "Decimal between 0.0 and 10.0 (one decimal place)",
-  "riskLevel": "Exactly one of 'Low', 'Moderate', or 'High'",
-  ...
-}
-```
-
-There are no defaults, fallbacks, or server-side constants for the live score. If the AI returns a value outside 0–10 or fails to return valid JSON, the parse throws a `RuntimeException` (line 114) and the user sees an error.
+The 2-sentence AI narrative (`assessment`) is the only thing kept from AI Call 1. It is displayed below the score on `result.html` under "Assessment Summary". It is not used to compute anything — it is purely copy.
 
 ---
 
-## 4. Premium Report Score
+## 5. Premium Report Score
 
 ### Does the premium report calculate a new score?
 
-**No.** The premium report always reuses the free summary score.
+**Yes.** The premium report generates its own score independently via AI Call 2.
 
-### Evidence
+### The three premium score fields
 
-**`PremiumReportAiService.mapToReport()`** — line 127–134:
+| Field | Source | Purpose |
+|---|---|---|
+| `PremiumReport.score` | Copied from `GenerateReportRequest.score` (free summary score) | Provides continuity — shows what the user was told in the free snapshot |
+| `PremiumReport.premiumScore` | AI output from premium prompt | The AI's deeper assessment; may differ from the free score |
+| `PremiumReport.premiumRiskLevel` | AI output; must align to `premiumScore` per thresholds | Validated against the same ≤3.4 / 3.5–6.9 / ≥7.0 bands |
+| `PremiumReport.scoreRationale` | AI output | Explains why the AI chose `premiumScore`; shows if it adjusted the initial score and why |
+
+### `mapToReport()` code
 
 ```java
-PremiumReport report = PremiumReport.builder()
-    .reportId(reportId)
-    .profession(req.getProfession())
-    .mode(req.getMode())
-    .score(req.getScore())        // ← copied from request, not from AI output
-    .riskLevel(req.getRiskLevel()) // ← copied from request, not from AI output
+// PremiumReportAiService.java
+PremiumReport.builder()
+    .score(req.getScore())                        // ← free summary score (carried through)
+    .riskLevel(req.getRiskLevel())                // ← free summary riskLevel (carried through)
+    .premiumScore(...)                            // ← AI output
+    .premiumRiskLevel(...)                        // ← AI output
+    .scoreRationale(text(root, "scoreRationale")) // ← AI output
     ...
 ```
 
-The premium prompt (`premium-report-prompt.txt`) does not include a `score` output field. The AI receives the score as context (`Risk Score: {score}/10`) to inform its narrative, but does not output a new score.
+### What is stored in the database
 
-**`ReportService.generateAndStoreReport()`** — line 49–57:
+`ReportRequest.riskScore` and `ReportRequest.riskLevel` store the **free summary** score (for analytics queries). The `premiumScore` is inside `reportJson` (the serialised `PremiumReport` LOB) only — it is not a separate indexed column.
 
-```java
-stored.setRiskScore(fullReport.getScore());    // ← the copied value written to DB
-stored.setRiskLevel(fullReport.getRiskLevel()); // ← the copied value written to DB
-```
+### What is displayed in templates
 
-### Which fields use the score in PremiumReport?
-
-| Field | Source |
+| Template | Score shown |
 |---|---|
-| `PremiumReport.score` | Copied from `GenerateReportRequest.score` |
-| `PremiumReport.riskLevel` | Copied from `GenerateReportRequest.riskLevel` |
-| `ReportRequest.riskScore` | Copied from `PremiumReport.score` |
-| `ReportRequest.riskLevel` | Copied from `PremiumReport.riskLevel` |
-| `PremiumReport.taskExposureMap[].exposurePercent` | AI-generated (live) or hardcoded by riskLevel (dummy) — **independent of headline score** |
+| `result.html` | `score` (deterministic) as `score * 10 %` |
+| `premium-report.html` (cover stat box) | `report.score * 10 %` (free summary, for reference) |
+| `premium-report.html` (section 01 gauge) | `report.score * 10 %` |
+| `premium-report.html` (premium section) | `report.premiumScore` with `scoreRationale` (unlocked only) |
+| `premium-report-pdf.html` | Both `score` and `premiumScore` |
 
-### Which score is displayed in `premium-report.html`?
+### Are task exposure percents independent of the headline score?
 
-```html
-<!-- Cover stat box -->
-th:text="${#numbers.formatDecimal(report.score * 10, 1, 0)} + '%'"
+**Yes, always (in live mode).** The `taskExposureMap[].exposurePercent` values come from the premium AI's own analysis of the profession and original details. They are not derived from either `score` or `premiumScore`.
 
-<!-- Score gauge circle -->
-th:text="${#numbers.formatDecimal(report.score * 10, 1, 0)} + '%'"
-```
-
-`report.score` is the copied free summary score. The `* 10` is purely for display (5.8 → 58%).
-
-### Which score is displayed in `premium-report-pdf.html`?
-
-Same `report.score * 10` expression. Same value.
-
-### Which score is stored in `ReportRequest.reportJson`?
-
-The entire serialised `PremiumReport` JSON is stored, which includes the `score` field. Example:
-
-```json
-{ "score": 5.8, "riskLevel": "Moderate", ... }
-```
-
-### Are task exposure percents independent of headline score?
-
-**In live mode:** Yes. Task `exposurePercent` values (0–100) come from the AI's own analysis in the premium report generation step. They are not derived from the headline score.
-
-**In dummy mode (`buildMockReport()`):** Partially. The task rows use hardcoded values that branch on `riskLevel`:
-
-```java
-new TaskRow("Routine and repetitive tasks",
-    high ? 84 : low ? 26 : 61,   // always 61 for Moderate
-    high ? "High" : low ? "Low" : "Moderate",
-    ...)
-```
-
-So in dummy mode, every "Moderate" user sees identical task exposure values (61, 56, 48, 43, 29, 20, 10). This means dummy mode premium reports for the same riskLevel are visually identical beyond the profession name.
+`ReportService` retains a `buildMockReport()` method (accessible via `app.ai.use-dummy=true`, default `false`) which uses riskLevel-banded hardcoded values. In production this path is inactive.
 
 ---
 
-## 5. Same Browser Session — Multiple Journeys
+## 6. Same Browser Session — Multiple Journeys
 
 ### sessionStorage overwrite behaviour
 
-When the user clicks "Generate My Premium Report" in `result.html`, this JavaScript executes:
+When the user clicks "Generate Report Preview" in `result.html`, the JavaScript **always overwrites** `sessionStorage.checkoutPayload` completely:
 
 ```javascript
 sessionStorage.setItem('checkoutPayload', JSON.stringify(payload));
 window.location.href = '/generating-report';
 ```
 
-**This always overwrites the full `checkoutPayload` object.** If the user assesses profession A, then profession B, the second click replaces the first payload. There is no accumulation or merging — the last assessment wins.
-
-**Scenario: No stale data leak between journeys**
+There is no accumulation or merging. The last assessment wins. Sequential journeys in the same tab are safe:
 
 ```
-User assesses profession A → result page → clicks "Generate" → payload A stored → /generating-report
-  → (report generated for A) → navigates home
-User assesses profession B → result page → clicks "Generate" → payload B OVERWRITES A → /generating-report
-  → report generated correctly for B ✓
+Assess profession A → result → click "Generate" → payload A written → report generated for A
+Assess profession B → result → click "Generate" → payload B OVERWRITES A → report generated for B ✓
 ```
 
-**Risk: Stale sessionStorage if user navigates to `/generating-report` without re-clicking "Generate"**
+### Risk: stale sessionStorage if `/generating-report` is reached without clicking "Generate"
+
+`sessionStorage` persists across page loads and back/forward navigation within the same tab. If a user abandons `/generating-report` mid-way and navigates back to it without re-assessing, the old payload fires again:
 
 ```
-User assesses profession A → result page → clicks "Generate" → payload A stored → (doesn't complete)
-  → presses browser back → navigates manually to /generating-report
-  → old payload A is still in sessionStorage → generates old report
+Assess profession A → click "Generate" → payload A stored → abandon page
+Navigate back to /generating-report (browser history)
+→ old payload A is in sessionStorage → generates stale report
 ```
 
-This is because `sessionStorage` persists within the browser tab across page loads, including back/forward navigation. There is no server-side check that validates the payload belongs to the current user flow.
+There is no server-side guard against this.
 
 ### Flash attribute safety
 
-Flash attributes in Spring MVC are **one-time**: stored in the HTTP session for exactly one redirect, consumed on `GET /result`, then deleted. This means:
-
-- If the user refreshes `/result` after viewing it once, the flash attributes are gone and `success` will be null/false.
-- The template correctly handles this: `th:if="${success} and ${score != null}"` — the risk score card will not render.
-- There is **no server-side session state** that persists the score beyond that one redirect.
+Spring MVC flash attributes are one-time: stored in the HTTP session for exactly one redirect cycle, consumed on `GET /result`, then deleted. Refreshing `/result` renders the "no data" state — `success` is null/false. The score card does not render.
 
 ### Server-side session state
 
-No `HttpSession` is used for score data. The server is stateless for this flow. The only persistent state is the `ReportRequest` database entity keyed by UUID.
+No `HttpSession` carries score data. The server is stateless across the free assessment → premium report flow. The only persistent server-side state is the `ReportRequest` entity in the database.
 
-### reportId reuse risk
+### reportId uniqueness
 
-Each premium report receives a fresh `UUID.randomUUID()` generated in `PremiumReportAiService.generate()` (line 65). This is independent of any previous report. There is no reuse risk.
+Each premium report receives `UUID.randomUUID()` in `PremiumReportAiService.generate()`. Every generated report is independent. There is no reuse risk.
 
 ### Browser back/forward cache
 
-If the browser caches the `/result` page (bfcache), pressing "back" shows the old rendered HTML including the old profession and score in the Thymeleaf-baked JavaScript:
+If the browser serves a cached `/result` page (bfcache), pressing "back" shows the old score (baked into the Thymeleaf JS at render time). Clicking "Generate" on a cached result page saves those baked-in values to sessionStorage — correct for the visible result. This is expected behaviour.
 
-```javascript
-const score = /*[[${score}]]*/ 0;  // baked in at server render time
-```
-
-If the user then clicks "Generate My Premium Report" on this cached page, the JS reads the baked-in values (correct for that result) and overwrites `sessionStorage`. This is the intended behaviour — the data would be correct for the visible result.
-
-However, if the user navigates to `/result` directly (no redirect from `/assess`), the Thymeleaf model has no `score` attribute, so the score displays as the default `0`. The button still saves that `{ score: 0, ... }` payload to sessionStorage if clicked. This would generate a report with score=0.
+If the user navigates directly to `/result` without a prior `POST /assess` redirect, the model has no flash attributes. `success` is null, score is not rendered. Clicking "Generate" from this state would save `{ score: 0, ... }` to sessionStorage.
 
 ---
 
-## 6. Mode-Specific Scoring
+## 7. Mode-Specific Scoring
 
 ### Summary
 
-| Mode | Journey | Model Used | Score Meaning | Prompt File |
+| Mode | Journey | Baseline range | AI model (narrative) | Prompt file |
 |---|---|---|---|---|
-| `profession` | Professional | `gpt54ChatClient` (premium, gpt-5.4) | Job automation risk | `profession-instructions.txt` |
-| `course` | University student | `gpt54MiniChatClient` (mini, gpt-5.4-mini) | Career path AI exposure | `course-instructions.txt` |
-| `a_level` | School / pre-university | `gpt54MiniChatClient` (mini, gpt-5.4-mini) | AI future-readiness risk | `a-level-instructions.txt` |
+| `profession` | Professional | 4.7–5.0 | gpt-5.4 (premium) | `profession-instructionsV2.txt` |
+| `course` | University student | 4.2–4.5 | gpt-5.4-mini | `course-instructionsV2.txt` |
+| `a_level` | School / pre-university | 4.0 | gpt-5.4-mini | `a-level-instructionsV3.txt` |
 
 ### Are scores semantically comparable across modes?
 
-**No.** A score of 7.0 means different things per mode:
+**No.** The score meaning differs:
 
-- **profession 7.0**: Most day-to-day tasks are automatable in this job.
-- **course 7.0**: The career paths this degree leads to are highly AI-exposed.
-- **a_level 7.0**: The subject/interest direction is narrow or leads to highly automatable paths without strong human skills.
+- **profession:** How automatable are the day-to-day tasks of this job?
+- **course:** How AI-exposed are the career paths this degree leads to?
+- **a_level:** How narrow or automatable are the future paths this subject direction points toward?
 
-The same score dial in `result.html` and `premium-report.html` is used for all three, but the `scoreExplanation` text varies:
+The same 0–10 scale and Low/Moderate/High labels are used for all three, but the `scoreExplanation` text shown to the user on `result.html` explains the mode-specific interpretation.
 
-```html
-scoreExplanation = mode == 'a_level'
-  ? 'Score reflects how exposed your likely future study and career paths may be to AI disruption...'
-  : mode == 'course'
-  ? 'Score reflects how exposed the career paths linked to this course may be...'
-  : 'Score reflects how much of your current work can be automated...'
-```
+### Scoring differences across modes
 
-The scoring scale (0–10) and risk level labels ("Low", "Moderate", "High") are shared across all modes.
+The differences are in **baselines**, not the scoring rules. A professional with no distinctive keywords scores ~4.9. A student with the same description scores ~4.3. A school student scores ~4.0. Keyword adjustments apply identically across all modes.
 
-### Model selection logic
+This means the same description produces a lower score for students than for professionals — intentional, because student journeys are assessed against less certain future paths, and the default risk baseline is lower.
 
-```java
-// JobAiService.java:119–121
-private ChatClient selectAssessmentModel(String mode) {
-    return journeyConfigRegistry.get(mode).journeyType().isProfessional()
-        ? gpt54ChatClient
-        : gpt54MiniChatClient;
-}
-```
+### AI model differences
 
-Only PROFESSIONAL uses the premium model. This may produce more reliably calibrated scores for professionals. University and school journeys use the mini model, which is cheaper but may be more variable in its scoring.
+Only the Professional journey uses the premium model (gpt-5.4) for narrative generation. University and school journeys use the mini model (gpt-5.4-mini). Both operate at temperature 0.2. The narrative quality may differ, but the **score** is unaffected by model choice — it comes from `RiskScoringService`, not the AI.
 
 ---
 
-## 7. Likely Causes of Similar Scores (58–59%)
+## 8. Likely Causes of Similar Scores
 
-### Cause 1 — Dummy mode average score ≈ 5.8 (HIGH CONFIDENCE)
-
-**Probability: Very likely if `app.ai.use-dummy=true`**
-
-The dummy mode hash function produces a uniform distribution across 0–70. After dividing by 10 and adding the 1.5 offset, the mean base score is **5.0**. The most common keyword cluster — any description containing words like "analysis", "reporting", "documentation", or "support" — adds **+0.8**, bringing the mean effective score to **~5.8 → 58%**.
-
-This is not a bug in the hash function itself — hash randomness is correct. The issue is that:
-1. The +0.8 keyword trigger covers extremely common English words ("support", "reporting", "analysis").
-2. The base mean is 5.0, and +0.8 lands squarely on 5.8.
-3. The dummy score is deterministic for the same input — testing with the same profession across sessions always returns the same score.
-
-**Diagnosis check:** If many different professions are all showing ~58%, the application is almost certainly running in dummy mode or the professions being tested happen to use the +0.8 keyword cluster.
+The original investigation identified dummy mode (mean ~5.8) as the primary cause. That path has been removed from `JobAiService`. The analysis below reflects the current architecture.
 
 ---
 
-### Cause 2 — AI model moderate-range bias (MEDIUM CONFIDENCE)
+### Cause 1 — Common keywords pushing most professional roles into the 55–65% band (MEDIUM CONFIDENCE)
 
-**Probability: Plausible for live mode**
+The keyword adjustments for common office-role vocabulary are additive and stack across dimensions:
 
-Large language models are calibrated to avoid extreme outputs. For ambiguous inputs, they tend to cluster around moderate values. For a 0–10 risk scale, "moderate" would be 4–6, which maps to 40–60% displayed. A score of 5.8 is exactly where a model might settle for a "generic office role" without strong signals in either direction.
+| Words present | Dimensions affected | Combined effect on weighted score |
+|---|---|---|
+| "reporting" | taskRepeatability +1.4, humanInteraction +2.2 | weighted ≈ +0.9 |
+| "documentation" | taskRepeatability +1.4, creativityExecution +2.1 | weighted ≈ +0.7 |
+| "reporting" + "documentation" | both rules fire | weighted ≈ +1.6 on top of 4.9 baseline → ~6.5 |
 
-This is not a code defect — it is the expected behaviour of the AI. The prompt does include clear scoring guidance, but the AI has discretion within those bands.
+A professional describing their role with "I handle reporting and documentation" would score approximately **6.5 → 65%**. Many generic office roles without distinctive high-risk or low-risk vocabulary land in the 55–65% range.
 
----
-
-### Cause 3 — Premium report inherits free summary score (CONFIRMED)
-
-**Probability: Certain**
-
-The premium report does not recalculate a score. If two users have free assessment scores of 5.8, both their premium reports will also show 58%. The premium AI has no mechanism to adjust the headline score based on the deeper analysis it performs.
-
-This means:
-- If the free summary score is wrong or biased, the premium report carries the same bias.
-- If the AI assigns 5.8 to nearly everyone, every premium report shows 58%.
+This is not a flaw — it is the expected behaviour of the model for genuinely moderate-risk roles. It becomes visible as "similar scores" only when a diverse set of professions all lack strong distinguishing keywords.
 
 ---
 
-### Cause 4 — Task exposure percents cluster in dummy mode (CONFIRMED)
+### Cause 2 — Roles with strong signals score very differently (CONFIRMED, working as intended)
 
-**Probability: Certain for dummy mode**
+| Role | Approximate score | Displayed |
+|---|---|---|
+| Data entry clerk | ~8.7 (hard floor) | ~87% |
+| Call center agent | ~7.8 (hard floor) | ~78% |
+| Software developer | ~6.5 (range-clamped) | ~65% |
+| Generic professional (no keywords) | ~4.9 (baseline) | ~49% |
+| Graphic designer | ~6.0 (range-clamped) | ~60% |
+| CEO | ~3.4 (hard cap) | ~34% |
+| Electrician | ~2.8 (hard cap) | ~28% |
+| Nurse | ~2.5–3.5 (range-clamped) | ~25–35% |
+| Singer / choir | ~1.6 (hard cap) | ~16% |
 
-In `ReportService.buildMockReport()`, the `taskRows()` method hardcodes exposure percentages based only on riskLevel:
-
-```java
-new TaskRow("Routine and repetitive tasks", high ? 84 : low ? 26 : 61, ...)
-new TaskRow("Data processing and reporting", high ? 76 : low ? 30 : 56, ...)
-```
-
-Every "Moderate" risk user in dummy mode sees: 61%, 56%, 48%, 43%, 29%, 20%, 10% — identical values regardless of profession. This makes different professions look identical in the task exposure section.
-
----
-
-### Cause 5 — Score formatting is correct (NOT A CAUSE)
-
-Both templates use `report.score * 10` for display. The arithmetic is correct. A score of `5.8` displays as `58%`. There is no formatting bug.
+Professions with explicit keyword matches spread across the full 0–10 range. Similar scores only appear for the "middle ground" — roles that don't clearly match any keyword cluster.
 
 ---
 
-## 8. Risks
+### Cause 3 — Free summary score and premium report cover score are the same value (CONFIRMED, by design)
 
-### Risk 1 — Critical: Description fallback chain may use the wrong context
+`PremiumReport.score` is copied from the `GenerateReportRequest.score`, which came from the free assessment. The cover stat box in `premium-report.html` shows this value.
 
-In `generating-report.html` (line 481):
+A user who saw 55% in the free snapshot will see 55% on the premium report cover. This is intentional — continuity for the user. The `premiumScore` (AI-generated, potentially different) is shown as a separate field with its own rationale in the unlocked report body.
+
+---
+
+### Cause 4 — Score formatting is correct (NOT A CAUSE)
+
+Both templates use `report.score * 10` for display. `5.5 → 55%`, `7.0 → 70%`. The arithmetic is correct. No formatting bug.
+
+---
+
+### Cause 5 — What is no longer a cause: dummy mode
+
+The old investigation identified dummy mode as the primary cause of ~58% clustering. `JobAiService` no longer has dummy mode logic. `app.ai.use-dummy` is absent from `application.properties`. `ReportService.buildMockReport()` still exists as a fallback (defaulting to inactive) but would only be triggered if `APP_AI_USE_DUMMY=true` is explicitly set as an environment variable.
+
+If dummy mode was recently removed, scores may have shifted from consistently ~58% to values driven by the keyword model — typically 40–65% for professional roles without strong signals.
+
+---
+
+## 9. Risks
+
+### Risk 1 — Critical: Description fallback chain may use degraded context
+
+In `generating-report.html`:
 
 ```javascript
 description: stored.originalDetails || stored.details || stored.assessment || stored.summary || '',
 ```
 
-If `originalDetails` is absent from sessionStorage (e.g., old payload from before this field was added, or a browser reload), the fallback chain uses:
-- `stored.assessment` — the 2-sentence free assessment narrative (very short, not the user's actual input)
-- `stored.summary` — the 1-sentence summary (16 words max)
+If `originalDetails` is absent from sessionStorage, the fallback uses:
+- `stored.assessment` — the 2-sentence AI narrative (very short, not the user's actual input)
+- `stored.summary` — the aligned summary sentence generated by `RiskSanityValidator` (not user input at all)
 
-The premium AI then receives a summary sentence instead of the user's original role description. This produces a much less personalised premium report. The user would not know this happened.
+The premium AI then receives a generated sentence as if it were the user's role description. This produces a less personalised report. The user would not know this happened.
 
-**Current mitigation:** `originalDetails` is set in `RiskAssessorController.addSuccessAttributes()` and baked into `result.html` JS. If the user goes directly from `/result` to `/generating-report` in the same session, `originalDetails` should be present.
-
-**Residual risk:** If sessionStorage survives from a previous incomplete flow (user abandoned at `/generating-report` and returned without re-assessing), the old payload may lack `originalDetails` if it was set before that field was introduced.
+**When this occurs:** If sessionStorage has a stale payload from a previous incomplete session, or if the user navigates directly to `/generating-report`.
 
 ---
 
-### Risk 2 — High: Dummy riskLevel thresholds differ from live thresholds
+### Risk 2 — Medium: Score of 0 if user reaches `/generating-report` without prior assessment
 
-Dummy mode uses `score <= 2` for "Low" and `score <= 6` for "Moderate". The prompt instructs the AI to use `<= 2.9` and `<= 6.9`. A dummy score of 2.5 is labelled "Moderate" but would be "Low" in live mode. A dummy score of 6.5 is labelled "High" but would be "Moderate" in live mode.
+If `sessionStorage.checkoutPayload` is missing, the JS sends `score: 0` and `riskLevel: ''`. The server accepts this without validation. The premium AI receives `Risk Score: 0.0/10` and generates a report anchored on that false baseline. `PremiumReport.score = 0`, which renders as `0%` on the cover.
 
-If testing is done in dummy mode and reporting is done in live mode (or vice versa), the riskLevel label carried into the premium report may not match what live mode would produce for the same numeric score.
-
----
-
-### Risk 3 — Medium: Score of 0 possible if user accesses `/generating-report` without prior assessment
-
-If `sessionStorage.checkoutPayload` is missing or contains `score: 0` (e.g., user typed the URL directly), the system sends `score: 0` and `riskLevel: ''` to `POST /generate-report`. The premium report is generated with score=0 and empty riskLevel. The AI receives `Risk Score: 0.0/10` and `Risk Level: ` — it may still produce a report, but the headline score and risk badge will be wrong.
-
-The server does not validate that `score > 0` or `riskLevel` is a known value before calling `PremiumReportAiService.generate()`.
+`GenerateReportRequest` has no `@Valid` constraints — the server does not reject this.
 
 ---
 
-### Risk 4 — Medium: No server-side validation of sessionStorage data integrity
+### Risk 3 — Medium: No server-side validation of `GenerateReportRequest`
 
-The `GenerateReportRequest` is accepted directly as a `@RequestBody` with no field-level validation annotations. Any caller can send arbitrary `score`, `riskLevel`, or `mode` values. A malformed request is not detected until it causes a downstream failure.
-
----
-
-### Risk 5 — Low: Browser back/forward may show stale result page
-
-If the browser caches the `/result` page (bfcache), the old score and profession are visible. Clicking "Generate" from a cached result page with a different session would use the old baked-in values. This is standard browser behaviour but could confuse users who assess multiple professions in one session.
+Any HTTP client can send arbitrary `score`, `riskLevel`, or `mode` values to `POST /generate-report`. A malformed request is not caught until it causes a downstream failure (e.g., `JourneyType.fromMode()` throws for an unknown mode, which would produce a 500).
 
 ---
 
-### Risk 6 — Low: AI model returns score outside expected range
+### Risk 4 — Medium: `premiumScore` not stored as a queryable DB column
 
-If the AI returns `score: 11.5` or `score: -1.0`, Jackson will parse it as a `double` and the value will propagate unchecked. `result.html` displays `score * 10` — this would render as "115%" or "-10%". There is no server-side clamping of the AI score in live mode.
+`ReportRequest.riskScore` holds the free summary score. `premiumScore` lives only inside the `reportJson` LOB. This means:
+- Analytics queries on scores only see the free summary score.
+- You cannot query "reports where premiumScore > 7.0" without deserialising all report JSON.
+- If a premium score is ever needed for a report listing, the JSON must be parsed.
 
 ---
 
-## 9. Test Gaps
+### Risk 5 — Low: Browser back/forward shows stale result page
 
-### Existing tests — what they DO cover
+bfcache may serve a cached `/result` page when the user presses "back". The baked-in score and profession are correct for the visible result, but if the user came from a different journey on the same tab, they see and interact with the old result. Clicking "Generate" would overwrite sessionStorage with the old values — generating a report for the previous assessment, not the one the user may be expecting.
 
-| Test Class | Covers |
+---
+
+### Risk 6 — Low: `gpt54ReportChatClient` bean is defined but not wired
+
+`AIModelConfiguration` defines a `gpt54ReportChatClient` bean (premium model, temperature 0.6, intended for richer narrative). `PremiumReportAiService` currently uses `gpt54MiniChatClient` (mini, 0.2). The report client bean is unused. This is either dead configuration or an intended future upgrade that was not completed.
+
+---
+
+### Risks resolved since original investigation
+
+| Original risk | Status |
 |---|---|
-| `RiskAssessmentServiceTest` | Form validation, CV parsing, correct call to `JobAiService`, correct `resolvedDetails` |
-| `JobAiServiceTest` | Correct prompt content injected per journey (profession, course, a_level) |
-| `PremiumReportAiServiceTest` | Correct prompt framing per journey; always uses hardcoded `score=5.5` |
-| `CheckoutControllerTest` | Correct price ID routing per mode |
+| AI score outside 0–10 rendering as 115% | **Resolved** — `RiskScoringService` overrides the AI score entirely; `clampScore()` also exists in `JobAiService` |
+| Dummy mode riskLevel threshold discrepancy | **Resolved** — dummy mode removed from `JobAiService`; `RiskSanityValidator` uses consistent thresholds (≤3.4/3.5–6.9/≥7.0) |
+| AI score clustering around 5.8 | **Resolved** — AI no longer sets the score |
+| Dummy mode `buildDummyAssessment` mean ≈5.8 | **Resolved** — method removed |
 
-### Existing tests — what they do NOT cover
+---
+
+## 10. Test Coverage
+
+### What is now tested
+
+| Test Class | What it covers |
+|---|---|
+| `RiskScoringServiceTest` | Risk level thresholds (3.4/3.5/6.9/7.0), sample roles (Low/Moderate/High expected levels), protective factor reduction, summary alignment and no numeric score in text |
+| `RiskDimensionCalculatorTest` | Keyword adjustments per dimension, journey baselines, role hard caps, clamp behaviour |
+| `RiskScoringBenchmarkTest` | Score distribution across a range of role/journey combinations — guards against regression |
+| `JobAiServiceTest` | Correct prompt built per journey; correct instruction file injected |
+| `JobAiServiceMockedChatClientTest` | Mocked ChatClient; verifies `RiskScoringService` is called and that its output overrides the AI's score |
+| `RiskAssessmentServiceTest` | Form validation, CV extraction, `resolvedDetails` preserved, all 3 journey validations |
+| `PremiumReportAiServiceTest` | Prompt framing per journey; journey-specific instructions injected |
+| `PremiumReportAiServiceMockedChatClientTest` | Mocked ChatClient; verifies JSON mapping to `PremiumReport` including `premiumScore` |
+| `ReportServiceTest` | Report persistence, payment status transitions, expiry, purge |
+| `ReportPreviewServiceTest` | Locked preview has only allowed fields; premium sections cleared; `taskExposureMap` limited to 3 rows |
+| `CheckoutControllerTest` | Price ID routing per journey; fallback for unconfigured a-level price |
+| `RiskAssessorControllerTest` | `POST /assess` success path; flash attributes preserved including `originalDetails` |
+| `JourneyConfigRegistryTest` | Config lookup, word limits, flags |
+| `JourneyTypeTest` | `fromMode()` for all 3 modes; invalid mode handling |
+| `ResultTemplateTest`, `PremiumReportTemplateTest`, `GeneratingReportTemplateTest` | Thymeleaf renders correctly for locked/unlocked states |
+| `NoRealAiSafetyTest` | Guards against live AI calls in tests |
+
+### Remaining gaps
 
 | Gap | Risk |
 |---|---|
-| No test verifies that `PremiumReport.score` == `GenerateReportRequest.score` | The score copy may silently break if the mapping changes |
-| No test for score values outside 0–10 (AI returning bad data) | OOB score would render as "115%" with no error |
-| No test for dummy mode riskLevel threshold discrepancy vs prompt thresholds | Different behaviour in test (dummy) vs prod (live) |
-| No test for dummy mode score distribution | No assurance that dummy scores are not all ≈5.8 |
-| No test that `originalDetails` is non-null and non-empty when used as description | Falls back silently to `assessment` text |
-| No test for `GenerateReportRequest` with `score=0` or blank `riskLevel` | Invalid requests not validated |
-| No test for the `description` fallback chain in `generating-report.html` | Wrong context used for premium report if fallback triggers |
-| No test for same-session multiple journeys (sessionStorage overwrite) | Stale payload risk |
-| No test for `/result` accessed without prior flash attributes | Score=null renders as 0%; JS saves `{score: 0}` to sessionStorage |
-| No test for premium score displayed in PDF | PDF template correctness unverified |
-| `PremiumReportAiServiceTest` hardcodes `score=5.5` for all journeys | No coverage of edge scores (0, 10, boundary values) |
+| No test for `description` fallback chain — missing `originalDetails` silently uses assessment text | Premium report generated from wrong input |
+| No test for `GenerateReportRequest` with `score=0` or blank `riskLevel` | Invalid payload accepted server-side |
+| No test for the `gpt54ReportChatClient` bean being wired and used | Unused bean may confuse future developers |
+| No test for `premiumScore` being stored inside `reportJson` and correctly round-tripped | Serialisation regression undetected |
+| No test for PDF content correctness | Layout regressions undetected |
+| No end-to-end payment webhook integration test | Lock/unlock flow tested manually only |
+| No test for stale sessionStorage across browser back/forward | Stale report context undetected |
 
 ---
 
-## 10. Recommended Fixes
+## 11. Recommended Fixes
 
-### Fix 1 — Align dummy mode riskLevel thresholds with prompt thresholds
+### Fix 1 — Add server-side validation to `GenerateReportRequest`
 
-**File:** `JobAiService.java:182`
+**File:** `GenerateReportRequest.java`
 
-Change:
-```java
-String riskLevel = score <= 2 ? "Low" : (score <= 6 ? "Moderate" : "High");
-```
-
-To:
-```java
-String riskLevel = score <= 2.9 ? "Low" : (score <= 6.9 ? "Moderate" : "High");
-```
-
-This makes dummy mode produce labels consistent with what the live AI model is instructed to output.
+Add `@NotBlank` on `mode` and `riskLevel`, and validate `score` is in [0.0, 10.0] before calling `PremiumReportAiService`. Reject or sanitise invalid payloads with a 400 response rather than letting them produce broken reports.
 
 ---
 
-### Fix 2 — Validate `GenerateReportRequest` fields server-side
+### Fix 2 — Guard against missing `originalDetails` in the description fallback
 
-**File:** `GenerateReportRequest.java` and/or `ReportController.java`
+**File:** `generating-report.html` (JS) and/or `ReportController.java`
 
-Add validation so that `score` is clamped to 0–10 before use, `riskLevel` is checked against known values, and `mode` is validated against `JourneyType.fromMode()`. A request with `score=0` and blank `riskLevel` should either be rejected or have a safe fallback applied.
+Option A: In the JS, check that `stored.originalDetails` is non-empty before proceeding. If it is absent, redirect the user back to the form with a message.
 
----
-
-### Fix 3 — Guard against missing `originalDetails` in sessionStorage
-
-The `generating-report.html` fallback chain `stored.originalDetails || stored.details || stored.assessment || stored.summary` is silent. At minimum, log a warning or show the user a message if `originalDetails` is missing. Consider also validating server-side that `description` has a minimum length before calling the AI.
+Option B: Server-side — validate that `request.getDescription()` has a minimum length (e.g., 20 chars) and return a 400 if not.
 
 ---
 
-### Fix 4 — Clamp live AI score on the server
+### Fix 3 — Store `premiumScore` as a separate DB column
 
-**File:** `JobAiService.java` — after `objectMapper.readValue()` (line 103)
+**File:** `ReportRequest.java`
 
-Add:
-```java
-assessment.setScore(Math.max(0.0, Math.min(10.0, assessment.getScore())));
-```
-
-This prevents OOB values from the AI (e.g., `11.5`) rendering as `115%` in the UI.
+Add `@Column private Double premiumScore;` to `ReportRequest` and populate it in `ReportService.generateAndStoreReport()`. This allows analytics queries on the AI-generated premium score without deserialising report JSON.
 
 ---
 
-### Fix 5 — Show dummy mode warning in non-production environments
+### Fix 4 — Wire or remove `gpt54ReportChatClient`
 
-When `useDummyMode=true`, add a visible banner in the UI (e.g., a dev-only header bar) so testers know the scores are not real AI outputs. This prevents confusion when testing with dummy mode and observing similar scores.
+**File:** `AIModelConfiguration.java`, `PremiumReportAiService.java`
+
+Either inject `gpt54ReportChatClient` into `PremiumReportAiService` (premium model, temp 0.6) for richer narrative, or delete the bean to remove dead configuration. Leaving it undefined wastes a Spring bean and misleads future developers.
 
 ---
 
-## 11. Suggested Next Implementation Steps
+### Fix 5 — Prevent stale sessionStorage generating wrong report
+
+**File:** `generating-report.html`
+
+When the page loads, validate that `stored.profession` is non-empty and that the stored payload looks recent (e.g., by adding a `timestamp` field when saving in `result.html`). If the payload is missing or too old, redirect to the home page rather than silently generating with stale data.
+
+---
+
+## 12. Suggested Next Steps
 
 In priority order:
 
-1. **Confirm whether production is running in live or dummy mode** — check `APP_AI_USE_DUMMY` environment variable. If `true`, all scores in production are dummy scores and the ~58% observation is explained.
+1. **Add `@Valid` constraints to `GenerateReportRequest`** (Fix 1) — prevents score=0 and blank riskLevel from reaching the AI.
 
-2. **Fix the dummy riskLevel threshold** (Fix 1 above) — low risk, one-line change, removes inconsistency.
+2. **Guard the description fallback chain** (Fix 2) — highest-impact quality risk; a missing `originalDetails` silently degrades the premium report.
 
-3. **Add server-side score clamping** (Fix 4 above) — defensive, prevents display defects.
+3. **Add a test for `score=0` and blank `riskLevel` in `GenerateReportRequest`** — quick unit test that pins the validation behaviour once Fix 1 is in place.
 
-4. **Add `@Valid` or manual validation to `GenerateReportRequest`** (Fix 2 above) — prevents invalid score=0 reports.
+4. **Add a test for the `description` fallback chain** — assert that `originalDetails` is present and non-empty before the `POST /generate-report` call fires.
 
-5. **Add a unit test asserting PremiumReport.score == request.getScore()** — pins the copy behaviour so it cannot silently break.
+5. **Store `premiumScore` as a DB column** (Fix 3) — enables future analytics queries without JSON deserialisation.
 
-6. **Add a unit test with boundary scores (0.0, 2.9, 3.0, 6.9, 7.0, 10.0)** across both the dummy logic and the `riskLevel` derivation.
+6. **Resolve the `gpt54ReportChatClient` question** (Fix 4) — wire it or remove it; don't leave unused infrastructure.
 
-7. **Add a unit test for the `description` fallback chain** — simulate a sessionStorage payload with missing `originalDetails` and assert that the fallback content is flagged or handled gracefully.
-
-8. **Consider whether the premium report should recalculate the score** — the current design (copy free score into premium) is intentional and avoids confusion, but if the AI generates a task exposure map that implies a very different risk level, the headline score and the detailed breakdown may feel inconsistent. This is a product decision, not a code defect, but worth documenting.
+7. **Confirm that `app.ai.use-dummy` is not set in any production environment** — `buildMockReport()` still exists in `ReportService` and would silently activate if this variable were ever set.
 
 ---
 
@@ -652,11 +704,10 @@ In priority order:
 
 | File | Action |
 |---|---|
-| `docs/scoring-investigation.md` | **Created** — this document |
+| `docs/scoring-investigation.md` | **Rewritten** — updated to reflect current architecture |
 
 **No production code was modified.**
 
 ---
 
-*Investigation completed: 2026-05-01*  
-*Branch: feature/multi-journey-assessment*
+*Updated: 2026-05-02 · Branch: feature/multi-journey-assessment*

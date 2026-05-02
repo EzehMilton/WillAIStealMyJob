@@ -94,17 +94,49 @@
             max-width: 560px;
             font-weight: 300;
         }
-        .cover-stats {
+        .cover-insight-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1px;
-            background: var(--border);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            max-width: 580px;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 16px;
+            max-width: 760px;
         }
-        .stat-box { background: var(--surface); padding: 22px 28px; text-align: center; }
+        .exposure-diagnosis-card,
+        .secondary-stat-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 22px 24px;
+        }
+        .exposure-diagnosis-card {
+            grid-row: span 2;
+            padding: 28px 30px;
+            background:
+                linear-gradient(145deg, rgba(79, 142, 255, 0.08), rgba(124, 92, 252, 0.08)),
+                var(--surface);
+            border-color: rgba(79, 142, 255, 0.24);
+        }
+        .diagnosis-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+        .diagnosis-copy {
+            color: var(--text);
+            font-size: 15px;
+            line-height: 1.65;
+            margin-top: 12px;
+            max-width: 430px;
+        }
+        .diagnosis-credibility {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 18px;
+        }
+        .secondary-stat-card { text-align: left; }
         .stat-value { font-family: 'DM Serif Display', serif; font-size: 36px; line-height: 1; margin-bottom: 4px; }
         .stat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-weight: 500; }
 
@@ -167,6 +199,28 @@
         .score-pct-label { font-size: 11px; color: var(--muted); letter-spacing: 0.06em; }
         .score-text h3 { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 8px; }
         .score-text p { font-size: 14px; color: var(--muted); line-height: 1.7; max-width: 440px; }
+        .exposure-interpretation {
+            font-family: 'DM Serif Display', serif;
+            font-size: 27px;
+            line-height: 1.05;
+            margin-bottom: 7px;
+        }
+        .score-insight-card {
+            min-width: 170px;
+            padding: 22px;
+            border-radius: 14px;
+            background: linear-gradient(145deg, rgba(79, 142, 255, 0.08), rgba(124, 92, 252, 0.08));
+            border: 1px solid rgba(79, 142, 255, 0.22);
+        }
+        .score-insight-card .badge { margin-bottom: 14px; }
+        .score-explanation {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.65;
+        }
 
         .callout {
             background: var(--surface);
@@ -582,7 +636,8 @@
 
         @media (max-width: 680px) {
             .container { padding: 0 20px; }
-            .cover-stats, .salary-comparison, .skills-grid, .resources-grid, .teaser-grid, .action-plan { grid-template-columns: 1fr; }
+            .cover-insight-grid, .salary-comparison, .skills-grid, .resources-grid, .teaser-grid, .action-plan { grid-template-columns: 1fr; }
+            .exposure-diagnosis-card { grid-row: auto; }
             .score-visual, .unlock-panel, .footer-top { flex-direction: column; text-align: center; }
             .pivot-card { grid-template-columns: 1fr; }
             .footer-actions { flex-wrap: wrap; justify-content: center; }
@@ -594,9 +649,11 @@
                reportTitle=${report.mode == 'a_level' ? 'Your AI-Ready Study &amp; Career Plan' : (report.mode == 'course' ? 'Your AI Degree &amp; Career Strategy' : 'Your AI Career Survival Plan')},
                subjectLabel=${report.mode == 'a_level' ? 'Subjects / Interests' : (report.mode == 'course' ? 'Course' : 'Profession')},
                premiumPrice=${report.mode == 'a_level' ? '£0.99' : (report.mode == 'course' ? '£2.99' : '£4.99')},
-               scoreLabel=${report.mode == 'a_level' ? 'Exposure Score' : 'Overall Risk Score'},
-               displayScore=${report.premiumScore != null ? report.premiumScore : report.score},
-               displayRiskLevel=${report.premiumRiskLevel != null and !#strings.isEmpty(report.premiumRiskLevel) ? report.premiumRiskLevel : report.riskLevel},
+               displayScore=${(report.score > 0 or (report.riskLevel != null and !#strings.isEmpty(report.riskLevel))) ? report.score : (report.premiumScore != null ? report.premiumScore : 0.0)},
+               displayRiskLevel=${(report.riskLevel != null and !#strings.isEmpty(report.riskLevel)) ? report.riskLevel : (report.premiumRiskLevel != null and !#strings.isEmpty(report.premiumRiskLevel) ? report.premiumRiskLevel : 'Moderate')},
+               exposureInterpretation=${displayScore <= 2.0 ? 'Firmly Low' : (displayScore <= 3.4 ? 'Upper end of Low' : (displayScore <= 4.9 ? 'Lower end of Moderate' : (displayScore <= 6.4 ? 'Middle of Moderate' : (displayScore <= 7.4 ? 'Upper end of Moderate' : (displayScore <= 8.4 ? 'High' : 'Very High')))))},
+               exposureMeaning=${displayScore <= 2.0 ? 'You are not at immediate risk. AI may support your work, but the core value of the role remains strongly human-led.' : (displayScore <= 3.4 ? 'Your exposure is still low, but some routine parts of the role may start to change.' : (displayScore <= 4.9 ? 'You are not at immediate risk, but parts of your role are already starting to change.' : (displayScore <= 6.4 ? 'AI is likely to reshape several parts of your role, especially routine or repeatable work.' : (displayScore <= 7.4 ? 'AI pressure is becoming significant. Without repositioning, parts of your role may become easier to automate or compress.' : (displayScore <= 8.4 ? 'Your role has strong exposure to automation. The safest move is to reposition toward judgement, ownership, and human-centred work.' : 'This role is highly exposed. You should treat adaptation as urgent and start repositioning immediately.')))))},
+               journeyScoreExplanation=${report.mode == 'a_level' ? 'This is not a fixed prediction. It shows how flexible and future-ready your current subject direction looks.' : (report.mode == 'course' ? 'Your exposure depends less on the course title and more on the career paths, specialisations, and skills you build from it.' : 'Your risk is not evenly spread. It is concentrated in the tasks that are most repeatable, digital, and easy to standardise.')},
                exposureSectionLabel=${report.mode == 'a_level' ? 'Future Path Analysis' : (report.mode == 'course' ? 'Career Path Analysis' : 'Task Analysis')},
                exposureMapTitle=${report.mode == 'a_level' ? 'Future Path Exposure Map' : (report.mode == 'course' ? 'Career Path Exposure Map' : 'Task Exposure Map')},
                exposureTitle=${report.mode == 'a_level' ? 'Which Future Paths Face More AI Exposure' : (report.mode == 'course' ? 'How Course-Linked Career Paths Are Exposed' : 'What Gets Automated First')},
@@ -633,18 +690,20 @@
             A personalised analysis of your automation risk, future-proof skills, salary trajectory, and career survival plan over the next decade.
         </p>
 
-        <div class="cover-stats">
-            <div class="stat-box">
-                <div class="stat-value"
+        <div class="cover-insight-grid">
+            <div class="exposure-diagnosis-card">
+                <div class="diagnosis-label">Exposure level</div>
+                <div class="exposure-interpretation"
                      th:style="${displayRiskLevel == 'High' ? 'color:var(--red)' : (displayRiskLevel == 'Low' ? 'color:var(--green)' : 'color:var(--amber)')}"
-                     th:text="${#numbers.formatDecimal(displayScore * 10, 1, 0)} + '%'">41%</div>
-                <div class="stat-label" th:text="${scoreLabel}">Overall Risk Score</div>
+                     th:text="${exposureInterpretation}">Middle of Moderate</div>
+                <p class="diagnosis-copy" th:text="${exposureMeaning}">AI is likely to reshape several parts of your role, especially routine or repeatable work.</p>
+                <div class="diagnosis-credibility">Based on how this role is performed today.</div>
             </div>
-            <div class="stat-box">
+            <div class="secondary-stat-card">
                 <div class="stat-value" style="color:var(--accent);" th:text="${report.disruptionWindow ?: '–'}">5–8 yrs</div>
                 <div class="stat-label">Peak Disruption Window</div>
             </div>
-            <div class="stat-box">
+            <div class="secondary-stat-card">
                 <div class="stat-value"
                      th:with="ap=${report.adaptabilityPotential == null ? '' : #strings.toLowerCase(report.adaptabilityPotential)}"
                      th:style="${#strings.contains(ap, 'high') ? 'color:var(--green)' : (#strings.contains(ap, 'low') ? 'color:var(--red)' : 'color:var(--amber)')}"
@@ -689,28 +748,22 @@
         <p class="section-intro"><span th:text="${subjectLabel}">Profession</span>: <span th:text="${report.profession}">Software Developer</span></p>
 
         <div class="score-visual">
-            <div class="score-gauge">
-                <svg width="130" height="130" viewBox="0 0 130 130">
-                    <circle cx="65" cy="65" r="54" fill="none" stroke="#1a1e2a" stroke-width="10"/>
-                    <circle cx="65" cy="65" r="54" fill="none" stroke-width="10" stroke-dasharray="339.3" stroke-linecap="round"
-                            th:attr="stroke=${displayRiskLevel == 'High' ? '#e74c3c' : (displayRiskLevel == 'Low' ? '#2ecc71' : '#f5a623')},stroke-dashoffset=${339.3 * (1.0 - displayScore / 10.0)}"/>
-                </svg>
-                <div class="score-number">
-                    <div class="score-pct"
-                         th:style="${displayRiskLevel == 'High' ? 'color:var(--red)' : (displayRiskLevel == 'Low' ? 'color:var(--green)' : 'color:var(--amber)')}"
-                         th:text="${#numbers.formatDecimal(displayScore * 10, 1, 0)} + '%'">41%</div>
-                    <div class="score-pct-label">RISK</div>
-                </div>
+            <div class="score-insight-card">
+                <span th:class="${displayRiskLevel == 'High' ? 'badge badge-red' : (displayRiskLevel == 'Low' ? 'badge badge-green' : 'badge badge-amber')}"
+                      th:text="${displayRiskLevel} + ' Impact'">Moderate Impact</span>
+                <div class="exposure-interpretation"
+                     th:style="${displayRiskLevel == 'High' ? 'color:var(--red)' : (displayRiskLevel == 'Low' ? 'color:var(--green)' : 'color:var(--amber)')}"
+                     th:text="${exposureInterpretation}">Middle of Moderate</div>
+                <p class="diagnosis-copy" th:text="${exposureMeaning}">AI is likely to reshape several parts of your role, especially routine or repeatable work.</p>
             </div>
             <div class="score-text">
                 <h3>
-                    <span th:text="${displayRiskLevel} + ' Risk'">Moderate Risk</span>
-                    <span th:class="${displayRiskLevel == 'High' ? 'badge badge-red' : (displayRiskLevel == 'Low' ? 'badge badge-green' : 'badge badge-amber')}"
-                          style="font-size:11px; vertical-align:middle;" th:text="${displayRiskLevel}">Moderate</span>
+                    <span th:text="${exposureInterpretation} + ' Exposure'">Middle of Moderate Exposure</span>
                 </h3>
                 <p th:text="${report.executiveSummary}">Summary...</p>
-                <p th:if="${report.scoreRationale != null and !#strings.isEmpty(report.scoreRationale)}"
+                <p th:if="${report.scoreRationale != null and !#strings.isEmpty(report.scoreRationale) and !#strings.contains(report.scoreRationale, '/10') and !#strings.contains(report.scoreRationale, '%')}"
                    th:text="${report.scoreRationale}">Score rationale...</p>
+                <p class="score-explanation" th:text="${journeyScoreExplanation}">Your risk is not evenly spread.</p>
             </div>
         </div>
 

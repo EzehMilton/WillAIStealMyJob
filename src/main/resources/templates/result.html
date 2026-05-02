@@ -314,8 +314,8 @@
                             <div>
                                 <div class="impact-signal-kicker">AI IMPACT SIGNAL</div>
                                 <h2 class="impact-signal-title"
-                                    th:classappend="${score <= 2.9} ? ' low' : (${score <= 6.9} ? ' moderate' : ' high')"
-                                    th:text="${score <= 2.9} ? 'Low Impact Detected' : (${score <= 6.9} ? 'Moderate Impact Detected' : 'High Impact Detected')">
+                                    th:classappend="${score <= 3.4} ? ' low' : (${score <= 6.9} ? ' moderate' : ' high')"
+                                    th:text="${score <= 3.4} ? 'Low Impact Detected' : (${score <= 6.9} ? 'Moderate Impact Detected' : 'High Impact Detected')">
                                     Moderate Impact Detected
                                 </h2>
                                 <p class="impact-context">
@@ -338,8 +338,8 @@
                                           th:style="'left: ' + ${#numbers.formatDecimal(indicatorPosition, 1, 1)} + '%;'"></span>
                                 </div>
                                 <div class="impact-scale-labels">
-                                    <span class="low" th:classappend="${score <= 2.9} ? ' active'">Low</span>
-                                    <span class="moderate" th:classappend="${score > 2.9 and score <= 6.9} ? ' active'">Moderate</span>
+                                    <span class="low" th:classappend="${score <= 3.4} ? ' active'">Low</span>
+                                    <span class="moderate" th:classappend="${score > 3.4 and score <= 6.9} ? ' active'">Moderate</span>
                                     <span class="high" th:classappend="${score >= 7.0} ? ' active'">High</span>
                                 </div>
                             </div>

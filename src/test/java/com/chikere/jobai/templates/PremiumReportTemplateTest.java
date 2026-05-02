@@ -92,41 +92,81 @@ class PremiumReportTemplateTest {
     }
 
     @Test
-    void premiumReportHtmlUsesPremiumScoreWhenAvailable() {
+    void premiumReportHtmlUsesExposureDiagnosisEvenWhenPremiumScoreExists() {
         Context context = baseContext(false);
         context.setVariable("report", sampleReport("profession", true));
 
         String html = templateEngine.process("premium-report", context);
 
-        assertTrue(html.contains("82%"));
-        assertTrue(html.contains("High Risk"));
+        assertFalse(html.contains("Official exposure score"));
+        assertFalse(html.contains("/ 10"));
+        assertTrue(html.contains("Exposure level"));
+        assertTrue(html.contains("Middle of Moderate"));
+        assertTrue(html.contains("Moderate Impact"));
+        assertTrue(html.contains("AI is likely to reshape several parts of your role, especially routine or repeatable work."));
+        assertTrue(html.contains("Based on how this role is performed today."));
+        assertTrue(html.contains("5-8 yrs"));
+        assertTrue(html.contains("Adaptability Potential"));
+        assertFalse(html.contains("82%"));
         assertTrue(html.contains("Detailed premium analysis found higher exposure."));
     }
 
     @Test
-    void premiumReportHtmlFallsBackToScoreForOldReports() {
+    void premiumReportHtmlDoesNotShowNumericScore() {
         String html = render("profession", false);
 
-        assertTrue(html.contains("52%"));
-        assertTrue(html.contains("Moderate Risk"));
+        assertFalse(html.contains("Official exposure score"));
+        assertFalse(html.contains("/ 10"));
+        assertTrue(html.contains("Middle of Moderate Exposure"));
+        assertFalse(html.contains("Overall Risk Score"));
         assertFalse(html.contains("Detailed premium analysis found higher exposure."));
     }
 
     @Test
-    void premiumReportPdfUsesPremiumScoreWhenAvailable() {
+    void premiumReportHtmlFallsBackToLegacyPremiumScoreForOldReportsWithoutOfficialScore() {
+        Context context = baseContext(false);
+        context.setVariable("report", legacyPremiumScoredReport());
+
+        String html = templateEngine.process("premium-report", context);
+
+        assertFalse(html.contains("Official exposure score"));
+        assertFalse(html.contains("/ 10"));
+        assertTrue(html.contains("High Impact"));
+        assertTrue(html.contains("Detailed premium analysis found higher exposure."));
+    }
+
+    @Test
+    void premiumReportPdfDoesNotShowNumericScoreAsSupportingEvidence() {
         Context context = baseContext(false);
         context.setVariable("report", sampleReport("profession", true));
 
         String html = templateEngine.process("premium-report-pdf", context);
 
-        assertTrue(html.contains("82%"));
-        assertTrue(html.contains("High Risk"));
+        assertFalse(html.contains("Official exposure score"));
+        assertFalse(html.contains("/ 10"));
+        assertTrue(html.contains("Middle of Moderate Exposure"));
+        assertFalse(html.contains("82%"));
         assertTrue(html.contains("Detailed premium analysis found higher exposure."));
     }
 
+    @Test
+    void premiumReportHtmlRendersExposureMeaningsForLowModerateAndHigh() {
+        String lowHtml = render(sampleReport("profession", 2.8, "Low"), false);
+        String moderateHtml = render(sampleReport("profession", 4.2, "Moderate"), false);
+        String highHtml = render(sampleReport("profession", 8.0, "High"), false);
+
+        assertTrue(lowHtml.contains("Your exposure is still low, but some routine parts of the role may start to change."));
+        assertTrue(moderateHtml.contains("You are not at immediate risk, but parts of your role are already starting to change."));
+        assertTrue(highHtml.contains("Your role has strong exposure to automation. The safest move is to reposition toward judgement, ownership, and human-centred work."));
+    }
+
     private String render(String mode, boolean reportLocked) {
+        return render(sampleReport(mode), reportLocked);
+    }
+
+    private String render(PremiumReport report, boolean reportLocked) {
         Context context = baseContext(reportLocked);
-        context.setVariable("report", sampleReport(mode));
+        context.setVariable("report", report);
         return templateEngine.process("premium-report", context);
     }
 
@@ -141,6 +181,13 @@ class PremiumReportTemplateTest {
 
     private PremiumReport sampleReport(String mode) {
         return sampleReport(mode, false);
+    }
+
+    private PremiumReport sampleReport(String mode, double score, String riskLevel) {
+        PremiumReport report = sampleReport(mode, false);
+        report.setScore(score);
+        report.setRiskLevel(riskLevel);
+        return report;
     }
 
     private PremiumReport sampleReport(String mode, boolean premiumScored) {
@@ -188,5 +235,12 @@ class PremiumReportTemplateTest {
         }
 
         return builder.build();
+    }
+
+    private PremiumReport legacyPremiumScoredReport() {
+        PremiumReport report = sampleReport("profession", true);
+        report.setScore(0.0);
+        report.setRiskLevel("");
+        return report;
     }
 }

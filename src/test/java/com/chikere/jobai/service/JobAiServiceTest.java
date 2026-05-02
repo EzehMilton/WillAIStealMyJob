@@ -60,13 +60,20 @@ class JobAiServiceTest {
     }
 
     @Test
-    void riskThresholdsMatchScoringBands() {
+    void promptExplainsDimensionBasedScoringAndSanityCheck() {
         JobAiService service = newService();
 
-        assertEquals("Low", service.deriveRiskLevel(3.9));
-        assertEquals("Moderate", service.deriveRiskLevel(4.0));
-        assertEquals("Moderate", service.deriveRiskLevel(6.9));
-        assertEquals("High", service.deriveRiskLevel(7.0));
+        String prompt = service.buildAssessmentPrompt(
+                "profession",
+                "Choir singer",
+                "Live performance, rehearsals, audience connection, and real-time coordination"
+        );
+
+        assertTrue(prompt.contains("Task Repeatability"));
+        assertTrue(prompt.contains("Digital vs Physical Execution"));
+        assertTrue(prompt.contains("Protective factors must reduce the final score"));
+        assertTrue(prompt.contains("0.0 – 3.4"));
+        assertTrue(prompt.contains("Never return a summary that contradicts the score or riskLevel"));
     }
 
     @Test
@@ -78,30 +85,8 @@ class JobAiServiceTest {
         assertEquals(4.6, service.clampScore(4.6));
     }
 
-    @Test
-    void scoreCalibrationMovesDifferentJourneysApartWhenModelScoreIsSame() {
-        JobAiService service = newService();
-
-        double javaDeveloperScore = service.calibrateScore(
-                com.chikere.jobai.model.JourneyType.PROFESSIONAL,
-                "Java Developer",
-                "I build platform services, write tests, debug systems, and document releases",
-                5.0
-        );
-        double socialCareScore = service.calibrateScore(
-                com.chikere.jobai.model.JourneyType.UNIVERSITY_STUDENT,
-                "B.Sc. Social Care",
-                "I want hands-on care work with safeguarding, empathy, care planning, and people support",
-                5.0
-        );
-
-        assertTrue(javaDeveloperScore > socialCareScore);
-        assertTrue(javaDeveloperScore - socialCareScore >= 0.8);
-    }
-
     private JobAiService newService() {
         return new JobAiService(
-                mock(ChatClient.class),
                 mock(ChatClient.class),
                 new DefaultResourceLoader(),
                 new GenerationMetricsService(
@@ -110,10 +95,15 @@ class JobAiServiceTest {
                         2.5,
                         10.0,
                         0.4,
-                        1.6
+                        1.6,
+                        0.79
                 ),
                 journeyConfigRegistry,
-                "gpt-5.4",
+                new RiskScoringService(
+                        new RiskDimensionCalculator(),
+                        new RiskAdjustmentService(),
+                        new RiskSanityValidator()
+                ),
                 "gpt-5.4-mini"
         );
     }

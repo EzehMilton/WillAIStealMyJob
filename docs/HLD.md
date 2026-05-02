@@ -1,5 +1,7 @@
 # WillAIStealMyJob — High-Level Design (HLD)
 
+_Last updated: 2026-05-02 · Branch: feature/multi-journey-assessment_
+
 ---
 
 ## Table of Contents
@@ -12,13 +14,14 @@
 6. [Important Domain Concepts](#6-important-domain-concepts)
 7. [Key Classes and Responsibilities](#7-key-classes-and-responsibilities)
 8. [Prompt and AI Design](#8-prompt-and-ai-design)
-9. [Report Locking and Payment Flow](#9-report-locking-and-payment-flow)
-10. [Data Flow](#10-data-flow)
-11. [Configuration](#11-configuration)
-12. [Templates / Screens](#12-templates--screens)
-13. [Testing Overview](#13-testing-overview)
-14. [Known Design Decisions](#14-known-design-decisions)
-15. [Risks and Future Improvements](#15-risks-and-future-improvements)
+9. [Scoring Architecture](#9-scoring-architecture)
+10. [Report Locking and Payment Flow](#10-report-locking-and-payment-flow)
+11. [Data Flow](#11-data-flow)
+12. [Configuration](#12-configuration)
+13. [Templates / Screens](#13-templates--screens)
+14. [Testing Overview](#14-testing-overview)
+15. [Known Design Decisions](#15-known-design-decisions)
+16. [Risks and Future Improvements](#16-risks-and-future-improvements)
 
 ---
 
@@ -29,9 +32,9 @@
 It does this by:
 
 1. Asking the user a few questions about their job, course, or school subjects.
-2. Sending that information to an AI model that analyses the risk of AI disruption.
-3. Showing the user a free summary score and brief assessment.
-4. Offering a detailed, paid premium report (unlocked via Stripe payment) that includes timelines, skill recommendations, salary comparisons, career pivots, and actionable plans.
+2. Calling an AI model to generate a narrative assessment, then applying a deterministic 5-dimension scoring model to produce a reliable risk score.
+3. Showing the user a free snapshot: score, risk level, and a 2-sentence assessment.
+4. Offering a detailed, paid premium report (unlocked via Stripe payment) that includes timelines, skill recommendations, salary comparisons, career pivots, and actionable plans — with its own independently AI-generated score.
 
 The application targets three types of users:
 
@@ -43,39 +46,36 @@ The application targets three types of users:
 
 ## 2. Product Overview
 
-The application runs as a single Spring Boot web app with **three user journeys** (called "modes" internally). All three journeys share the same form, controllers, services, and report structure — only the labels, word limits, AI instructions, and pricing differ.
+The application runs as a single Spring Boot web app with **three user journeys** (called "modes" internally). All three journeys share the same form, controllers, services, and report structure. Only the labels, word limits, AI instructions, pricing, and scoring baselines differ.
 
 ### Journey 1 — Professional
 
 > "Will AI take my job?"
 
-- User enters their job title and describes their role.
-- They can type a manual description **or** upload their CV (PDF, DOC, DOCX).
-- The AI assesses their job's automation risk on a 0–10 scale.
+- User enters their job title and describes their role (manual text or CV upload).
+- A 5-dimension scoring model produces the risk score; an AI model generates the narrative.
 - Premium report includes: task exposure map, career transition paths, salary intelligence, and a 1-year action plan.
-- Price: **£4.99**
+- Price: **£4.99** (or £10.00 per `APP_REPORT_PRICE_PROFESSION_PENCE:1000`)
 
 ### Journey 2 — University Student / Course User
 
 > "Is my degree future-proof?"
 
-- User enters the name of their course or degree and describes their career goals.
-- No CV upload (CV is not relevant for prospective students).
-- The AI assesses how AI disruption might affect the career paths their course leads to.
+- User enters their course or degree name and describes their career goals (manual only).
+- Same scoring model with lower baselines; AI provides course-specific narrative.
 - Premium report includes: career path risk, AI-proof skills, degree ROI, and recommended additional skills.
-- Price: **£2.99**
+- Price: **£2.99** (or £3.00 per `APP_REPORT_PRICE_COURSE_PENCE:300`)
 
 ### Journey 3 — School Student / Pre-University / Undecided
 
 > "What should I study and where is it heading?"
 
-- User enters their subject interests, strengths, and what kind of work they enjoy.
-- No CV upload.
-- The AI advises on subject combinations, future career clusters, and how AI-exposed those paths are.
-- The scoring here reflects "AI future-readiness risk" — low means flexible and human-centred; high means narrow or highly automatable.
+- User enters their subject interests, strengths, and preferences (manual only).
+- Scoring model uses the lowest baselines; AI advises on subject combinations and career clusters.
+- Premium report includes: subject combinations, future career clusters, AI-exposure of those paths, and action steps.
 - Price: **£0.99**
 
-> **Note on naming**: The backend currently uses `mode=a_level` internally for this journey and `JourneyType.A_LEVEL_UNDECIDED` as the enum value. This is a legacy label. The user-facing UI uses global language — "school student", "pre-university", or "still exploring options" — to serve users worldwide, not just those in the UK A-Level system.
+> **Note on naming:** The backend uses `mode=a_level` and `JourneyType.A_LEVEL_UNDECIDED` internally. The user-facing UI uses global language ("school student", "pre-university", "still exploring options") to serve users worldwide.
 
 ---
 
@@ -101,9 +101,12 @@ The application is a **server-rendered Spring Boot monolith** with external inte
 └────────┬──────────────────────┬──────────────────────────────────┘
          │                      │
 ┌────────▼──────────┐  ┌────────▼──────────────────────────────────┐
-│   Service Layer   │  │          Configuration & Registry          │
+│   Service Layer   │  │       Configuration & Registry             │
 │ RiskAssessment    │  │  JourneyConfigRegistry · AIModelConfig     │
 │ JobAiService      │  └───────────────────────────────────────────┘
+│ RiskScoringService│
+│ RiskDimension     │◄── RiskAdjustmentService
+│   Calculator      │◄── RiskSanityValidator
 │ ReportService     │
 │ PremiumReportAi   │
 │ DocumentParser    │
@@ -115,9 +118,17 @@ The application is a **server-rendered Spring Boot monolith** with external inte
          │
 ┌────────▼──────────────────────────────────────────────────────────┐
 │                    AI / Prompt Layer                               │
-│  Spring AI ChatClient → OpenAI gpt-5.4 / gpt-5.4-mini            │
-│  Prompt files: jobai.txt · premium-report-prompt.txt              │
-│  Journey instructions: profession / course / a-level              │
+│  Spring AI ChatClient → OpenAI (gpt-5.4 / gpt-5.4-mini)          │
+│  Free summary: narrative only — score overridden server-side      │
+│  Premium report: full JSON including premiumScore                  │
+└────────────────────────────────────────────────────────────────────┘
+         │
+┌────────▼──────────────────────────────────────────────────────────┐
+│                    Scoring Layer (deterministic)                   │
+│  RiskScoringService                                                │
+│    → RiskDimensionCalculator (5 dimensions, keyword rules)        │
+│    → RiskAdjustmentService (protective factors)                   │
+│    → RiskSanityValidator (thresholds + aligned summary)           │
 └────────────────────────────────────────────────────────────────────┘
          │
 ┌────────▼──────────────────────────────────────────────────────────┐
@@ -134,7 +145,7 @@ The application is a **server-rendered Spring Boot monolith** with external inte
          │
 ┌────────▼──────────────────────────────────────────────────────────┐
 │                  PDF / Export Layer                                │
-│  PdfService → Thymeleaf → Flying Saucer → byte[]                  │
+│  PdfService → Thymeleaf → jsoup → Flying Saucer → byte[]         │
 └────────────────────────────────────────────────────────────────────┘
          │
 ┌────────▼──────────────────────────────────────────────────────────┐
@@ -153,7 +164,7 @@ The application is a **server-rendered Spring Boot monolith** with external inte
 | Templating | Thymeleaf 3 |
 | AI integration | Spring AI 1.1.2 (OpenAI) |
 | Payments | Stripe Java SDK 26.3 |
-| Document parsing | Apache Tika |
+| Document parsing | Apache Tika 2.9.2 |
 | PDF generation | Flying Saucer + jsoup |
 | Database | H2 (dev) / PostgreSQL (prod) |
 | ORM | Spring Data JPA + Hibernate |
@@ -170,31 +181,33 @@ User                   App                         OpenAI         Stripe
  │                      │                              │               │
  │  GET /               │                              │               │
  │─────────────────────►│                              │               │
- │◄─────────────────────│ index.html (mode-aware form) │               │
+ │◄─────────────────────│ index.html (journey selector)│               │
  │                      │                              │               │
  │  POST /assess        │                              │               │
  │─────────────────────►│                              │               │
- │                      │──── assessJobRisk() ────────►│               │
- │                      │◄─── JobRiskAssessment JSON ──│               │
+ │                      │──── AI narrative call ──────►│               │
+ │                      │◄─── summary + assessment ────│               │
+ │                      │  RiskScoringService overrides score          │
  │◄─────────────────────│ redirect → /result           │               │
  │                      │                              │               │
  │  GET /result         │                              │               │
  │─────────────────────►│                              │               │
- │◄─────────────────────│ result.html (score + summary)│               │
+ │◄─────────────────────│ result.html (score + snapshot)│              │
  │                      │                              │               │
- │  [Click "Unlock Full Report"]                        │               │
- │  GET /generating-report                              │               │
+ │  [Click "Unlock Full Report" in modal]               │               │
+ │  → sessionStorage.checkoutPayload set                │               │
+ │  → navigate to /generating-report                    │               │
  │─────────────────────►│                              │               │
  │◄─────────────────────│ generating-report.html       │               │
  │                      │                              │               │
  │  POST /generate-report (AJAX from page)              │               │
  │─────────────────────►│                              │               │
- │                      │──── generate() ─────────────►│               │
+ │                      │──── AI premium report ──────►│               │
  │                      │◄─── PremiumReport JSON ───────│               │
  │                      │ store in DB (PENDING)         │               │
  │◄─────────────────────│ { reportId: "uuid" }         │               │
  │                      │                              │               │
- │  GET /report/{id}    │                              │               │
+ │  GET /premium-report/{id}                            │               │
  │─────────────────────►│                              │               │
  │◄─────────────────────│ premium-report.html (LOCKED) │               │
  │                      │                              │               │
@@ -205,14 +218,14 @@ User                   App                         OpenAI         Stripe
  │                      │◄────────────────────────── Stripe session URL │
  │◄─────────────────────│ { url: "stripe.com/..." }    │               │
  │                      │                              │               │
- │  [Redirected to Stripe payment page]                 │               │
+ │  [Redirected to Stripe]                              │               │
  │──────────────────────────────────────────────────────────────────────►│
  │◄─────────────────────────────────────────────────────────────────────│
  │                      │                              │               │
- │                      │◄──────────── POST /stripe/webhook (session.completed)
+ │                      │◄──── POST /stripe/webhook (session.completed) │
  │                      │  markPaid(reportId)          │               │
  │                      │                              │               │
- │  GET /report/{id}?checkout=success                   │               │
+ │  GET /premium-report/{id}?checkout=success           │               │
  │─────────────────────►│                              │               │
  │                      │ syncPaymentStatus()          │               │
  │◄─────────────────────│ premium-report.html (UNLOCKED)│              │
@@ -235,33 +248,30 @@ User                   App                         OpenAI         Stripe
   - CV file upload (PDF, DOC, DOCX; max 2 MB)
 
 **How CV parsing works**
-- DocumentParserService receives the uploaded MultipartFile.
-- File is validated: size ≤ 2 MB, extension whitelisted, not empty.
-- Apache Tika extracts plain text from the document.
-- The extracted text (≥ 50 chars required) becomes the `roleSummary`.
-- If parsing fails, the user is offered the option to type manually instead.
+- `DocumentParserService` receives the `MultipartFile`, validates it (size ≤ 2 MB, extension whitelisted, not empty), and uses Apache Tika to extract plain text (minimum 50 chars required).
+- The extracted text becomes the `roleSummary` sent to the AI.
+- If parsing fails the user is offered the option to type manually.
 
-**How the free summary is generated**
-- RiskAssessmentService passes the job title and role summary to JobAiService.
-- JobAiService selects the **premium AI model** (gpt-5.4) for professional assessments — higher accuracy for working adults.
-- The prompt (`jobai.txt`) is combined with `profession-instructions.txt` which focuses on: task automation, human skill requirements, industry AI adoption, augmentation vs replacement, and economic factors.
-- The AI returns a JSON object: score (0–10), riskLevel, summary (1 sentence), assessment (2 sentences).
+**How the free snapshot is generated**
+1. `JobAiService` calls the **premium model** (gpt-5.4, temp 0.2) with `jobai.txt` + `profession-instructionsV2.txt`.
+2. The AI returns `{ score, riskLevel, summary, assessment }` JSON.
+3. `RiskScoringService` **overrides** `score`, `riskLevel`, and `summary` with values from the deterministic 5-dimension model.
+4. The AI's 2-sentence `assessment` is kept as-is.
 
 **What the premium report includes**
 1. Cover KPIs: disruption window and adaptability potential
-2. Executive summary and core advice
-3. Task exposure map (each task area scored 0–100% exposure)
-4. Timeline (4 phases showing how the role evolves over time)
-5. Skill cards (recommended skills with priority labels)
-6. Salary intelligence (traditional vs AI-augmented role comparison)
-7. Adjacent career paths (pivot options with difficulty ratings)
+2. Executive summary (references `premiumScore`) and core advice
+3. Task exposure map (each task area scored 0–100%)
+4. Timeline (4 phases)
+5. Skill cards (priority-ranked)
+6. Salary intelligence (traditional vs AI-augmented)
+7. Adjacent career paths
 8. Action plans (30-day, 90-day, 1-year)
 9. Resources (courses, tools, books, communities)
 
-**Payment and unlock**
-- User pays £4.99 via Stripe.
-- Stripe price ID: `STRIPE_PRICE_PROFESSIONAL` environment variable.
-- After payment, full report is visible and PDF download is enabled.
+The premium report generates its own `premiumScore` and `premiumRiskLevel` — independent of the free snapshot score.
+
+**Payment and unlock:** £4.99 via Stripe.
 
 ---
 
@@ -269,54 +279,35 @@ User                   App                         OpenAI         Stripe
 
 **What they enter**
 - Course or degree name (required)
-- Description of their career goals or what they hope to do after studying (up to 450 words)
+- Career goals or expected outcomes (up to 450 words, manual only)
 
 **Why CV upload is disabled**
-- CV upload is only meaningful for people with work history.
-- For students, the relevant context is their academic direction, not employment history.
-- `JourneyConfig.isCvAllowed = false` for this journey.
+- CV upload is only meaningful for people with work history. `JourneyConfig.cvUploadAllowed = false`.
 
-**How course/career goals are assessed**
-- Uses the **mini AI model** (gpt-5.4-mini) — cost-efficient, suitable for course assessments.
-- Prompt uses `course-instructions.txt`, which focuses on: career pathway viability, AI-proof elements of the degree, job market demand, ROI on the course, skills longevity, and AI-complementary skills to pursue.
+**How the assessment works**
+- Uses the **mini model** (gpt-5.4-mini, temp 0.2) with `course-instructionsV2.txt`.
+- Instructions emphasise: career pathways, goal alignment, skills longevity, market demand, AI literacy strategy, ROI on the course.
+- Scoring uses lower baselines (4.3–4.5 vs 4.7–5.0 for professional).
 
-**What the premium report includes**
-- Same 8-section structure, but tailored framing:
-  - Task exposure map reflects typical graduate job tasks, not a current role.
-  - Salary intelligence shows graduate starting salaries vs AI-augmented equivalents.
-  - Action plans focus on in-study and post-graduation steps.
-
-**Payment and unlock**
-- User pays £2.99 via Stripe.
-- Stripe price ID: `STRIPE_PRICE_STUDENT` environment variable.
+**Payment and unlock:** £2.99 via Stripe.
 
 ---
 
 ### C. School Student / Pre-University / Undecided User
 
 **What they enter**
-- Their interests, strengths, preferred subjects, and what kind of work they find appealing (up to 350 words)
+- Interests, strengths, preferred subjects, and what kind of work they find appealing (up to 350 words, manual only).
 
 **Why this is not "A-Level only"**
-- Internally the mode is labelled `a_level` for legacy reasons.
-- The prompt file is `a-level-instructions.txt`.
-- However, the user-facing language is intentionally global: "school student", "pre-university", or "still deciding".
-- The concept of subject choice before higher education is universal; the A-Level label is an implementation detail, not a product constraint.
+- The backend mode is `a_level` for legacy reasons, but the UI uses global language.
+- The scoring represents "AI future-readiness risk": low = flexible and human-centred paths; high = narrow or automatable directions.
 
-**How subject interests/strengths are assessed**
-- Uses the **mini AI model** (gpt-5.4-mini).
-- `a-level-instructions.txt` instructs the AI to: consider interests and strengths, advise on subject combinations, map those to future career clusters, and assess how AI-exposed those clusters are.
-- The **risk score** here means "AI future-readiness risk" — a low score means the student is pointing toward flexible, human-centred work; a high score means the path is narrow or automatable without strong human skills.
+**How the assessment works**
+- Uses the **mini model** with `a-level-instructionsV3.txt`.
+- Instructions emphasise subject combinations, career clusters, AI-exposure of possible paths, skills to build, practical next steps.
+- Uses the lowest scoring baselines (4.0 across all dimensions).
 
-**What the premium report includes**
-- Task exposure map framed as "typical tasks in careers this path leads to".
-- Timeline is framed around study milestones and early career, not a current job.
-- Action plans cover: subject choices now, university applications, early career pivots.
-- Salary intelligence reflects entry-level and graduate ranges.
-
-**Payment and unlock**
-- User pays £0.99 via Stripe.
-- Stripe price ID: `STRIPE_PRICE_A_LEVEL_UNDECIDED` environment variable (falls back to `STRIPE_PRICE_STUDENT` if not set).
+**Payment and unlock:** £0.99 via Stripe.
 
 ---
 
@@ -326,10 +317,10 @@ User                   App                         OpenAI         Stripe
 
 | | |
 |---|---|
-| **What it is** | An enum with three values: `PROFESSIONAL`, `UNIVERSITY_STUDENT`, `A_LEVEL_UNDECIDED` |
-| **Why it exists** | To replace string-based `mode` comparisons with a type-safe, IDE-friendly enum throughout the application |
+| **What it is** | Enum: `PROFESSIONAL`, `UNIVERSITY_STUDENT`, `A_LEVEL_UNDECIDED` |
+| **Why it exists** | Type-safe journey selector, replaces raw string comparisons throughout |
 | **Key detail** | Each value carries a `legacyMode()` string (`"profession"`, `"course"`, `"a_level"`) for backward compatibility with form submissions and stored data |
-| **Where used** | JourneyConfigRegistry, JourneyConfig, CheckoutController (price routing), JobAiService (model selection), PremiumReportAiService (framing), ReportService |
+| **Where used** | JourneyConfigRegistry, RiskDimensionCalculator (baselines), RiskSanityValidator (summary framing), PremiumReportAiService (framing), CheckoutController (price routing) |
 
 ---
 
@@ -337,10 +328,10 @@ User                   App                         OpenAI         Stripe
 
 | | |
 |---|---|
-| **What it is** | A `record` holding all journey-specific metadata |
-| **Why it exists** | Eliminates scattered `if (mode.equals("profession"))` checks — all journey-specific values live in one place |
-| **Contents** | JourneyType, legacy mode string, display name, form labels, word limit, whether CV is allowed, prompt resource file, free preview copy, price display string |
-| **Where used** | RiskAssessorController (form rendering), RiskAssessmentService (validation messages), JobAiService (prompt selection), ReportController (display copy) |
+| **What it is** | `record` holding all journey-specific UI and prompt metadata |
+| **Why it exists** | Eliminates scattered `if (mode.equals(...))` checks — all journey-specific values live in one place |
+| **Contents** | journeyType, legacyModeValue, displayName, wordLimit, subjectLabel, detailsLabel, cvUploadAllowed, manualInputAllowed, promptInstructionResource |
+| **Where used** | RiskAssessorController (form rendering), RiskAssessmentService (validation messages), JobAiService (prompt selection), CheckoutController (price display) |
 
 ---
 
@@ -348,21 +339,31 @@ User                   App                         OpenAI         Stripe
 
 | | |
 |---|---|
-| **What it is** | A Spring singleton service holding an `EnumMap<JourneyType, JourneyConfig>` |
-| **Why it exists** | Central registry so any class can look up journey config without constructing it themselves |
+| **What it is** | Spring singleton holding an `EnumMap<JourneyType, JourneyConfig>` |
+| **Why it exists** | Central registry — any class can look up journey config without constructing it |
 | **Key methods** | `get(JourneyType)`, `get(String legacyMode)` |
-| **Where used** | Injected into any class that needs journey-specific behaviour |
 
 ---
 
-### RiskAssessmentForm
+### RiskDimensions
 
 | | |
 |---|---|
-| **What it is** | The form model bound from `POST /assess` |
-| **Fields** | `mode` (journey selector), `profession` (job/course/interests), `roleSummary` (optional manual text), `inputMethod` ("manual" or "cv"), `cvFile` (optional MultipartFile) |
-| **Why it exists** | Encapsulates raw user input before validation and processing |
-| **Where used** | Bound by Spring MVC in RiskAssessorController; passed to RiskAssessmentService |
+| **What it is** | `record` of 5 scored dimensions (each 0–10) |
+| **Fields** | `taskRepeatability`, `digitalExecution`, `humanInteraction`, `creativityExecution`, `environmentComplexity` |
+| **Why it exists** | Separates the inputs to the scoring model, making weights transparent and testable |
+| **Where used** | Calculated by `RiskDimensionCalculator`, consumed by `RiskScoringService` |
+
+---
+
+### RiskScoringResult
+
+| | |
+|---|---|
+| **What it is** | `record` returned by `RiskScoringService.score()` |
+| **Fields** | `score` (final 0–10), `riskLevel`, `summary`, `dimensions` (RiskDimensions), `baseScore` (before protective adjustment), `protectiveAdjustment` |
+| **Why it exists** | Bundles the full scoring audit trail — used for overriding AI output and for test assertions |
+| **Where used** | Returned from RiskScoringService; applied to JobRiskAssessment in JobAiService |
 
 ---
 
@@ -370,10 +371,10 @@ User                   App                         OpenAI         Stripe
 
 | | |
 |---|---|
-| **What it is** | A `record` returned by RiskAssessmentService after a successful free assessment |
-| **Contents** | `JobRiskAssessment` (AI output), `JourneyConfig` (resolved journey), `originalDetails` (the role summary text used — preserved for later premium report generation) |
-| **Why it exists** | Bundles everything the controller needs in one object, and carries `originalDetails` so that the premium report can be generated from the same input the user gave |
-| **Where used** | Returned from RiskAssessmentService.processAssessmentWithDetails(); stored in flash attributes; used in GenerateReportRequest |
+| **What it is** | `record` returned by `RiskAssessmentService` after a successful free assessment |
+| **Fields** | `assessment` (JobRiskAssessment), `resolvedDetails` (original role summary text), `subject`, `journeyType`, `mode` |
+| **Why it exists** | Bundles everything the controller needs and carries `resolvedDetails` so the premium report is generated from the same input |
+| **Where used** | Returned from `RiskAssessmentService.processAssessmentWithDetails()`; used to build flash attributes |
 
 ---
 
@@ -381,10 +382,9 @@ User                   App                         OpenAI         Stripe
 
 | | |
 |---|---|
-| **What it is** | The structured output from the free AI assessment |
-| **Fields** | `score` (0.0–10.0), `riskLevel` ("Low" / "Moderate" / "High"), `summary` (1 sentence), `assessment` (2 sentences), `generationMetrics` |
-| **Why it exists** | Strongly-typed container for the AI's JSON response |
-| **Where used** | Returned by JobAiService; stored in flash attributes; displayed on result.html |
+| **What it is** | Structured output of the free assessment |
+| **Fields** | `score` (0–10, set by RiskScoringService), `riskLevel` (set by RiskSanityValidator), `summary` (set by RiskSanityValidator), `assessment` (2-sentence AI narrative, kept as-is), `generationMetrics` |
+| **Why it exists** | Strongly-typed container carried through flash attributes to `result.html` |
 
 ---
 
@@ -392,9 +392,9 @@ User                   App                         OpenAI         Stripe
 
 | | |
 |---|---|
-| **What it is** | The full paid report structure with 8 sections |
-| **Fields** | Cover KPIs (disruptionWindow, adaptabilityPotential), executiveSummary, coreAdvice, taskExposureMap (list of TaskRow), timelineEvents (4 TimelineEvent), skillCards, salaryData (traditional vs augmented), adjacentRoles (TransitionRow list), actionPlans (30-day / 90-day / year), resources (ResourceCard list) |
-| **Why it exists** | One shared structure for all three journeys — journey-specific framing is handled at the prompt level, not by having separate report types |
+| **What it is** | Full paid report with 8 sections |
+| **Key new fields** | `premiumScore` (AI-generated, independent of free score), `premiumRiskLevel`, `scoreRationale` |
+| **Score relationship** | `score` / `riskLevel` = copied from free assessment (for display context); `premiumScore` / `premiumRiskLevel` = independently generated by the AI in the premium prompt |
 | **Where used** | Generated by PremiumReportAiService; serialised to JSON for DB storage; rendered by ReportController and PdfService |
 
 ---
@@ -403,10 +403,9 @@ User                   App                         OpenAI         Stripe
 
 | | |
 |---|---|
-| **What it is** | The JPA entity stored in the `generated_reports` database table |
-| **Fields** | `id` (UUID), `profession`, `mode`, `riskScore`, `riskLevel`, `paymentStatus`, `stripeSessionId`, `expiresAt`, `reportJson` (LOB — serialised PremiumReport), timestamps |
+| **What it is** | JPA entity in `generated_reports` table |
+| **Fields** | `id` (UUID), `profession`, `mode`, `riskScore`, `riskLevel`, `paymentStatus`, `stripeSessionId`, `expiresAt`, `reportJson` (LOB — serialised PremiumReport) |
 | **Why it exists** | Persists the premium report between generation and payment; tracks payment lifecycle |
-| **Where used** | Created by ReportService; queried by ReportController and WebhookController |
 
 ---
 
@@ -414,11 +413,9 @@ User                   App                         OpenAI         Stripe
 
 | | |
 |---|---|
-| **What it is** | Enum: `PENDING`, `PAID`, `FAILED` |
 | **PENDING** | Report generated, Stripe session not yet completed |
-| **PAID** | Payment confirmed (via webhook or sync); report unlocked |
+| **PAID** | Payment confirmed (webhook or direct sync); report unlocked |
 | **FAILED** | Stripe session expired without payment |
-| **Where used** | ReportRequest entity; isAccessible() logic in ReportService; report lock/unlock rendering in templates |
 
 ---
 
@@ -427,8 +424,9 @@ User                   App                         OpenAI         Stripe
 | | |
 |---|---|
 | **What it is** | Tracks AI usage for a single generation call |
-| **Fields** | `reportType`, `model`, `durationMs`, `promptTokens`, `completionTokens`, `totalTokens`, `estimatedCostUsd` |
-| **Why it exists** | Cost monitoring and operational visibility |
+| **Fields** | `reportType`, `model`, `durationMs`, `promptTokens`, `completionTokens`, `totalTokens`, `estimatedCostUsd`, `estimatedCostPence` |
+| **GBP conversion** | `estimatedCostPence = estimatedCostUsd × usdToGbpRate × 100` (rate configurable via `AI_COST_USD_TO_GBP_RATE`, default 0.79) |
+| **Display labels** | `getDurationLabel()` (ms or s), `getEstimatedCostUsdLabel()` ($0.0000), `getEstimatedCostPenceLabel()` (0.000p) |
 | **Where used** | Attached to JobRiskAssessment and PremiumReport; logged via AnalyticsService |
 
 ---
@@ -437,96 +435,93 @@ User                   App                         OpenAI         Stripe
 
 ### Controllers
 
-| Class | Path | Responsibility | Key Methods | Journeys |
-|---|---|---|---|---|
-| **RiskAssessorController** | `controller/` | Handles home page and form submission; validates input; orchestrates free assessment | `GET /`, `POST /assess`, `GET /result` | All |
-| **ReportController** | `controller/` | Triggers premium report generation; serves locked/unlocked report; payment sync; PDF download | `POST /generate-report`, `GET /report/{id}`, `GET /report/{id}/download` | All |
-| **CheckoutController** | `controller/` | Creates Stripe checkout session with journey-specific price ID | `POST /api/report/{id}/checkout-session` | All |
-| **WebhookController** | `controller/` | Receives and verifies Stripe webhook events; marks reports PAID or FAILED | `POST /stripe/webhook` | All |
-| **AnalyticsController** | `controller/` | Receives frontend analytics events | `POST /analytics/event` | All |
+| Class | Responsibility | Key Endpoints |
+|---|---|---|
+| **RiskAssessorController** | Home page and form submission; validates input; orchestrates free assessment | `GET /`, `POST /assess`, `GET /result`, `GET /generating-report`, `GET /sample-report` |
+| **ReportController** | Triggers premium report generation; serves locked/unlocked report; PDF download | `POST /generate-report`, `GET /report/{id}`, `GET /report/{id}/download` |
+| **CheckoutController** | Creates Stripe checkout session with journey-specific price ID | `POST /api/report/{id}/checkout-session` |
+| **WebhookController** | Receives and verifies Stripe webhook events; marks reports PAID or FAILED | `POST /stripe/webhook` |
+| **AnalyticsController** | Receives frontend analytics events | `POST /analytics/event` |
 
 ---
 
 ### Services
 
-| Class | Path | Responsibility | Key Methods | Main Collaborators | Journeys |
-|---|---|---|---|---|---|
-| **RiskAssessmentService** | `service/` | Validates form input; extracts text from CV or manual input; calls AI for scoring | `processAssessmentWithDetails()` | JobAiService, DocumentParserService, JourneyConfigRegistry | All |
-| **JobAiService** | `service/` | Builds prompt and calls OpenAI for free summary assessment; handles dummy mode | `assessJobRisk()` | Spring AI ChatClient, GenerationMetricsService | All |
-| **JourneyConfigRegistry** | `service/` | Provides journey-specific config (labels, limits, prompt file, pricing) | `get(JourneyType)`, `get(String)` | — | All |
-| **DocumentParserService** | `service/` | Extracts text from uploaded CV file using Apache Tika | `extractText(MultipartFile)` | Apache Tika | Professional only |
-| **ReportService** | `service/` | Generates and persists premium report; manages payment status; handles expiry and purge | `generateAndStoreReport()`, `getReportView()`, `markPaidFromWebhook()`, `syncPaymentStatusIfNeeded()`, `purgeExpiredUnpaidReports()` | PremiumReportAiService, ReportPreviewService, ReportRequestRepository | All |
-| **PremiumReportAiService** | `service/` | Generates full 8-section premium report via AI; handles dummy mode | `generate(GenerateReportRequest)` | Spring AI ChatClient, GenerationMetricsService | All |
-| **ReportPreviewService** | `service/` | Builds a limited preview (first 3 task rows, clears paid sections) for locked reports | `buildLockedPreview(PremiumReport)` | — | All |
-| **PdfService** | `service/` | Renders premium report to PDF using Thymeleaf + Flying Saucer | `generateReportPdf(PremiumReport)` | Thymeleaf, Flying Saucer | All |
-| **AnalyticsService** | `service/` | Logs structured analytics events to a dedicated logger | `recordSummaryGenerated()`, `recordPaymentCompleted()`, `recordReportDelivered()`, `record()` | SLF4J ANALYTICS logger | All |
-| **GenerationMetricsService** | `service/` | Extracts token counts and estimates USD cost from AI responses | `fromChatResponse()`, `forLocalGeneration()` | Spring AI ChatResponse | All |
+| Class | Responsibility | Key Methods |
+|---|---|---|
+| **RiskAssessmentService** | Validates form; extracts text from CV or manual input; orchestrates free assessment | `processAssessmentWithDetails()` |
+| **JobAiService** | Calls AI for narrative content; then calls RiskScoringService to override score | `assessJobRisk()`, `buildAssessmentPrompt()` |
+| **RiskScoringService** | Orchestrates 5-dimension scoring; calls calculator, adjustment, and validator | `score(journeyType, subject, details, modelSummary)` |
+| **RiskDimensionCalculator** | Calculates 5 dimension scores using journey baselines + keyword rules + hard caps | `calculate(journeyType, subject, details)` |
+| **RiskAdjustmentService** | Calculates protective adjustment for human/physical factors (max 3.5) | `protectiveAdjustment(subject, details)` |
+| **RiskSanityValidator** | Maps score to riskLevel; builds aligned summary text; validates no contradictions | `riskLevel(score)`, `alignedSummary(...)`, `contradicts(summary, riskLevel)` |
+| **JourneyConfigRegistry** | Provides journey-specific config (labels, limits, prompt file, pricing) | `get(JourneyType)`, `get(String)` |
+| **DocumentParserService** | Extracts text from uploaded CV using Apache Tika | `extractText(MultipartFile)` |
+| **ReportService** | Generates and persists premium report; manages payment status and expiry | `generateAndStoreReport()`, `getReportView()`, `markPaidFromWebhook()`, `syncPaymentStatusIfNeeded()`, `purgeExpiredUnpaidReports()` |
+| **PremiumReportAiService** | Generates full AI premium report with 8 sections including `premiumScore` | `generate(GenerateReportRequest)` |
+| **ReportPreviewService** | Builds limited preview (first 3 task rows, clears paid sections) for locked reports | `buildLockedPreview(PremiumReport)` |
+| **PdfService** | Renders premium report to PDF via Thymeleaf + Flying Saucer | `generateReportPdf(PremiumReport)` |
+| **AnalyticsService** | Logs structured analytics events to a dedicated SLF4J logger | `recordSummaryGenerated()`, `recordPaymentCompleted()`, `recordReportDelivered()`, `record()` |
+| **GenerationMetricsService** | Extracts token counts and estimates USD and GBP cost from AI responses | `fromChatResponse()` |
 
 ---
 
 ### Models
 
-| Class | Path | Responsibility | Journeys |
-|---|---|---|---|
-| **JourneyType** | `model/` | Enum — type-safe journey selector with legacy mode aliases | All |
-| **JourneyConfig** | `model/` | Record — all journey-specific metadata in one place | All |
-| **RiskAssessmentForm** | `model/` | Spring MVC form binding model for `/assess` POST | All |
-| **AssessmentProcessingResult** | `model/` | Record — bundles AI output, journey config, and original input for downstream use | All |
-| **JobRiskAssessment** | `model/` | Structured free assessment result from AI (score, level, summary, assessment) | All |
-| **PremiumReport** | `model/` | Full paid report with 8 nested sections | All |
-| **ReportRequest** | `model/` | JPA entity for report persistence and payment tracking | All |
-| **PaymentStatus** | `model/` | Enum: PENDING / PAID / FAILED | All |
-| **GenerationMetrics** | `model/` | AI usage metrics (tokens, cost, duration) | All |
+| Class | Type | Purpose |
+|---|---|---|
+| `JourneyType` | Enum | Type-safe journey selector with legacy mode aliases |
+| `JourneyConfig` | Record | All journey-specific metadata |
+| `RiskDimensions` | Record | 5 scored dimensions (taskRepeatability, digitalExecution, humanInteraction, creativityExecution, environmentComplexity) |
+| `RiskScoringResult` | Record | Full scoring audit trail (score, riskLevel, summary, dimensions, baseScore, protectiveAdjustment) |
+| `RiskAssessmentForm` | POJO | Spring MVC form binding model for `POST /assess` |
+| `AssessmentProcessingResult` | Record | Bundles AI output, journey config, and original input |
+| `JobRiskAssessment` | POJO | Free assessment result — score overridden by RiskScoringService |
+| `PremiumReport` | POJO | Full paid report with 8 sections + premiumScore + scoreRationale |
+| `GenerateReportRequest` | POJO | Request body for `POST /generate-report` |
+| `ReportRequest` | JPA Entity | DB row for report persistence and payment tracking |
+| `PaymentStatus` | Enum | PENDING / PAID / FAILED |
+| `GenerationMetrics` | POJO | AI usage metrics (tokens, cost USD, cost pence) |
 
 ---
 
 ## 8. Prompt and AI Design
 
-### AI Models Used
+### AI Models
 
-| Purpose | Model | Temperature | Why |
+Three `ChatClient` beans are defined in `AIModelConfiguration`:
+
+| Bean | Model | Temperature | Used for |
 |---|---|---|---|
-| Free assessment — Professional | gpt-5.4 (premium) | 0.2 | Higher accuracy for career risk; user pays for reliability |
-| Free assessment — Student / School | gpt-5.4-mini | 0.2 | Cost-efficient; student assessments less nuanced |
-| Premium report generation | gpt-5.4-mini | 0.6 | All journeys; slightly higher temperature for richer narrative |
+| `gpt54ChatClient` | `gpt-5.4` (premium) | 0.2 | Free assessment — Professional journey only |
+| `gpt54MiniChatClient` | `gpt-5.4-mini` (mini) | 0.2 | Free assessment — University and School journeys; Premium report generation |
+| `gpt54ReportChatClient` | `gpt-5.4` (premium) | 0.6 | Defined but not currently wired to a service |
 
-The three ChatClient beans are defined in `AIModelConfiguration`:
-- `gpt54ChatClient` — premium model, temp 0.2
-- `gpt54MiniChatClient` — mini model, temp 0.2
-- `gpt54ReportChatClient` — mini model, temp 0.6
+The default OpenAI model in `application.properties` is `gpt-5.1` (the Spring AI default client); the named beans above override this per-request.
 
 ---
 
-### Summary Prompt Flow
+### Free Summary Assessment Flow
 
 ```
 jobai.txt
-  + profession-instructions.txt  (if PROFESSIONAL)
-  + course-instructions.txt      (if UNIVERSITY_STUDENT)
-  + a-level-instructions.txt     (if A_LEVEL_UNDECIDED)
+  + profession-instructionsV2.txt  (if PROFESSIONAL)
+  + course-instructionsV2.txt      (if UNIVERSITY_STUDENT)
+  + a-level-instructionsV3.txt     (if A_LEVEL_UNDECIDED)
   + {profession}, {roleSummary}
-  ──────────────────────────────────────────────────────►  OpenAI
-                                                           returns JSON
-  ◄──────────────────────────────────────────────────────
-  { score, riskLevel, summary, assessment }
+  ─────────────────────────────────────────────────────────►  OpenAI
+                                                              returns JSON
+  ◄─────────────────────────────────────────────────────────
+  { score: X, riskLevel: "...", summary: "...", assessment: "..." }
+        │
+        ▼
+  RiskScoringService.score(journeyType, profession, roleSummary, aiSummary)
+        │
+        ▼  OVERRIDES score, riskLevel, summary
+  JobRiskAssessment{ score: Y, riskLevel: "...", summary: "...", assessment: (kept from AI) }
 ```
 
-**Prompt template variables in `jobai.txt`:**
-
-| Variable | Value |
-|---|---|
-| `{mode}` | Journey display name |
-| `{modeInstructions}` | Contents of the relevant `*-instructions.txt` file |
-| `{inputLabel}` | "Job Title" / "Course Name" / "Interests" |
-| `{detailsLabel}` | "Role Summary" / "Career Goals" / "Interests & Strengths" |
-| `{profession}` | What the user entered for their job/course/interests |
-| `{roleSummary}` | The manual text or CV-extracted text |
-
-**Output rules enforced in `jobai.txt`:**
-- JSON only — no markdown, no prose.
-- Summary: max 16 words, one sentence.
-- Assessment: exactly 2 sentences (1st: AI's effect; 2nd: "open loop" to build curiosity).
-- Tone: cautious but not alarmist.
+**Important:** The score the user sees is **not** the AI's score. The AI provides narrative content. The deterministic scoring model sets the final number. See Section 9 for full detail.
 
 ---
 
@@ -534,80 +529,175 @@ jobai.txt
 
 ```
 premium-report-prompt.txt
-  + journey-specific framing (injected inline)
-  + {profession}, {mode}, {score}, {riskLevel}, {originalDetails}
+  + {reportFraming}      (journey-specific framing block)
+  + {sectionEmphasis}    (journey-specific section focus)
+  + {journeyInstructions} (detailed journey-specific rules)
+  + {reportQualityBooster} (universal quality meta-prompt)
+  + {profession}, {score}, {riskLevel}, {roleSummary}, {mode}
   ──────────────────────────────────────────────────────────────►  OpenAI
                                                                    returns JSON
   ◄──────────────────────────────────────────────────────────────
-  PremiumReport JSON (8 sections)
+  PremiumReport JSON (premiumScore, premiumRiskLevel, scoreRationale, 8 sections)
 ```
 
-**Output rules in `premium-report-prompt.txt`:**
-- Full JSON structure required — all 8 sections must be present.
-- Tone: honest, empowering, actionable.
-- Salary figures: UK market context.
-- Section emphasis varies by journey (e.g., "adjacent roles" framed differently for students vs professionals).
+The premium report prompt **does** ask the AI to output a `premiumScore` and `premiumRiskLevel` — these are validated against scoring thresholds. The `score` field in the prompt input (`{score}`) is the free assessment score passed as context; the AI can confirm, adjust, or justify a different score in `premiumScore`.
 
 ---
 
 ### All Prompt Files
 
-| File | Used By | Purpose |
-|---|---|---|
-| `jobai.txt` | JobAiService | Main free assessment prompt shell — all journeys |
-| `profession-instructions.txt` | JobAiService | Professional journey-specific assessment instructions |
-| `course-instructions.txt` | JobAiService | University student journey-specific instructions |
-| `a-level-instructions.txt` | JobAiService | School/pre-university journey-specific instructions |
-| `premium-report-prompt.txt` | PremiumReportAiService | Full premium report prompt — all journeys |
+| File | Version | Used by | Purpose |
+|---|---|---|---|
+| `jobai.txt` | Current | JobAiService | Main free assessment prompt — all journeys |
+| `profession-instructions.txt` | V1 (superseded) | — | Original professional instructions |
+| `profession-instructionsV2.txt` | V2 (active) | JobAiService | Professional journey assessment instructions |
+| `course-instructions.txt` | V1 (superseded) | — | Original course instructions |
+| `course-instructionsV2.txt` | V2 (active) | JobAiService | University student journey instructions |
+| `a-level-instructions.txt` | V1 (superseded) | — | Original school student instructions |
+| `a-level-instructionsV2.txt` | V2 (superseded) | — | Interim school student instructions |
+| `a-level-instructionsV3.txt` | V3 (active) | JobAiService | Current school/pre-university instructions |
+| `premium-report-prompt.txt` | Current | PremiumReportAiService | Full premium report — all journeys |
+| `report-quality-booster.txt` | Current | PremiumReportAiService | Universal quality meta-prompt injected into premium prompt |
+
+The V1 files remain on disk but are not referenced by any service. `JourneyConfigRegistry` wires each journey type to the active version via `promptInstructionResource`.
+
+---
+
+### Key Prompt Rules
+
+**`jobai.txt`** constraints:
+- Output JSON only — no markdown.
+- Do not include numeric scores in narrative text.
+- Do not say any role is "safe from AI".
+- Include one "open loop" sentence to tease premium content.
+- Tone: cautious but not alarmist.
+
+**V2/V3 instruction files** each require:
+- A clear judgement (don't sit on the fence).
+- An identity/direction statement (who this assessment is for).
+- A trade-off statement (what this role/course does not offer).
+- A value-shift statement (what becomes more/less valuable).
+- Scoring must explain at least 2 contributing factors.
+
+**`premium-report-prompt.txt`** requires:
+- `premiumScore` validated against thresholds (Low ≤3.4, Moderate 3.5–6.9, High ≥7.0).
+- `scoreRationale` explaining why this score was chosen.
+- All 8 sections present with specific item counts (6 skill cards, 4 timeline events, 3 adjacent roles, etc.).
+- Salary figures in UK market context.
 
 ---
 
 ### JSON Parsing
 
-- Both AI services call `cleanJsonResponse()` before parsing — strips markdown code fences (` ```json `, ` ``` `) and extracts the first `{...}` JSON object found.
-- Jackson ObjectMapper deserialises the cleaned string into typed Java objects.
-- Parsing failures are logged; a generic error is returned to the user.
+Both `JobAiService` and `PremiumReportAiService` use the same `cleanJsonResponse()` pattern: strips markdown fences, extracts the outermost `{...}` object, then parses with Jackson `ObjectMapper`. Parsing failures throw a `RuntimeException` that surfaces as a 500 to the user.
 
 ---
 
-### Dummy Mode
+## 9. Scoring Architecture
 
-When `app.ai.use-dummy=true`:
+This is the most significant architectural feature of the application. Scoring is **deterministic and rule-based**, not purely AI-generated.
 
-- **JobAiService** generates a deterministic mock score based on a hash of `mode + profession + content`. Keyword-based adjustments are applied:
-  - "repetitive", "data entry", "routine" → score + 1.4 (higher risk)
-  - "analysis", "problem solving" → score + 0.8
-  - "leadership", "strategic" → score − 1.2 (lower risk)
-  - "field work", "physical" → score − 0.6
-- **ReportService** builds a mock PremiumReport with all sections populated using plausible placeholder data.
-- No calls to OpenAI or Stripe are made.
-- Useful for local development and CI testing without live API keys.
+### Why
+
+AI models are prone to moderate-range clustering (consistently returning 5–6/10 for diverse inputs). A rule-based scoring model ensures scores reflect observable characteristics of the input rather than model calibration bias.
+
+### How the Free Summary Score is Calculated
+
+```
+Input: JourneyType + subject + details
+         │
+         ▼
+RiskDimensionCalculator.calculate()
+  For each dimension:
+    1. Start from journey-type baseline (Professional: 4.7–5.0, University: 4.2–4.5, School: 4.0)
+    2. Apply keyword adjustments (additive, capped at 2× per rule)
+    3. Apply role-specific hard caps (singers, nurses, data entry clerks, etc.)
+  Returns: RiskDimensions{ taskRepeatability, digitalExecution, humanInteraction,
+                            creativityExecution, environmentComplexity }
+         │
+         ▼
+RiskScoringService.weightedBaseScore()
+  Score = (taskRepeatability × 0.30)
+        + (digitalExecution  × 0.25)
+        + (humanInteraction  × 0.20)
+        + (creativityExecution × 0.15)
+        + (environmentComplexity × 0.10)
+         │
+         ▼
+RiskAdjustmentService.protectiveAdjustment()
+  Applies a downward adjustment (max 3.5) for protective factors:
+    + 1.1 for live performance, performer, singer, choir
+    + 0.9 for physical presence, hands-on, site work, patient care
+    + 0.8 for real-time coordination, stakeholder leadership
+    + 0.9 for emotional intelligence, empathy, nursing, counselling
+    + 0.8 for unpredictable environments, emergency, home visits
+  Hard caps: call center max 0.6, nurse max 1.0
+         │
+         ▼
+finalScore = clamp(baseScore − protectiveAdjustment, 0.0, 10.0)
+         │
+         ▼
+RiskSanityValidator.riskLevel()
+  ≤ 3.4 → "Low"
+  3.5 – 6.9 → "Moderate"
+  ≥ 7.0 → "High"
+         │
+         ▼
+RiskSanityValidator.alignedSummary()
+  Generates a 2-sentence summary that:
+  - Names the subject
+  - States the impact level ("low/moderate/high AI impact")
+  - Explains the key driver dimension
+  - Notes protective factors if significant (≥ 0.8)
+  - Teases the premium report (journey-specific)
+  Never exposes the numeric score or % in the text
+```
+
+### Dimension Weights
+
+| Dimension | Weight | Rationale |
+|---|---|---|
+| Task Repeatability | 30% | Most predictive of automation potential |
+| Digital Execution | 25% | Work in digital systems is directly accessible to AI |
+| Human Interaction | 20% | Depth of interpersonal trust and emotional context |
+| Creativity Execution | 15% | Original judgement vs execution of known patterns |
+| Environment Complexity | 10% | Structured vs unpredictable real-world settings |
+
+### Role Hard Caps
+
+| Role category | Effect |
+|---|---|
+| Choir singer / vocalist | All dimensions capped at very low values |
+| Nurse / nursing | Dimensions clamped to narrow low-moderate ranges |
+| Electrician | taskRepeatability ≤ 3.4, digitalExecution ≤ 1.8 |
+| CEO / chief executive | taskRepeatability ≤ 2.6, humanInteraction ≤ 2.2 |
+| Data entry clerk | All dimensions floored to 8.4–9.2 |
+| Call center agent | All dimensions floored to 7.2–8.4 |
+| Software developer | digitalExecution floored at 8.8; others range-clamped |
+| Graphic designer | digitalExecution floored at 8.0; creativity range-clamped |
+
+### Premium Report Score
+
+The premium report generates its own score independently:
+
+- `premiumScore` is output by the AI in the premium prompt response.
+- `premiumRiskLevel` must align to `premiumScore` per the prompt thresholds.
+- `scoreRationale` explains why the AI chose this score.
+- The free assessment `score` is passed into the premium prompt as context (`{score}/10`), but the AI is free to adjust it based on deeper analysis.
 
 ---
 
-### Generation Metrics Tracking
+## 10. Report Locking and Payment Flow
 
-Every AI call records:
-- Model name
-- Duration (ms)
-- Prompt tokens, completion tokens, total tokens
-- Estimated cost in USD (calculated from per-million-token pricing in properties)
+### Why Reports Are Generated Before Payment
 
-These metrics are attached to the AI output objects and logged via AnalyticsService under `event=generation_completed`.
+The full premium report is generated **before** the user pays. This is intentional:
 
----
+1. The user sees a limited locked preview immediately — building trust and demonstrating value.
+2. No generation delay after payment (better UX).
+3. No risk of generation failure after money has been taken.
 
-## 9. Report Locking and Payment Flow
-
-### Why reports are generated before payment
-
-The full premium report is generated **before** the user pays. This is a deliberate product decision:
-
-1. It allows the user to see a limited locked preview immediately — creating trust and demonstrating value.
-2. It avoids making the user wait after payment (a poor UX).
-3. It ensures payment and delivery happen close together with no generation failure risk after money is taken.
-
-The trade-off is that a small number of reports are generated but never paid for. These are purged after 24 hours.
+The trade-off is that some reports are generated but never paid for. These are purged after 24 hours.
 
 ---
 
@@ -622,9 +712,9 @@ User                   App                       Stripe
  │                      │  ReportService.save() → PaymentStatus.PENDING
  │◄─────────────────────│  { reportId: "uuid" }      │
  │                      │                            │
- │  GET /report/{id}    │                            │
+ │  GET /premium-report/{id}                         │
  │─────────────────────►│                            │
- │◄─────────────────────│  LOCKED preview (3 tasks visible, rest hidden)
+ │◄─────────────────────│  LOCKED preview (3 tasks visible)
  │                      │                            │
  │  POST /api/report/{id}/checkout-session           │
  │─────────────────────►│                            │
@@ -633,19 +723,17 @@ User                   App                       Stripe
  │                      │  attachStripeSession(reportId, sessionId)
  │◄─────────────────────│  { url: "stripe.com/..." } │
  │                      │                            │
- │  [Redirect to Stripe payment page]                │
+ │  [User pays on Stripe]                            │
  │──────────────────────────────────────────────────►│
- │  [User pays]                                      │
  │◄──────────────────────────────────────────────────│
  │                      │                            │
  │                      │◄─── POST /stripe/webhook (checkout.session.completed)
- │                      │  markPaidFromWebhook(reportId)
- │                      │  PaymentStatus → PAID      │
+ │                      │  markPaidFromWebhook(reportId) → PAID
  │                      │                            │
- │  GET /report/{id}?checkout=success                │
+ │  GET /premium-report/{id}?checkout=success        │
  │─────────────────────►│                            │
  │                      │  syncPaymentStatusIfNeeded()
- │                      │  (verifies via Stripe API if still PENDING)
+ │                      │  (verifies with Stripe API if still PENDING)
  │◄─────────────────────│  UNLOCKED full report      │
  │                      │                            │
  │  GET /report/{id}/download                        │
@@ -653,327 +741,355 @@ User                   App                       Stripe
  │◄─────────────────────│  PDF bytes                 │
 ```
 
+### Locked Preview
+
+`ReportPreviewService.buildLockedPreview()` copies the full report but:
+- Retains: reportId, profession, mode, `score`, `riskLevel`, `premiumScore`, `premiumRiskLevel`, `scoreRationale`, cover KPIs, executive summary, core advice.
+- Limits `taskExposureMap` to the first 3 rows.
+- Clears: timeline, skill cards, salary, adjacent roles, action plans, resources.
+
+### PDF Download Protection
+
+`GET /report/{id}/download` calls `ReportService.getUnlockedReport()`, which only returns the full report if `paymentStatus == PAID`. Locked or expired reports receive a 403 response.
+
+### Report Expiry
+
+- Unpaid reports expire after 24 hours (configurable via `APP_REPORT_EXPIRY_HOURS`).
+- Paid reports never expire.
+- `purgeExpiredUnpaidReports()` is called before report generation and before report viewing.
+
 ---
 
-### How locked previews work
-
-- `ReportPreviewService.buildLockedPreview()` creates a shallow copy of the PremiumReport.
-- It preserves: reportId, profession, mode, score, riskLevel, cover KPIs, executive summary, core advice.
-- It includes only the **first 3 rows** of the task exposure map.
-- It **clears** all premium sections: timeline, skill cards, salary intelligence, adjacent roles, action plans, resources.
-- The template (`premium-report.html`) checks `reportLocked` — if true, it renders the preview and shows the payment CTA; if false, it renders the full report.
-
----
-
-### PDF download protection
-
-- `GET /report/{id}/download` first calls `ReportService.getUnlockedReport()`.
-- This method only returns the full report if `paymentStatus == PAID`.
-- If the report is locked or not found, the controller returns a 403 or 404 response.
-
----
-
-## 10. Data Flow
+## 11. Data Flow
 
 ```
 index.html
-  │  User selects mode, enters profession + details (or uploads CV)
+  │  User selects journey, enters profession + details (or uploads CV)
   │
   POST /assess  →  RiskAssessmentForm
   │
-  RiskAssessmentService
-  │  Validates input, extracts CV text if uploaded
+  RiskAssessmentService.processAssessmentWithDetails()
+  │  Validates, extracts CV text if uploaded
   │  Calls JobAiService.assessJobRisk()
+  │    → AI returns narrative JSON
+  │    → RiskScoringService overrides score/riskLevel/summary
   │  Returns AssessmentProcessingResult
   │
-  Flash attributes stored in session:
-  {
-    score, riskLevel, summary, assessment,
-    profession, mode,
-    originalDetails  ← preserved for premium report generation
-  }
+  Flash attributes (one-time, consumed on next GET):
+  { score, riskLevel, summary, assessment, profession, mode,
+    originalDetails (the role text the user gave) }
   │
   redirect → GET /result
   │
 result.html
-  │  Shows score, summary, assessment
-  │  "Unlock Full Report" → JavaScript stores checkoutPayload in sessionStorage
-  │  { profession, mode, score, riskLevel, originalDetails }
+  │  Displays: score * 10 as % on slider + impact signal
+  │  Assessment narrative shown
+  │  "Unlock" modal: user clicks "Generate Report Preview"
   │
-  GET /generating-report
-  │  Page loads, then immediately fires AJAX:
+  JavaScript stores in sessionStorage.checkoutPayload:
+  { profession, mode, score, riskLevel, summary, assessment, originalDetails }
+  │
+  window.location → GET /generating-report
+  │
+generating-report.html
+  │  Page loads → JS immediately fires:
   │
   POST /generate-report  (body: GenerateReportRequest from sessionStorage)
+  {
+    profession, mode, score, riskLevel,
+    description: stored.originalDetails || stored.assessment || stored.summary
+  }
   │
   ReportService.generateAndStoreReport()
-  │  PremiumReportAiService.generate() → PremiumReport
+  │  PremiumReportAiService.generate() → PremiumReport (inc. premiumScore)
   │  Persist as ReportRequest → PaymentStatus.PENDING
   │  Returns { reportId }
   │
-  Frontend redirects to GET /report/{reportId}
+  JS redirects to → GET /premium-report/{reportId}
   │
-/report/{reportId}  (or /premium-report/{reportId})
+/premium-report/{reportId}
   │  ReportService.getReportView()
-  │  If PENDING/FAILED + not expired → LOCKED preview
+  │  If PENDING + not expired → LOCKED (ReportPreviewService.buildLockedPreview())
   │  If PAID → full report
   │
-  [LOCKED] User clicks "Unlock" → POST /api/report/{id}/checkout-session
-  │         Returns Stripe checkout URL → user redirected to Stripe
+  [LOCKED] → POST /api/report/{id}/checkout-session → Stripe URL
   │
-  [After payment] → GET /report/{id}?checkout=success
-  │  syncPaymentStatusIfNeeded() verifies with Stripe
-  │  Report unlocked
+  [After Stripe payment] → GET /premium-report/{id}?checkout=success
+  │  syncPaymentStatusIfNeeded() → PAID
   │
-  User views full report
+  User views full report (premiumScore displayed prominently)
   │
 GET /report/{id}/download
-  │  PDF generated from PremiumReport via PdfService
-  │  Returned as attachment
+  │  PdfService.generateReportPdf(report) → PDF bytes
 ```
 
-**Note on `originalDetails`:** This is the role summary text (manual or CV-extracted) that the user provided during the free assessment. It is preserved through the session and included in the `GenerateReportRequest` so that the premium report is generated from the **same input** the user saw assessed, not a re-typed version.
+**Note on `originalDetails`:** This is the raw role summary text from the user. It is preserved through flash attributes and `sessionStorage` so the premium AI gets the same input that was used in the free assessment, not a re-typed or reconstructed version.
+
+**Note on description fallback:** `generating-report.html` sends: `stored.originalDetails || stored.details || stored.assessment || stored.summary`. If `originalDetails` is missing (e.g., stale sessionStorage from before this field was added), it falls back to the assessment or summary text — much shorter and less context-rich.
 
 ---
 
-## 11. Configuration
+## 12. Configuration
 
 ### `application.properties` — Key Settings
 
-| Property | Description | Default / Example |
+| Property | Default | Description |
 |---|---|---|
-| `server.port` | HTTP port | `8081` |
-| `spring.ai.openai.api-key` | OpenAI API key | `${OPENAI_API_KEY}` |
-| `app.ai.model.premium` | Premium model name | `gpt-5.4` |
-| `app.ai.model.mini` | Mini model name | `gpt-5.4-mini` |
-| `app.ai.use-dummy` | Bypass AI calls (local/test) | `false` |
-| `app.ai.cost.premium.input-per-1m` | Cost estimation (USD/1M tokens) | `2.50` |
-| `app.ai.cost.premium.output-per-1m` | Output cost (USD/1M tokens) | `10.00` |
-| `app.ai.cost.mini.input-per-1m` | Mini model input cost | `0.40` |
-| `app.ai.cost.mini.output-per-1m` | Mini model output cost | `1.60` |
-| `stripe.secret-key` | Stripe secret key | `${STRIPE_SECRET_KEY}` |
-| `stripe.price-id.profession` | Stripe price for professional | `${STRIPE_PRICE_PROFESSIONAL}` |
-| `stripe.price-id.course` | Stripe price for students | `${STRIPE_PRICE_STUDENT}` |
-| `stripe.price-id.a-level-undecided` | Stripe price for school students | `${STRIPE_PRICE_A_LEVEL_UNDECIDED}` |
-| `stripe.webhook-secret` | Webhook signature secret | `${STRIPE_WEBHOOK_SECRET}` |
-| `app.base-url` | Used in Stripe success/cancel URLs | `${APP_BASE_URL}` |
-| `app.report.expiry-hours` | Hours until unpaid report is purged | `24` |
-| `app.form.role-summary-word-limit.profession` | Word limit for professional | `800` |
-| `app.form.role-summary-word-limit.course` | Word limit for university student | `450` |
-| `app.form.role-summary-word-limit.a-level-undecided` | Word limit for school student | `350` |
-| `spring.datasource.url` | Database URL | H2 file `./data/jobai` |
-| `spring.jpa.hibernate.ddl-auto` | Schema strategy | `update` |
+| `server.port` | `8081` (env: PORT) | HTTP port |
+| `spring.ai.openai.api-key` | `${OPENAI_API_KEY}` | OpenAI API access |
+| `spring.ai.openai.chat.options.model` | `gpt-5.1` (env: OPENAI_MODEL) | Default Spring AI model |
+| `app.ai.model.premium` | `gpt-5.4` (env: AI_MODEL_PREMIUM) | Premium bean model name |
+| `app.ai.model.mini` | `gpt-5.4-mini` (env: AI_MODEL_MINI) | Mini bean model name |
+| `app.ai.cost.premium.input-per-1m` | `2.50` | USD per 1M input tokens (premium) |
+| `app.ai.cost.premium.output-per-1m` | `10.00` | USD per 1M output tokens (premium) |
+| `app.ai.cost.mini.input-per-1m` | `0.40` | USD per 1M input tokens (mini) |
+| `app.ai.cost.mini.output-per-1m` | `1.60` | USD per 1M output tokens (mini) |
+| `app.ai.cost.usd-to-gbp-rate` | `0.79` | For GBP pence cost estimation |
+| `stripe.secret-key` | `${STRIPE_SECRET_KEY}` | Stripe server-side key |
+| `stripe.price-id.profession` | `${STRIPE_PRICE_PROFESSIONAL}` | Stripe price ID, £4.99 product |
+| `stripe.price-id.course` | `${STRIPE_PRICE_STUDENT}` | Stripe price ID, £2.99 product |
+| `stripe.price-id.a-level-undecided` | `${STRIPE_PRICE_A_LEVEL_UNDECIDED:}` | Stripe price ID, £0.99 product (optional, falls back to course price) |
+| `stripe.webhook-secret` | `${STRIPE_WEBHOOK_SECRET}` | Webhook signature verification |
+| `app.base-url` | `${APP_BASE_URL}` | Used in Stripe success/cancel redirect URLs |
+| `app.report.price.profession-pence` | `1000` | Price in pence (£10.00) |
+| `app.report.price.course-pence` | `300` | Price in pence (£3.00) |
+| `app.report.expiry-hours` | `24` | Hours until unpaid report is purged |
+| `app.form.role-summary-word-limit.profession` | `800` | Word limit for professional journey |
+| `app.form.role-summary-word-limit.course` | `450` | Word limit for university journey |
+| `spring.datasource.url` | H2 file `./data/jobai` | Swap to PostgreSQL via DATABASE_URL |
+| `spring.ai.retry.max-attempts` | `5` | Max retries for AI calls |
+| `spring.ai.retry.backoff.initial-interval` | `1s` | Initial retry backoff |
+| `spring.servlet.multipart.max-file-size` | `2MB` | CV upload limit |
 
-### Environment Variables Required at Runtime
+### Required Environment Variables
 
 | Variable | Purpose |
 |---|---|
 | `OPENAI_API_KEY` | OpenAI API access |
-| `STRIPE_SECRET_KEY` | Stripe server-side API key |
+| `STRIPE_SECRET_KEY` | Stripe server-side key |
+| `STRIPE_PUBLISHABLE_KEY` | Stripe client-side key |
 | `STRIPE_WEBHOOK_SECRET` | Validates Stripe webhook signatures |
-| `STRIPE_PRICE_PROFESSIONAL` | Stripe price ID for £4.99 product |
-| `STRIPE_PRICE_STUDENT` | Stripe price ID for £2.99 product |
-| `STRIPE_PRICE_A_LEVEL_UNDECIDED` | Stripe price ID for £0.99 product (optional, falls back to student) |
-| `APP_BASE_URL` | Public URL of the app (for Stripe redirect URLs) |
-| `DATABASE_URL` | Optional — override H2 with PostgreSQL in production |
-| `APP_AI_USE_DUMMY` | Set to `true` to skip AI calls (local/test) |
+| `STRIPE_PRICE_PROFESSIONAL` | Stripe price ID for professional journey |
+| `STRIPE_PRICE_STUDENT` | Stripe price ID for university journey |
+| `STRIPE_PRICE_A_LEVEL_UNDECIDED` | Stripe price ID for school journey (optional) |
+| `APP_BASE_URL` | Public URL of the app |
+| `DATABASE_URL` | Optional — override H2 with PostgreSQL |
 
 ---
 
-## 12. Templates / Screens
+## 13. Templates / Screens
 
 ### `index.html` — Home Page / Form
 
 **Purpose:** Entry point. Renders the assessment form.
 
-**What the user sees:** A form asking for their mode (professional / student / school), their job/course/interests name, and an input area for manual text or CV upload (professional only).
+**What the user sees:**
+- Hero: "Is AI Coming for Your Job or Your Future?"
+- Journey selector: 3 radio cards — "I am working", "I am studying", "I am choosing subjects".
+- Form fields: profession/course/subjects name, input method toggle (manual / CV upload), text area with live word counter, CV file drag-drop.
+- CV upload only available for the Professional journey.
+- Word counter dynamically shows journey-specific limit (800/450/350).
+- Preview card explaining what the free and premium reports include.
 
-**Data it expects:**
-- `journeyConfig` — populated by the controller from JourneyConfigRegistry; drives form labels, word limit display, and CV section visibility.
-- Any prior `BindingResult` errors displayed inline.
+**Data it expects:** `riskAssessmentForm` (for form binding), `wordLimitProfession`, `wordLimitCourse`.
 
 ---
 
-### `result.html` — Free Assessment Results
+### `result.html` — Free Snapshot Results
 
-**Purpose:** Shows the AI risk score and free summary after form submission.
+**Purpose:** Shows the deterministic risk score and AI narrative after form submission.
 
-**What the user sees:** A score (0–10), risk level badge, one-sentence summary, two-sentence assessment. A call-to-action invites them to unlock the full report.
+**What the user sees:**
+- Large impact signal with colour-coded risk level (Low=green, Moderate=amber, High=red).
+- Risk scale slider (0–10) with position indicator.
+- Snapshot insight box (2–3 sentences from the aligned summary).
+- Assessment text (AI narrative, 2 sentences).
+- Call-to-action: "Unlock your full AI Future Strategy Report" — opens premium modal.
+- Modal previews premium features (journey-specific list) and a price badge.
 
-**Data it expects:**
-- `score`, `riskLevel`, `summary`, `assessment` — from flash attributes after `/assess`.
-- `profession`, `mode` — for display and for building the `checkoutPayload` stored in `sessionStorage`.
-- `originalDetails` — preserved in `sessionStorage` for premium report generation.
+**Data it expects:** `score`, `riskLevel`, `summary`, `assessment`, `profession`, `mode`, `originalDetails` — all from flash attributes after `POST /assess`.
+
+**Key JS:** On modal "Generate" click, saves `checkoutPayload` to `sessionStorage` and navigates to `/generating-report`.
 
 ---
 
 ### `generating-report.html` — Loading / Generation Page
 
-**Purpose:** Shown while the premium report is being generated server-side.
+**Purpose:** Shown while the premium report is being generated. Fires the API call automatically.
 
-**What the user sees:** A loading animation and message. On page load, JavaScript fires `POST /generate-report` and, on success, redirects to `/report/{reportId}`.
+**What the user sees:** Spinner, 5-step progress animation with journey-specific copy, "Preparing your report" final step.
 
-**Data it expects:**
-- `checkoutPayload` from `sessionStorage` (set on the result page) — sent as request body to `/generate-report`.
+**Data it expects:** `sessionStorage.checkoutPayload` (set in `result.html`). Reads `stored.mode` to apply journey-specific step labels.
+
+**Key JS:** On load, fires `POST /generate-report` with data from sessionStorage. On success, redirects to `/premium-report/{reportId}`. On error (after animation), shows an error state.
 
 ---
 
 ### `premium-report.html` — Locked and Unlocked Report View
 
-**Purpose:** The main report page — shows locked preview or full paid content depending on payment status.
+**Purpose:** The main report page — shows locked preview or full paid content.
 
-**Locked state (user has not paid):**
-- Shows cover KPIs (disruption window, adaptability potential), executive summary, and first 3 task rows.
-- All other sections are hidden.
-- A "Unlock Full Report — Pay £X" button triggers Stripe checkout.
+**Locked state:** Shows cover KPIs, executive summary, first 3 task rows. All premium sections are blurred/hidden. "Unlock" button triggers Stripe checkout.
 
-**Unlocked state (PAID):**
-- Renders all 8 sections: executive summary, task exposure map with bar visualisation, timeline phases, skill cards, salary comparison table, adjacent role cards, action plans, and resource links.
-- A "Download PDF" button is shown.
+**Unlocked state:** Full 8-section report — executive summary, task exposure map, timeline, skill cards, salary intelligence, adjacent roles, action plans, resources. Download PDF button enabled.
 
-**Data it expects:**
-- `report` (PremiumReport or limited preview)
-- `reportId`, `reportLocked` (boolean), `paymentStatus`, `expiresAt`
+**Score display:** The cover stat box shows `report.score * 10` % (free assessment score). Where `premiumScore` is present, the premium score section shows it with `scoreRationale`.
+
+**Data it expects:** `report` (PremiumReport or limited preview), `reportId`, `reportLocked`, `paymentStatus`, `expiresAt`, `checkoutState`.
 
 ---
 
 ### `premium-report-pdf.html` — PDF Template
 
-**Purpose:** A print-optimised version of the full report, rendered by PdfService using Flying Saucer.
+**Purpose:** Print-optimised version of the full report, rendered by `PdfService` via Flying Saucer.
 
-**What the user sees:** Delivered as a PDF download — same content as the unlocked HTML report but formatted for A4 / print layout.
-
-**Data it expects:** Same as `premium-report.html` (full PremiumReport object).
+**Notes:** Inline CSS only (no external stylesheets — required for Flying Saucer compatibility). Same content as the unlocked HTML report but laid out for A4.
 
 ---
 
 ### `sample-report.html` — Example Report
 
-**Purpose:** Marketing / preview page showing what a premium report looks like.
-
-**What the user sees:** A fictitious example report to give potential users a sense of the output quality before committing.
+**Purpose:** Static marketing/demo page showing what a premium report looks like. Does not require authentication or assessment.
 
 ---
 
-## 13. Testing Overview
+## 14. Testing Overview
 
-### Current Test Coverage
+### Test Files (19 total)
 
-| Area | Test Class | What is Covered |
-|---|---|---|
-| Journey type parsing | `JourneyTypeTest` | Mode alias resolution for all 3 journeys; `fromMode()` with valid and invalid inputs |
-| Journey config registry | `JourneyConfigRegistryTest` | Config lookup by JourneyType and legacy mode string; correct word limits and flags per journey |
-| Risk assessment service | `RiskAssessmentServiceTest` | Form validation; word limit enforcement; CV extraction integration; journey-specific validation messages |
-| JobAi service | `JobAiServiceTest` | Prompt construction for each journey; model selection logic; dummy mode behaviour |
-| Premium report AI service | `PremiumReportAiServiceTest` | Report generation; JSON parsing of all 8 sections; dummy mode output |
-| Controller flow | `RiskAssessorControllerTest` | POST /assess success path; flash attribute preservation; validation error handling |
-| Checkout price routing | `CheckoutControllerTest` | Correct price ID returned per journey; fallback for a-level if not configured |
-| Template rendering | `ResultTemplateTest`, `PremiumReportTemplateTest`, `GeneratingReportTemplateTest` | Thymeleaf renders without errors; key elements present in output |
-| Application context | `JobaiApplicationTests` | Spring context loads cleanly |
+| Test Class | What it Covers |
+|---|---|
+| `JobaiApplicationTests` | Spring context loads cleanly |
+| `NoRealAiSafetyTest` | Guards against accidentally calling live AI in tests |
+| `JourneyTypeTest` | `fromMode()` parsing for all 3 journeys; invalid mode handling |
+| `JourneyConfigRegistryTest` | Config lookup by JourneyType and legacy mode string; word limits and flags |
+| `RiskScoringServiceTest` | Risk level thresholds (3.4/3.5/6.9/7.0), sample role expected levels, protective factor reduction, summary alignment |
+| `RiskDimensionCalculatorTest` | Keyword adjustments, baseline values per journey, role hard caps |
+| `RiskScoringBenchmarkTest` | Score distribution across many role/journey combinations |
+| `RiskAssessmentServiceTest` | Form validation, CV extraction, manual input, resolvedDetails preservation |
+| `JobAiServiceTest` | Prompt construction per journey, correct instruction file injected |
+| `JobAiServiceMockedChatClientTest` | Mocked ChatClient; verifies RiskScoringService is called and overrides AI score |
+| `PremiumReportAiServiceTest` | Prompt framing per journey, journey-specific instructions injected |
+| `PremiumReportAiServiceMockedChatClientTest` | Mocked ChatClient; verifies JSON mapping to PremiumReport including premiumScore |
+| `ReportServiceTest` | Report persistence, payment status transitions, expiry logic |
+| `ReportPreviewServiceTest` | Locked preview contains only allowed fields; premium sections cleared |
+| `CheckoutControllerTest` | Price ID routing per journey; fallback for unconfigured a-level price |
+| `RiskAssessorControllerTest` | `POST /assess` success path; flash attributes preserved; validation error handling |
+| `ResultTemplateTest` | Thymeleaf renders result.html without errors; key elements present |
+| `PremiumReportTemplateTest` | Thymeleaf renders premium-report.html for locked and unlocked states |
+| `GeneratingReportTemplateTest` | Thymeleaf renders generating-report.html correctly |
 
-### Test Configuration
+### Key Test Assertions
 
-- Tests use an in-memory H2 database (`src/test/resources/application.properties`).
-- Dummy mode is enabled in tests (`app.ai.use-dummy=true`).
-- Stripe and OpenAI keys are set to test values to prevent live calls.
-- ChatClient beans are mocked where AI behaviour is under test.
-
----
+- Risk level thresholds: `riskLevel(3.4) == "Low"`, `riskLevel(3.5) == "Moderate"`, `riskLevel(7.0) == "High"`.
+- Sample roles: singers/electricians/CEOs → Low; developers/designers → Moderate; data entry/call center → High.
+- Protective factors: singer's `protectiveAdjustment >= 2.0` and `finalScore < baseScore`.
+- Summary alignment: no numeric score in summary, correct impact phrase for riskLevel.
+- Flash attributes: `originalDetails` preserved after `POST /assess`.
+- Locked preview: `taskExposureMap.size() == 3`, no `timelineEvents`, no `skillCards`.
 
 ### Known Gaps
 
-| Gap | Priority |
+| Gap | Risk |
 |---|---|
-| No full end-to-end payment integration test (Stripe webhook → report unlock) | High |
-| No test for PDF generation output correctness | Medium |
-| Limited tests for report lock/unlock state transitions in ReportService | Medium |
-| No tests for AI response edge cases (malformed JSON, missing fields) | Medium |
-| No tests for document parsing failure paths (corrupt file, empty extraction) | Low |
-| No tests for report expiry and purge logic | Low |
-| No tests for analytics event content | Low |
+| No test for `description` fallback chain (`originalDetails || assessment || summary`) | Silent context degradation in premium report |
+| No full end-to-end payment integration test (webhook → unlock) | Payment flow tested manually only |
+| No test for PDF generation correctness | PDF layout regressions undetected |
+| No test for AI score value when `cleanJsonResponse` fails | RuntimeException path untested |
+| No test for stale sessionStorage across browser sessions | User sees wrong context for report generation |
+| `gpt54ReportChatClient` bean is defined but not wired to any service | Unused infrastructure |
 
 ---
 
-## 14. Known Design Decisions
+## 15. Known Design Decisions
 
-### 1. One application, three journeys — not three separate apps
+### 1. Deterministic scoring model, not AI-determined score
 
-All three user types share the same controllers, services, and report structure. Journey-specific behaviour is injected via `JourneyConfig` and `JourneyConfigRegistry`. This reduces code duplication and makes it easy to add a fourth journey later.
+The final risk score is produced by a rule-based 5-dimension model (`RiskScoringService`), not the AI. The AI generates narrative content (assessment text), which is kept; the AI's numeric score is discarded and replaced.
 
-**Trade-off:** A single form handling three different use cases can feel awkward if journeys diverge significantly. This would need reassessment if the school or university journeys grow substantially.
+**Reason:** AI models cluster around moderate values regardless of input. A rule-based model with role-specific hard caps produces more discriminating and predictable scores.
 
----
-
-### 2. Legacy mode strings kept for compatibility
-
-The database stores `mode` as a string (`"profession"`, `"course"`, `"a_level"`). These strings appear in `ReportRequest` entities, Stripe session metadata, and analytics logs. Internally, the application converts these to `JourneyType` enum values via `JourneyType.fromMode()`.
-
-**Trade-off:** Some internal code still reads legacy strings. A future refactor should migrate the DB column to use enum names.
+**Trade-off:** The scoring rules require maintenance as new roles emerge. The AI prompt still asks for a score (for its own narrative coherence), but that score is thrown away.
 
 ---
 
-### 3. JourneyType/JourneyConfig for cleaner branching
+### 2. Premium report has its own independent score
 
-Before these were introduced, mode comparisons were scattered `if (mode.equals("profession"))` blocks. The registry and config record centralise all journey-specific values, making the code easier to read and extend.
+`PremiumReport.premiumScore` and `premiumRiskLevel` are output by the AI in the premium prompt. They are not copies of the free assessment score.
 
----
+**Reason:** The premium AI has more context (full original details) and can perform deeper analysis. It may assign a different score with explicit reasoning in `scoreRationale`.
 
-### 4. Generate full premium report before payment, then lock it
-
-The premium report is generated and stored in the database before the user pays. The user sees a limited locked preview. After payment, the same stored report is unlocked.
-
-**Why:** Better UX — no generation delay after payment. The risk (generating reports that are never paid for) is mitigated by the 24-hour expiry and purge process.
+**Trade-off:** The user may see different scores between the free snapshot and the premium report. This is expected and documented in the report copy.
 
 ---
 
-### 5. Use existing PremiumReport structure for all journeys
+### 3. One application with three journeys
 
-Rather than building separate report models for professionals, students, and school students, the same `PremiumReport` structure is used. Journey-specific framing is handled at the AI prompt level.
+All three user types share the same controllers, services, and report structure. Journey-specific behaviour is injected via `JourneyConfig` and prompt files.
 
-**Why:** Simplicity. One structure, one renderer, one PDF template.
+**Trade-off:** A single form handling three use cases can feel awkward if journeys diverge significantly.
+
+---
+
+### 4. Legacy mode strings kept for compatibility
+
+The database stores `mode` as `"profession"`, `"course"`, or `"a_level"`. `JourneyType.fromMode()` converts between strings and enums.
+
+**Planned:** Eventually rename the DB column and enum value.
+
+---
+
+### 5. Generate premium report before payment, then lock it
+
+Full report generated and stored PENDING. User pays to unlock. Unpaid reports purged after 24 hours.
 
 ---
 
 ### 6. Backend uses `a_level` internally; UI uses global language
 
-The `A_LEVEL_UNDECIDED` journey uses `mode=a_level` for legacy reasons, but the user-facing UI uses language like "school student" or "still exploring options". This makes the product accessible globally without requiring a backend rename.
-
-**Planned resolution:** Eventually rename the internal enum and DB value to `SCHOOL_STUDENT` or `PRE_UNIVERSITY`.
+User-facing copy uses "school student" / "pre-university". The backend enum and DB value remain `a_level` / `A_LEVEL_UNDECIDED` for now.
 
 ---
 
-## 15. Risks and Future Improvements
+### 7. V1 prompt files retained on disk
+
+The original `profession-instructions.txt`, `course-instructions.txt`, and `a-level-instructions.txt` are not deleted. They are superseded by V2/V3 equivalents and not referenced by any service. They can be removed safely.
+
+---
+
+## 16. Risks and Future Improvements
 
 ### Internal Renames
 
-- [ ] Rename `A_LEVEL_UNDECIDED` → `SCHOOL_STUDENT` or `PRE_UNIVERSITY` throughout the codebase.
+- [ ] Rename `A_LEVEL_UNDECIDED` → `SCHOOL_STUDENT` or `PRE_UNIVERSITY` throughout.
 - [ ] Migrate `mode` DB column from legacy strings to enum names.
-- [ ] Rename `a-level-instructions.txt` → `school-student-instructions.txt`.
+- [ ] Delete V1 prompt files (`profession-instructions.txt`, `course-instructions.txt`, `a-level-instructions.txt`, `a-level-instructionsV2.txt`).
+- [ ] Wire `gpt54ReportChatClient` (premium, temp 0.6) to `PremiumReportAiService` if higher narrative quality is needed, or remove the bean.
 
-### Globalisation
+### Scoring Model
 
-- [ ] Replace A-Level–specific copy in `a-level-instructions.txt` with globally neutral language (e.g., "secondary school subjects", "pre-university choices").
-- [ ] Add currency and salary localisation beyond UK.
+- [ ] Add a word-limit for the `a_level` journey in `application.properties` (currently not present; only profession and course limits are defined).
+- [ ] Add keyword rules for more roles as the app scales.
+- [ ] Consider exposing dimension scores to users as part of the premium report (currently computed but not rendered).
 
 ### Product Features
 
-- [ ] Email capture — let users receive their report by email; reduces risk of losing access.
-- [ ] Save / retrieve reports by email address without re-generating.
-- [ ] Free usage limits — cap free assessments per visitor without an account.
-- [ ] Admin dashboard — view reports generated, payment rates, top professions assessed.
+- [ ] Email capture — send the report to the user's email; reduce risk of losing access.
 - [ ] Rate limiting — prevent abuse of the free assessment endpoint.
+- [ ] Admin dashboard — view reports generated, payment rates, top professions assessed.
+- [ ] Analytics by journey — break down conversion rates and scores per journey type.
+- [ ] Free usage limits — cap free assessments per visitor.
 
 ### Technical Improvements
 
-- [ ] Blurred preview optimisation — instead of hiding sections, render the PDF and blur premium pages for a more polished locked preview.
-- [ ] Analytics by journey — break down event logs by `JourneyType` for per-journey conversion tracking.
-- [ ] Stronger prompt evaluation tests — automated checks on AI output quality (e.g., score range, required JSON fields, tone).
-- [ ] Better report expiry handling — notify users before their unpaid report expires.
-- [ ] PostgreSQL migration path — document the production DB setup; add a migration framework (Flyway or Liquibase).
-- [ ] Store structured original intake separately — currently `originalDetails` is a plain string; consider storing it as structured JSON for richer premium report generation.
-- [ ] Improve test coverage for payment webhook and report unlock flows.
+- [ ] Add `@Valid` constraints to `GenerateReportRequest` — currently no server-side validation of `score`, `riskLevel`, or `mode` from the client payload.
+- [ ] Guard against missing `originalDetails` in `generating-report.html` fallback chain.
+- [ ] PostgreSQL migration path — document production DB setup; add Flyway or Liquibase.
+- [ ] Improve test coverage: end-to-end payment webhook, PDF generation, description fallback.
+- [ ] Add GBP pricing display in the UI (currently prices are in properties but displayed as hardcoded strings in templates).
+- [ ] Store `premiumScore` separately in `ReportRequest` entity for analytics queries (currently only the free `riskScore` is stored as a column; `premiumScore` is only inside the JSON blob).
 
 ---
 
-*Document generated: 2026-05-01*
+*Document updated: 2026-05-02*  
 *Branch: feature/multi-journey-assessment*
-*Author: WillAIStealMyJob development team*

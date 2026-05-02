@@ -20,6 +20,7 @@ public class GenerationMetrics {
     private int completionTokens;
     private int totalTokens;
     private double estimatedCostUsd;
+    private double estimatedCostPence;
 
     public String getDurationLabel() {
         if (durationMs < 1000) {
@@ -30,5 +31,9 @@ public class GenerationMetrics {
 
     public String getEstimatedCostUsdLabel() {
         return String.format(Locale.US, "$%.4f", estimatedCostUsd);
+    }
+
+    public String getEstimatedCostPenceLabel() {
+        return String.format(Locale.UK, "%.3fp", estimatedCostPence);
     }
 }

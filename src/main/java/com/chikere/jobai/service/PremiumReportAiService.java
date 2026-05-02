@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -40,12 +41,12 @@ public class PremiumReportAiService {
     private final String modelName;
     private final String reportQualityBooster;
 
-    public PremiumReportAiService(ChatClient gpt54MiniChatClient,
+    public PremiumReportAiService(@Qualifier("gpt54ReportChatClient") ChatClient gpt54ReportChatClient,
                                   GenerationMetricsService generationMetricsService,
                                   JourneyConfigRegistry journeyConfigRegistry,
                                   ResourceLoader resourceLoader,
-                                  @Value("${app.ai.model.mini}") String modelName) {
-        this.chatClient = gpt54MiniChatClient;
+                                  @Value("${app.ai.model.report}") String modelName) {
+        this.chatClient = gpt54ReportChatClient;
         this.generationMetricsService = generationMetricsService;
         this.journeyConfigRegistry = journeyConfigRegistry;
         this.resourceLoader = resourceLoader;
@@ -84,7 +85,7 @@ public class PremiumReportAiService {
                     chatResponse
             );
             report.setGenerationMetrics(metrics);
-            logGenerationSummary(reportId, profession, metrics);
+            logGenerationSummary(reportId, journeyType.legacyMode(), profession, metrics);
             return report;
         } catch (Exception e) {
             log.error("Failed to parse AI response for reportId={}: {}", reportId, raw, e);
@@ -123,20 +124,12 @@ public class PremiumReportAiService {
     // ─── Mapping ─────────────────────────────────────────────────────────────
 
     PremiumReport mapToReport(String reportId, GenerateReportRequest req, JsonNode root) {
-        Double premiumScore = scoreValue(root, "premiumScore");
-        if (premiumScore == null) {
-            premiumScore = clampScore(req.getScore());
-        }
-        String premiumRiskLevel = normalise(text(root, "premiumRiskLevel"), deriveRiskLevel(premiumScore));
-
         return PremiumReport.builder()
                 .reportId(reportId)
                 .profession(req.getProfession())
                 .mode(req.getMode())
-                .score(req.getScore())
-                .riskLevel(req.getRiskLevel())
-                .premiumScore(premiumScore)
-                .premiumRiskLevel(premiumRiskLevel)
+                .score(clampScore(req.getScore()))
+                .riskLevel(normalise(req.getRiskLevel(), deriveRiskLevel(clampScore(req.getScore()))))
                 .scoreRationale(text(root, "scoreRationale"))
                 .generatedAt(LocalDateTime.now())
 
@@ -410,10 +403,11 @@ public class PremiumReportAiService {
         return (System.nanoTime() - startNanos) / 1_000_000;
     }
 
-    private void logGenerationSummary(String reportId, String profession, GenerationMetrics metrics) {
+    private void logGenerationSummary(String reportId, String mode, String profession, GenerationMetrics metrics) {
         log.info(
-                "{} completed for reportId={} profession=\"{}\": model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostUsd={}",
+                "AI_COST reportType=\"{}\" mode={} reportId={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostPence={} estimatedCostUsd={}",
                 metrics.getReportType(),
+                mode,
                 reportId,
                 profession,
                 metrics.getModel(),
@@ -421,6 +415,7 @@ public class PremiumReportAiService {
                 metrics.getPromptTokens(),
                 metrics.getCompletionTokens(),
                 metrics.getTotalTokens(),
+                metrics.getEstimatedCostPenceLabel(),
                 metrics.getEstimatedCostUsdLabel()
         );
     }
@@ -452,28 +447,6 @@ public class PremiumReportAiService {
         return Math.max(0, Math.min(100, value));
     }
 
-    private Double scoreValue(JsonNode node, String field) {
-        JsonNode value = node.path(field);
-        if (value.isMissingNode() || value.isNull()) {
-            return null;
-        }
-
-        if (value.isNumber()) {
-            return clampScore(value.asDouble());
-        }
-
-        String raw = value.asText("");
-        if (raw.isBlank()) {
-            return null;
-        }
-
-        try {
-            return clampScore(Double.parseDouble(raw.replace("/10", "").trim()));
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
-
     private double clampScore(double score) {
         if (Double.isNaN(score) || Double.isInfinite(score)) {
             return 0.0;
@@ -482,10 +455,10 @@ public class PremiumReportAiService {
     }
 
     private String deriveRiskLevel(double score) {
-        if (score < 3.0) {
+        if (score <= 3.4) {
             return "Low";
         }
-        if (score < 7.0) {
+        if (score <= 6.9) {
             return "Moderate";
         }
         return "High";

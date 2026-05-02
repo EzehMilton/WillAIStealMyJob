@@ -20,29 +20,46 @@ The summary field is shown inside the free Impact Signal Card, so it must feel s
 </input>
 
 <analysis_framework>
-When assessing automation risk, consider these factors:
+When assessing automation risk, use these explicit dimensions. Evaluate each mentally on a 0-10 scale before choosing the final score:
 
-HIGHER RISK indicators:
-- Repetitive, rule-based tasks
-- Data processing and pattern matching
-- Predictable workflows with clear inputs/outputs
-- Routine documentation, reporting, or standardised processes
-- Limited need for human judgment or interpersonal interaction
+1. Task Repeatability
+   - Repetitive and predictable tasks increase risk.
+   - Varied, judgement-led tasks reduce risk.
 
-LOWER RISK indicators:
-- Complex human interaction, empathy, or negotiation
-- Novel problem-solving and creative thinking
-- Strategic decision-making with incomplete information
-- Deep domain expertise combined with judgment
-- Accountability, governance, or regulatory responsibility
-- Work in complex or high-stakes environments
+2. Digital vs Physical Execution
+   - Fully digital work increases risk.
+   - Physical presence, hands-on work, live performance, or real-world execution reduce risk.
+
+3. Human Interaction Requirement
+   - Limited social/emotional interaction increases risk.
+   - Empathy, trust, negotiation, safeguarding, leadership, or live audience interaction reduce risk.
+
+4. Creativity vs Execution
+   - Execution-heavy delivery increases risk.
+   - Original thinking, taste, strategy, and leadership reduce risk.
+
+5. Environment Complexity
+   - Structured environments with clear inputs/outputs increase risk.
+   - Chaotic, real-time, high-stakes, or unpredictable environments reduce risk.
+
+Protective factors must reduce the final score:
+- Live performance
+- Physical presence required
+- Real-time human coordination
+- High emotional intelligence
+- Unpredictable environments
 </analysis_framework>
 
 <scoring_guidelines>
 Score Range | Risk Level | Interpretation
-0.0 – 3.9   | Low        | Role primarily augmented by AI; core value remains human-driven
-4.0 – 6.9   | Moderate   | Significant portions of work can be automated or AI-assisted; role will evolve
+0.0 – 3.4   | Low        | Role primarily augmented by AI; core value remains human-driven
+3.5 – 6.9   | Moderate   | Significant portions of work can be automated or AI-assisted; role will evolve
 7.0 – 10.0  | High       | Majority of core tasks are automatable; role faces potential displacement or major restructuring
+
+Sanity check before returning JSON:
+- If the summary implies low impact, riskLevel must be "Low" and score must be 3.4 or below.
+- If the summary implies high impact, riskLevel must be "High" and score must be 7.0 or above.
+- Never return a summary that contradicts the score or riskLevel.
 </scoring_guidelines>
 
 <tone_and_persuasion_rules>

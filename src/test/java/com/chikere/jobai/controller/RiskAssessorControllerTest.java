@@ -7,6 +7,7 @@ import com.chikere.jobai.model.RiskAssessmentForm;
 import com.chikere.jobai.service.AnalyticsService;
 import com.chikere.jobai.service.JourneyConfigRegistry;
 import com.chikere.jobai.service.RiskAssessmentService;
+import com.chikere.jobai.service.RiskAssessmentService.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ui.ExtendedModelMap;
@@ -16,6 +17,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -97,7 +99,34 @@ class RiskAssessorControllerTest {
         assertEquals(resolvedDetails, flash.get("originalDetails"));
         assertEquals(form.getMode(), flash.get("mode"));
         assertEquals(form.getProfession(), flash.get("profession"));
+        assertEquals(4.0, flash.get("score"));
+        assertEquals("Moderate", flash.get("riskLevel"));
+        assertEquals("Summary", flash.get("summary"));
+        assertEquals("Assessment", flash.get("assessment"));
         assertEquals(true, flash.get("success"));
+    }
+
+    @Test
+    void assessRisk_validationExceptionReturnsToIndex() {
+        RiskAssessmentForm form = form("a_level", "Maths", " ", "manual");
+        when(riskAssessmentService.processAssessmentWithDetails(form))
+                .thenThrow(new ValidationException("roleSummary", "Tell us about your interests"));
+
+        BeanPropertyBindingResult bindingResult = new BeanPropertyBindingResult(form, "riskAssessmentForm");
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        String view = controller.assessRisk(
+                form,
+                bindingResult,
+                model,
+                new RedirectAttributesModelMap(),
+                "visitor-123"
+        );
+
+        assertEquals("index", view);
+        assertTrue(bindingResult.hasFieldErrors("roleSummary"));
+        assertEquals(800, model.get("wordLimitProfession"));
+        assertEquals(450, model.get("wordLimitCourse"));
     }
 
     private RiskAssessmentForm form(String mode, String profession, String roleSummary, String inputMethod) {

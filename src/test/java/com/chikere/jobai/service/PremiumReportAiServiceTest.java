@@ -24,8 +24,9 @@ class PremiumReportAiServiceTest {
 
         assertTrue(prompt.contains("Journey Type: PROFESSIONAL"));
         assertTrue(prompt.contains("Profession: Accountant"));
-        assertTrue(prompt.contains("premiumScore"));
-        assertTrue(prompt.contains("initial free-summary estimates"));
+        assertTrue(prompt.contains("CRITICAL SCORE RULE"));
+        assertTrue(prompt.contains("The official score is 5.5/10"));
+        assertTrue(prompt.contains("Do not output premiumScore or premiumRiskLevel"));
         assertTrue(prompt.contains("career survival plan"));
         assertTrue(prompt.contains("task-level automation"));
         assertTrue(prompt.contains("adjacent roles"));
@@ -59,7 +60,7 @@ class PremiumReportAiServiceTest {
     }
 
     @Test
-    void mapToReport_mapsPremiumScoreAndRiskFields() throws Exception {
+    void mapToReport_usesOfficialRequestScoreAndRiskLevel() throws Exception {
         PremiumReportAiService service = newService();
 
         PremiumReport report = service.mapToReport(
@@ -74,83 +75,57 @@ class PremiumReportAiServiceTest {
                         """)
         );
 
-        assertEquals(7.4, report.getPremiumScore());
-        assertEquals("High", report.getPremiumRiskLevel());
+        assertEquals(5.5, report.getScore());
+        assertEquals("MODERATE", report.getRiskLevel());
+        assertEquals(null, report.getPremiumScore());
+        assertEquals(null, report.getPremiumRiskLevel());
         assertEquals("Routine work dominates the detailed exposure map.", report.getScoreRationale());
     }
 
     @Test
-    void mapToReport_fallsBackToRequestScoreWhenPremiumScoreMissing() throws Exception {
+    void mapToReport_ignoresAiPremiumScoreWhenPresent() throws Exception {
         PremiumReportAiService service = newService();
 
         PremiumReport report = service.mapToReport(
                 "report-123",
                 request("profession", "Accountant"),
-                objectMapper.readTree("{}")
+                objectMapper.readTree("""
+                        {
+                          "premiumScore": 9.9,
+                          "premiumRiskLevel": "High",
+                          "scoreRationale": "This explains the official score."
+                        }
+                        """)
         );
 
-        assertEquals(5.5, report.getPremiumScore());
-        assertEquals("Moderate", report.getPremiumRiskLevel());
+        assertEquals(5.5, report.getScore());
+        assertEquals("MODERATE", report.getRiskLevel());
+        assertEquals(null, report.getPremiumScore());
+        assertEquals(null, report.getPremiumRiskLevel());
+        assertEquals("This explains the official score.", report.getScoreRationale());
     }
 
     @Test
-    void mapToReport_clampsInvalidPremiumScoreSafely() throws Exception {
+    void mapToReport_clampsOfficialRequestScoreSafely() throws Exception {
         PremiumReportAiService service = newService();
+        GenerateReportRequest highRequest = request("profession", "Accountant");
+        highRequest.setScore(12.7);
+        GenerateReportRequest lowRequest = request("profession", "Accountant");
+        lowRequest.setScore(-2.0);
 
         PremiumReport highReport = service.mapToReport(
                 "report-123",
-                request("profession", "Accountant"),
-                objectMapper.readTree("{\"premiumScore\": 12.7}")
+                highRequest,
+                objectMapper.readTree("{}")
         );
         PremiumReport lowReport = service.mapToReport(
                 "report-456",
-                request("profession", "Accountant"),
-                objectMapper.readTree("{\"premiumScore\": -2.0}")
+                lowRequest,
+                objectMapper.readTree("{}")
         );
 
-        assertEquals(10.0, highReport.getPremiumScore());
-        assertEquals("High", highReport.getPremiumRiskLevel());
-        assertEquals(0.0, lowReport.getPremiumScore());
-        assertEquals("Low", lowReport.getPremiumRiskLevel());
-    }
-
-    @Test
-    void mapToReport_fallsBackWhenPremiumScoreIsNotNumeric() throws Exception {
-        PremiumReportAiService service = newService();
-
-        PremiumReport report = service.mapToReport(
-                "report-123",
-                request("profession", "Accountant"),
-                objectMapper.readTree("{\"premiumScore\": \"not available\"}")
-        );
-
-        assertEquals(5.5, report.getPremiumScore());
-        assertEquals("Moderate", report.getPremiumRiskLevel());
-    }
-
-    @Test
-    void mapToReport_derivesPremiumRiskLevelWhenMissing() throws Exception {
-        PremiumReportAiService service = newService();
-
-        PremiumReport lowReport = service.mapToReport(
-                "report-low",
-                request("profession", "Accountant"),
-                objectMapper.readTree("{\"premiumScore\": 3.9}")
-        );
-        PremiumReport moderateReport = service.mapToReport(
-                "report-moderate",
-                request("profession", "Accountant"),
-                objectMapper.readTree("{\"premiumScore\": 3.0}")
-        );
-        PremiumReport highReport = service.mapToReport(
-                "report-high",
-                request("profession", "Accountant"),
-                objectMapper.readTree("{\"premiumScore\": 7.0}")
-        );
-
-        assertEquals("Low", lowReport.getPremiumRiskLevel());
-        assertEquals("Moderate", moderateReport.getPremiumRiskLevel());
-        assertEquals("High", highReport.getPremiumRiskLevel());
+        assertEquals(10.0, highReport.getScore());
+        assertEquals(0.0, lowReport.getScore());
     }
 
     private GenerateReportRequest request(String mode, String profession) {
@@ -172,7 +147,8 @@ class PremiumReportAiServiceTest {
                         2.5,
                         10.0,
                         0.4,
-                        1.6
+                        1.6,
+                        0.79
                 ),
                 journeyConfigRegistry,
                 new DefaultResourceLoader(),

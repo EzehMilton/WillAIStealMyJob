@@ -52,8 +52,8 @@ class ResultTemplateTest {
 
     @Test
     void rendersImpactLabelsFromScoreThresholds() throws Exception {
-        assertTrue(render("profession", 3.9).contains("Low Impact Detected"));
-        assertTrue(render("profession", 4.0).contains("Moderate Impact Detected"));
+        assertTrue(render("profession", 3.4).contains("Low Impact Detected"));
+        assertTrue(render("profession", 3.5).contains("Moderate Impact Detected"));
         assertTrue(render("profession", 6.9).contains("Moderate Impact Detected"));
         assertTrue(render("profession", 7.0).contains("High Impact Detected"));
     }
