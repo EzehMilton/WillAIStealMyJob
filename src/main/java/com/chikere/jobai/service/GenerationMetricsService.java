@@ -18,19 +18,22 @@ public class GenerationMetricsService {
     private final double premiumOutputCostPer1M;
     private final double miniInputCostPer1M;
     private final double miniOutputCostPer1M;
+    private final double usdToGbpRate;
 
     public GenerationMetricsService(@Value("${app.ai.model.premium}") String premiumModelName,
                                     @Value("${app.ai.model.mini}") String miniModelName,
                                     @Value("${app.ai.cost.premium.input-per-1m}") double premiumInputCostPer1M,
                                     @Value("${app.ai.cost.premium.output-per-1m}") double premiumOutputCostPer1M,
                                     @Value("${app.ai.cost.mini.input-per-1m}") double miniInputCostPer1M,
-                                    @Value("${app.ai.cost.mini.output-per-1m}") double miniOutputCostPer1M) {
+                                    @Value("${app.ai.cost.mini.output-per-1m}") double miniOutputCostPer1M,
+                                    @Value("${app.ai.cost.usd-to-gbp-rate:0.79}") double usdToGbpRate) {
         this.premiumModelName = premiumModelName;
         this.miniModelName = miniModelName;
         this.premiumInputCostPer1M = premiumInputCostPer1M;
         this.premiumOutputCostPer1M = premiumOutputCostPer1M;
         this.miniInputCostPer1M = miniInputCostPer1M;
         this.miniOutputCostPer1M = miniOutputCostPer1M;
+        this.usdToGbpRate = usdToGbpRate;
     }
 
     public GenerationMetrics fromChatResponse(String reportType, String fallbackModelName, long durationMs, ChatResponse chatResponse) {
@@ -48,6 +51,8 @@ public class GenerationMetricsService {
                 ? metadata.getModel().trim()
                 : fallbackModelName;
 
+        double estimatedCostUsd = estimateCostUsd(modelName, promptTokens, completionTokens);
+
         return GenerationMetrics.builder()
                 .reportType(reportType)
                 .model(modelName)
@@ -55,19 +60,8 @@ public class GenerationMetricsService {
                 .promptTokens(promptTokens)
                 .completionTokens(completionTokens)
                 .totalTokens(totalTokens)
-                .estimatedCostUsd(estimateCostUsd(modelName, promptTokens, completionTokens))
-                .build();
-    }
-
-    public GenerationMetrics forLocalGeneration(String reportType, long durationMs) {
-        return GenerationMetrics.builder()
-                .reportType(reportType)
-                .model("dummy")
-                .durationMs(durationMs)
-                .promptTokens(0)
-                .completionTokens(0)
-                .totalTokens(0)
-                .estimatedCostUsd(0.0)
+                .estimatedCostUsd(estimatedCostUsd)
+                .estimatedCostPence(estimatedCostPence(estimatedCostUsd))
                 .build();
     }
 
@@ -83,6 +77,10 @@ public class GenerationMetricsService {
             return new Pricing(miniInputCostPer1M, miniOutputCostPer1M);
         }
         return new Pricing(premiumInputCostPer1M, premiumOutputCostPer1M);
+    }
+
+    private double estimatedCostPence(double estimatedCostUsd) {
+        return estimatedCostUsd * usdToGbpRate * 100.0;
     }
 
     private int valueOrZero(Integer value) {

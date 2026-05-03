@@ -15,6 +15,9 @@ public class AIModelConfiguration {
     @Value("${app.ai.model.mini}")
     private String miniModel;
 
+    @Value("${app.ai.model.report}")
+    private String reportModel;
+
     /**
      * Main reasoning client for risk scoring and other important assessment logic.
      */
@@ -50,7 +53,7 @@ public class AIModelConfiguration {
     public ChatClient gpt54ReportChatClient(ChatClient.Builder chatClientBuilder) {
         return chatClientBuilder
                 .defaultOptions(OpenAiChatOptions.builder()
-                        .model(premiumModel)
+                        .model(reportModel)
                         .temperature(0.6)
                         .build())
                 .build();

@@ -1,4 +1,4 @@
-# WillAIStealMyJob — Developer Change Log
+# WillAIStealMyFuture — Developer Change Log
 
 A running record of every significant change made to the application, with the reasoning behind each decision.
 

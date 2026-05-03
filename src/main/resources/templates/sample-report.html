@@ -103,21 +103,59 @@
             font-weight: 300;
         }
 
-        .cover-stats {
+        .cover-insight-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 1px;
-            background: var(--border);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            max-width: 580px;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 16px;
+            max-width: 760px;
         }
 
-        .stat-box {
+        .exposure-diagnosis-card,
+        .secondary-stat-card {
             background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
             padding: 22px 28px;
-            text-align: center;
+        }
+
+        .exposure-diagnosis-card {
+            grid-row: span 2;
+            padding: 28px 30px;
+            background:
+                linear-gradient(145deg, rgba(79, 142, 255, 0.08), rgba(124, 92, 252, 0.08)),
+                var(--surface);
+            border-color: rgba(79, 142, 255, 0.24);
+        }
+
+        .diagnosis-label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.11em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .exposure-interpretation {
+            font-family: 'DM Serif Display', serif;
+            font-size: 27px;
+            line-height: 1.05;
+            margin-bottom: 7px;
+        }
+
+        .diagnosis-copy {
+            color: var(--text);
+            font-size: 15px;
+            line-height: 1.65;
+            margin-top: 12px;
+            max-width: 430px;
+        }
+
+        .diagnosis-credibility {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 18px;
         }
 
         .stat-value {
@@ -719,7 +757,8 @@
         @media (max-width: 680px) {
             .container { padding: 0 20px; }
             .skills-grid, .action-plan, .resource-grid { grid-template-columns: 1fr; }
-            .cover-stats { grid-template-columns: 1fr; }
+            .cover-insight-grid { grid-template-columns: 1fr; }
+            .exposure-diagnosis-card { grid-row: auto; }
             .salary-comparison { grid-template-columns: 1fr; }
             .two-col { grid-template-columns: 1fr; }
             .score-visual { flex-direction: column; text-align: center; }
@@ -752,7 +791,7 @@
 <div class="cover">
     <div class="container">
         <div class="cover-meta">
-            <span>WillAIStealMyJob</span>
+            <span>WillAIStealMyFuture</span>
             ·
             <span>Premium Report</span>
             ·
@@ -761,16 +800,18 @@
         <h1>Sample Report<br><em>Software Developer</em></h1>
         <p class="cover-sub">A personalised analysis of your automation risk, future-proof skills, salary trajectory, and career survival plan over the next decade.</p>
 
-        <div class="cover-stats">
-            <div class="stat-box">
-                <div class="stat-value" style="color: var(--amber);">41%</div>
-                <div class="stat-label">Overall Risk Score</div>
+        <div class="cover-insight-grid">
+            <div class="exposure-diagnosis-card">
+                <div class="diagnosis-label">Exposure level</div>
+                <div class="exposure-interpretation" style="color: var(--amber);">Middle of Moderate</div>
+                <p class="diagnosis-copy">AI is likely to reshape several parts of your role, especially routine or repeatable work.</p>
+                <div class="diagnosis-credibility">Based on how this role is performed today.</div>
             </div>
-            <div class="stat-box">
+            <div class="secondary-stat-card">
                 <div class="stat-value" style="color: var(--accent);">5–8 yrs</div>
                 <div class="stat-label">Peak Disruption Window</div>
             </div>
-            <div class="stat-box">
+            <div class="secondary-stat-card">
                 <div class="stat-value" style="color: var(--green);">High</div>
                 <div class="stat-label">Adaptability Potential</div>
             </div>
@@ -787,19 +828,13 @@
         <div class="section-title">Your Situation at a Glance</div>
 
         <div class="score-visual">
-            <div class="score-gauge">
-                <svg width="130" height="130" viewBox="0 0 130 130">
-                    <circle cx="65" cy="65" r="54" fill="none" stroke="#1a1e2a" stroke-width="10"/>
-                    <circle cx="65" cy="65" r="54" fill="none" stroke="#f5a623" stroke-width="10"
-                            stroke-dasharray="339.3" stroke-dashoffset="200" stroke-linecap="round"/>
-                </svg>
-                <div class="score-number">
-                    <div class="score-pct">41%</div>
-                    <div class="score-pct-label">RISK</div>
-                </div>
+            <div class="exposure-diagnosis-card">
+                <div class="diagnosis-label">Exposure level</div>
+                <div class="exposure-interpretation" style="color: var(--amber);">Middle of Moderate</div>
+                <p class="diagnosis-copy">AI is likely to reshape several parts of your role, especially routine or repeatable work.</p>
             </div>
             <div class="score-text">
-                <h3>Moderate Risk <span class="badge badge-amber" style="font-size:11px; vertical-align:middle;">⚠ Moderate</span></h3>
+                <h3>Middle of Moderate Exposure</h3>
                 <p>As a software developer writing code for businesses, you sit in a nuanced position. <strong>Routine coding tasks are highly automatable</strong>, but the system design, stakeholder translation, and architectural judgment that makes great developers valuable remains firmly human territory — for now. The window to adapt is 5–8 years, but the opportunity to thrive is immediate.</p>
             </div>
         </div>
@@ -1248,7 +1283,7 @@
     <div class="report-footer">
         <div class="divider-line"></div>
         <div class="footer-inner">
-            <div class="footer-brand">WillAIStealMyJob</div>
+            <div class="footer-brand">WillAIStealMyFuture</div>
             <div>Report generated March 2026 · For personal use only</div>
             <div>Assessment based on industry research, AI adoption trends, and task automation data</div>
         </div>
@@ -1257,4 +1292,3 @@
 </div>
 </body>
 </html>
-

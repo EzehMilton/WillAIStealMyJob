@@ -233,6 +233,18 @@
             vertical-align: middle;
             border-right: 0.5pt solid #252a38;
         }
+        .exposure-interpretation {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 14pt;
+            line-height: 1.1;
+            margin-bottom: 5pt;
+        }
+        .diagnosis-copy {
+            font-size: 8.5pt;
+            color: #e8eaf0;
+            line-height: 1.55;
+            margin-top: 5pt;
+        }
 
         .score-text-cell {
             padding: 14pt 16pt;
@@ -250,6 +262,11 @@
             font-size: 8.5pt;
             color: #7a8099;
             line-height: 1.7;
+        }
+        .score-explanation {
+            border-top: 0.5pt solid #252a38;
+            margin-top: 8pt;
+            padding-top: 8pt;
         }
 
         /* ── ACTION PLAN ── */
@@ -289,12 +306,16 @@
         .page-break { page-break-before: always; }
     </style>
 </head>
-<body>
+<body th:with="displayScore=${(report.score > 0 or (report.riskLevel != null and !#strings.isEmpty(report.riskLevel))) ? report.score : (report.premiumScore != null ? report.premiumScore : 0.0)},
+               displayRiskLevel=${(report.riskLevel != null and !#strings.isEmpty(report.riskLevel)) ? report.riskLevel : (report.premiumRiskLevel != null and !#strings.isEmpty(report.premiumRiskLevel) ? report.premiumRiskLevel : 'Moderate')},
+               exposureInterpretation=${displayScore <= 2.0 ? 'Firmly Low' : (displayScore <= 3.4 ? 'Upper end of Low' : (displayScore <= 4.9 ? 'Lower end of Moderate' : (displayScore <= 6.4 ? 'Middle of Moderate' : (displayScore <= 7.4 ? 'Upper end of Moderate' : (displayScore <= 8.4 ? 'High' : 'Very High')))))},
+               exposureMeaning=${displayScore <= 2.0 ? 'You are not at immediate risk. AI may support your work, but the core value of the role remains strongly human-led.' : (displayScore <= 3.4 ? 'Your exposure is still low, but some routine parts of the role may start to change.' : (displayScore <= 4.9 ? 'You are not at immediate risk, but parts of your role are already starting to change.' : (displayScore <= 6.4 ? 'AI is likely to reshape several parts of your role, especially routine or repeatable work.' : (displayScore <= 7.4 ? 'AI pressure is becoming significant. Without repositioning, parts of your role may become easier to automate or compress.' : (displayScore <= 8.4 ? 'Your role has strong exposure to automation. The safest move is to reposition toward judgement, ownership, and human-centred work.' : 'This role is highly exposed. You should treat adaptation as urgent and start repositioning immediately.')))))},
+               journeyScoreExplanation=${report.mode == 'a_level' ? 'This is not a fixed prediction. It shows how flexible and future-ready your current subject direction looks.' : (report.mode == 'course' ? 'Your exposure depends less on the course title and more on the career paths, specialisations, and skills you build from it.' : 'Your risk is not evenly spread. It is concentrated in the tasks that are most repeatable, digital, and easy to standardise.')}">
 
     <!-- ════════════════════════════════════════════════════════
          COVER
     ═══════════════════════════════════════════════════════════ -->
-    <div class="cover-eyebrow">WillAIStealMyJob &bull; Premium Report &bull; AI Career Risk Assessment</div>
+    <div class="cover-eyebrow">WillAIStealMyFuture &bull; Premium Report &bull; AI Career Risk Assessment</div>
 
     <p class="cover-h1">AI Exposure Report</p>
     <p class="cover-profession" th:text="${report.profession}">Software Developer</p>
@@ -303,14 +324,15 @@
     <table class="stats-table">
         <tr>
             <td class="stat-cell">
-                <div class="stat-value" style="color:#f5a623;"
-                     th:text="${#numbers.formatDecimal(report.score * 10, 1, 0)} + '%'">70%</div>
-                <div class="stat-label">Overall Risk Score</div>
+                <div class="exposure-interpretation"
+                     th:style="${displayRiskLevel == 'High' ? 'color:#e74c3c' : (displayRiskLevel == 'Low' ? 'color:#2ecc71' : 'color:#f5a623')}"
+                     th:text="${exposureInterpretation}">Middle of Moderate</div>
+                <div class="diagnosis-copy" th:text="${exposureMeaning}">AI is likely to reshape several parts of your role.</div>
             </td>
             <td class="stat-cell">
                 <div class="stat-value"
-                     th:style="${report.riskLevel == 'High' ? 'color:#e74c3c' : (report.riskLevel == 'Low' ? 'color:#2ecc71' : 'color:#f5a623')}"
-                     th:text="${report.riskLevel}">Moderate</div>
+                     th:style="${displayRiskLevel == 'High' ? 'color:#e74c3c' : (displayRiskLevel == 'Low' ? 'color:#2ecc71' : 'color:#f5a623')}"
+                     th:text="${displayRiskLevel}">Moderate</div>
                 <div class="stat-label">Risk Level</div>
             </td>
             <td class="stat-cell">
@@ -338,33 +360,27 @@
     <table class="score-table">
         <tr>
             <td class="score-gauge-cell">
-                <svg width="120" height="120" viewBox="0 0 130 130">
-                    <g transform="rotate(-90 65 65)">
-                        <circle cx="65" cy="65" r="54" fill="none" stroke="#1a1e2a" stroke-width="10"/>
-                        <circle cx="65" cy="65" r="54" fill="none" stroke="#f5a623" stroke-width="10"
-                                stroke-dasharray="339.3"
-                                th:attr="stroke-dashoffset=${339.3 * (1.0 - report.score / 10.0)}"
-                                stroke-linecap="round"/>
-                    </g>
-                    <text x="65" y="61" text-anchor="middle"
-                          font-family="Georgia, serif" font-size="22" fill="#f5a623" font-weight="bold"
-                          th:text="${#numbers.formatDecimal(report.score * 10, 1, 0)} + '%'">70%</text>
-                    <text x="65" y="76" text-anchor="middle"
-                          font-family="Arial, sans-serif" font-size="8" fill="#7a8099" letter-spacing="1">RISK</text>
-                </svg>
+                <div class="exposure-interpretation"
+                     th:style="${displayRiskLevel == 'High' ? 'color:#e74c3c' : (displayRiskLevel == 'Low' ? 'color:#2ecc71' : 'color:#f5a623')}"
+                     th:text="${exposureInterpretation}">Middle of Moderate</div>
+                <div class="diagnosis-copy" th:text="${exposureMeaning}">AI is likely to reshape several parts of your role.</div>
             </td>
             <td class="score-text-cell">
                 <div class="score-heading">
-                    <span th:text="${report.riskLevel} + ' Risk'">Moderate Risk</span>
+                    <span th:text="${exposureInterpretation} + ' Exposure'">Middle of Moderate Exposure</span>
                     &nbsp;
-                    <span th:style="${report.riskLevel == 'High' ?
+                    <span th:style="${displayRiskLevel == 'High' ?
                             'background-color:#2b1815;color:#e74c3c;border:0.5pt solid #e74c3c;font-size:6.5pt;font-weight:bold;padding:1pt 5pt;text-transform:uppercase;' :
-                            (report.riskLevel == 'Low' ?
+                            (displayRiskLevel == 'Low' ?
                             'background-color:#0d2318;color:#2ecc71;border:0.5pt solid #2ecc71;font-size:6.5pt;font-weight:bold;padding:1pt 5pt;text-transform:uppercase;' :
                             'background-color:#2b220a;color:#f5a623;border:0.5pt solid #f5a623;font-size:6.5pt;font-weight:bold;padding:1pt 5pt;text-transform:uppercase;')}"
-                          th:text="${report.riskLevel}">Moderate</span>
+                          th:text="${displayRiskLevel}">Moderate</span>
                 </div>
                 <p class="score-desc" th:text="${report.executiveSummary}">Summary goes here.</p>
+                <p class="score-desc"
+                   th:if="${report.scoreRationale != null and !#strings.isEmpty(report.scoreRationale) and !#strings.contains(report.scoreRationale, '/10') and !#strings.contains(report.scoreRationale, '%')}"
+                   th:text="${report.scoreRationale}">Score rationale goes here.</p>
+                <p class="score-desc score-explanation" th:text="${journeyScoreExplanation}">Your risk is not evenly spread.</p>
             </td>
         </tr>
     </table>
@@ -671,7 +687,7 @@
     ═══════════════════════════════════════════════════════════ -->
     <hr class="divider"/>
     <div style="text-align:center;font-size:7.5pt;color:#7a8099;">
-        <span style="font-family:'Courier New',Courier,monospace;letter-spacing:0.08em;">WillAIStealMyJob</span>
+        <span style="font-family:'Courier New',Courier,monospace;letter-spacing:0.08em;">WillAIStealMyFuture</span>
         &nbsp;&bull;&nbsp;
         Report generated <span th:text="${#temporals.format(report.generatedAt, 'dd MMMM yyyy')}">01 January 2026</span>
         &nbsp;&bull;&nbsp;

@@ -4,6 +4,7 @@ Your analysis should be accurate, grounded in real-world trends, and focused on 
 
 IMPORTANT:
 This output is a HIGH-LEVEL SNAPSHOT, not a full analysis. You must intentionally leave out deeper explanations, detailed breakdowns, and actionable guidance.
+The summary field is shown inside the free Impact Signal Card, so it must feel specific, useful, and conversion-friendly without revealing the full premium analysis.
 
 <mode>
 {mode}
@@ -19,29 +20,46 @@ This output is a HIGH-LEVEL SNAPSHOT, not a full analysis. You must intentionall
 </input>
 
 <analysis_framework>
-When assessing automation risk, consider these factors:
+When assessing automation risk, use these explicit dimensions. Evaluate each mentally on a 0-10 scale before choosing the final score:
 
-HIGHER RISK indicators:
-- Repetitive, rule-based tasks
-- Data processing and pattern matching
-- Predictable workflows with clear inputs/outputs
-- Routine documentation, reporting, or standardised processes
-- Limited need for human judgment or interpersonal interaction
+1. Task Repeatability
+   - Repetitive and predictable tasks increase risk.
+   - Varied, judgement-led tasks reduce risk.
 
-LOWER RISK indicators:
-- Complex human interaction, empathy, or negotiation
-- Novel problem-solving and creative thinking
-- Strategic decision-making with incomplete information
-- Deep domain expertise combined with judgment
-- Accountability, governance, or regulatory responsibility
-- Work in complex or high-stakes environments
+2. Digital vs Physical Execution
+   - Fully digital work increases risk.
+   - Physical presence, hands-on work, live performance, or real-world execution reduce risk.
+
+3. Human Interaction Requirement
+   - Limited social/emotional interaction increases risk.
+   - Empathy, trust, negotiation, safeguarding, leadership, or live audience interaction reduce risk.
+
+4. Creativity vs Execution
+   - Execution-heavy delivery increases risk.
+   - Original thinking, taste, strategy, and leadership reduce risk.
+
+5. Environment Complexity
+   - Structured environments with clear inputs/outputs increase risk.
+   - Chaotic, real-time, high-stakes, or unpredictable environments reduce risk.
+
+Protective factors must reduce the final score:
+- Live performance
+- Physical presence required
+- Real-time human coordination
+- High emotional intelligence
+- Unpredictable environments
 </analysis_framework>
 
 <scoring_guidelines>
 Score Range | Risk Level | Interpretation
-0.0 – 2.9   | Low        | Role primarily augmented by AI; core value remains human-driven
-3.0 – 6.9   | Moderate   | Significant portions of work can be automated or AI-assisted; role will evolve
+0.0 – 3.4   | Low        | Role primarily augmented by AI; core value remains human-driven
+3.5 – 6.9   | Moderate   | Significant portions of work can be automated or AI-assisted; role will evolve
 7.0 – 10.0  | High       | Majority of core tasks are automatable; role faces potential displacement or major restructuring
+
+Sanity check before returning JSON:
+- If the summary implies low impact, riskLevel must be "Low" and score must be 3.4 or below.
+- If the summary implies high impact, riskLevel must be "High" and score must be 7.0 or above.
+- Never return a summary that contradicts the score or riskLevel.
 </scoring_guidelines>
 
 <tone_and_persuasion_rules>
@@ -54,10 +72,13 @@ Score Range | Risk Level | Interpretation
 </tone_and_persuasion_rules>
 
 <critical_constraints>
-- DO NOT list multiple specific tasks (e.g. avoid enumerating "code generation, testing, documentation")
+- DO NOT include exact numeric scores in the summary or assessment
 - DO NOT provide detailed examples or exhaustive explanations
 - DO NOT explain all drivers of risk
 - DO NOT provide solutions, recommendations, or career advice
+- DO NOT say any role, course, subject path, or career is "safe from AI"
+- Avoid generic phrases like "AI is changing the industry"
+- Avoid vague advice like "you should adapt"
 - Keep explanations abstract and slightly incomplete
 - Introduce at least one "open loop" (a statement that implies deeper factors without explaining them)
 </critical_constraints>
@@ -83,10 +104,18 @@ Field specifications:
   Exactly one of "Low", "Moderate", or "High"
 
 - summary:
-  Single sentence (max 16 words)
+  2-3 sentences, suitable for display as a free snapshot insight card
   Must:
-  - Clearly state the core risk
-  - Imply there are deeper, unspoken factors affecting the role
+  - Mention the user's specific {inputLabel}: "{profession}"
+  - Give a clear qualitative impact judgement without using the exact numeric score
+  - Explain one concrete reason behind that judgement, based on the details provided
+  - Tease what the premium report will reveal without giving away the full breakdown
+  - Stay practical, specific, and concise
+
+  Examples of the required shape:
+  - Profession: "Your Java developer role shows moderate AI impact because routine implementation, testing, documentation, and debugging are becoming easier to compress with AI tools. Your platform and systems exposure adds resilience, but the premium report will show which parts of your work are most exposed and where you should reposition next."
+  - Course: "Your B.Sc. Social Care path shows lower-to-moderate AI exposure because hands-on care, safeguarding, empathy, and human judgement remain hard to automate. The risk sits mainly in documentation, scheduling, reporting, and care-plan administration, which the premium report breaks down in more detail."
+  - A-Level: "Your interest in Economics, Maths, and Geography gives you a flexible foundation with moderate future-path exposure. These subjects open routes into teaching, policy, planning, data, and environmental work, but the premium report will show which combinations keep the widest options open in an AI-shaped job market."
 
 - assessment:
   STRICTLY 2 sentences only

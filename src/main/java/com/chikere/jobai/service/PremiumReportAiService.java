@@ -2,6 +2,8 @@ package com.chikere.jobai.service;
 
 import com.chikere.jobai.model.GenerateReportRequest;
 import com.chikere.jobai.model.GenerationMetrics;
+import com.chikere.jobai.model.JourneyConfig;
+import com.chikere.jobai.model.JourneyType;
 import com.chikere.jobai.model.PremiumReport;
 import com.chikere.jobai.model.PremiumReport.*;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -9,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
@@ -24,8 +27,6 @@ import java.util.UUID;
 /**
  * Calls the AI with the premium-report prompt and maps the JSON response
  * to a PremiumReport object.
- *
- * Drop this into ReportService in place of buildMockReport() when ready.
  */
 @Service
 @Slf4j
@@ -34,19 +35,24 @@ public class PremiumReportAiService {
     private final ChatClient chatClient;
     private final ResourceLoader resourceLoader;
     private final GenerationMetricsService generationMetricsService;
+    private final JourneyConfigRegistry journeyConfigRegistry;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String promptTemplate;
     private final String modelName;
+    private final String reportQualityBooster;
 
-    public PremiumReportAiService(ChatClient gpt54MiniChatClient,
+    public PremiumReportAiService(@Qualifier("gpt54ReportChatClient") ChatClient gpt54ReportChatClient,
                                   GenerationMetricsService generationMetricsService,
+                                  JourneyConfigRegistry journeyConfigRegistry,
                                   ResourceLoader resourceLoader,
-                                  @Value("${app.ai.model.mini}") String modelName) {
-        this.chatClient = gpt54MiniChatClient;
+                                  @Value("${app.ai.model.report}") String modelName) {
+        this.chatClient = gpt54ReportChatClient;
         this.generationMetricsService = generationMetricsService;
+        this.journeyConfigRegistry = journeyConfigRegistry;
         this.resourceLoader = resourceLoader;
         this.modelName = modelName;
         this.promptTemplate = loadResource("classpath:prompts/premium-report-prompt.txt");
+        this.reportQualityBooster = loadResource("classpath:prompts/report-quality-booster.txt");
         log.info("PremiumReportAiService initialised with model={}", modelName);
     }
 
@@ -58,21 +64,10 @@ public class PremiumReportAiService {
         String reportId = UUID.randomUUID().toString();
         log.info("Generating premium report id={} for profession={}", reportId, request.getProfession());
 
-        String mode = normalise(request.getMode(), "profession");
+        JourneyType journeyType = JourneyType.fromMode(request.getMode());
+        JourneyConfig config = journeyConfigRegistry.get(journeyType);
         String profession = normalise(request.getProfession(), "Unknown");
-        String description = normalise(request.getDescription(), "Not provided");
-
-        String inputLabel   = "course".equals(mode) ? "Course/Degree"   : "Profession";
-        String detailsLabel = "course".equals(mode) ? "Expected Career Path" : "Role Details";
-
-        String prompt = promptTemplate
-                .replace("{mode}",          mode)
-                .replace("{inputLabel}",    inputLabel)
-                .replace("{detailsLabel}",  detailsLabel)
-                .replace("{profession}",    profession)
-                .replace("{roleSummary}",   description)
-                .replace("{score}",         String.format("%.1f", request.getScore()))
-                .replace("{riskLevel}",     normalise(request.getRiskLevel(), "Moderate"));
+        String prompt = buildPremiumPrompt(request, journeyType, config);
 
         log.info("Calling AI: model={} reportId={} profession=\"{}\"", modelName, reportId, profession);
 
@@ -90,7 +85,7 @@ public class PremiumReportAiService {
                     chatResponse
             );
             report.setGenerationMetrics(metrics);
-            logGenerationSummary(reportId, profession, metrics);
+            logGenerationSummary(reportId, journeyType.legacyMode(), profession, metrics);
             return report;
         } catch (Exception e) {
             log.error("Failed to parse AI response for reportId={}: {}", reportId, raw, e);
@@ -98,15 +93,44 @@ public class PremiumReportAiService {
         }
     }
 
+    String buildPremiumPrompt(GenerateReportRequest request) {
+        JourneyType journeyType = JourneyType.fromMode(request.getMode());
+        return buildPremiumPrompt(request, journeyType, journeyConfigRegistry.get(journeyType));
+    }
+
+    private String buildPremiumPrompt(GenerateReportRequest request,
+                                      JourneyType journeyType,
+                                      JourneyConfig config) {
+        String mode = config.legacyModeValue();
+        String profession = normalise(request.getProfession(), "Unknown");
+        String description = normalise(request.getDescription(), "Not provided");
+
+        return promptTemplate
+                .replace("{mode}", mode)
+                .replace("{journeyType}", journeyType.name())
+                .replace("{journeyDisplayName}", config.displayName())
+                .replace("{inputLabel}", config.subjectLabel())
+                .replace("{detailsLabel}", config.detailsLabel())
+                .replace("{reportFraming}", reportFraming(journeyType))
+                .replace("{sectionEmphasis}", sectionEmphasis(journeyType))
+                .replace("{journeyInstructions}", journeyInstructions(journeyType))
+                .replace("{reportQualityBooster}", reportQualityBooster)
+                .replace("{profession}", profession)
+                .replace("{roleSummary}", description)
+                .replace("{score}", String.format("%.1f", request.getScore()))
+                .replace("{riskLevel}", normalise(request.getRiskLevel(), "Moderate"));
+    }
+
     // ─── Mapping ─────────────────────────────────────────────────────────────
 
-    private PremiumReport mapToReport(String reportId, GenerateReportRequest req, JsonNode root) {
+    PremiumReport mapToReport(String reportId, GenerateReportRequest req, JsonNode root) {
         return PremiumReport.builder()
                 .reportId(reportId)
                 .profession(req.getProfession())
                 .mode(req.getMode())
-                .score(req.getScore())
-                .riskLevel(req.getRiskLevel())
+                .score(clampScore(req.getScore()))
+                .riskLevel(normalise(req.getRiskLevel(), deriveRiskLevel(clampScore(req.getScore()))))
+                .scoreRationale(text(root, "scoreRationale"))
                 .generatedAt(LocalDateTime.now())
 
                 // KPIs
@@ -261,6 +285,62 @@ public class PremiumReportAiService {
         return resources;
     }
 
+    private String reportFraming(JourneyType journeyType) {
+        return switch (journeyType) {
+            case UNIVERSITY_STUDENT ->
+                    "Frame this as a degree and early-career strategy report. Analyse the course, likely graduate routes, specialisations, and skills to build during study.";
+            case A_LEVEL_UNDECIDED ->
+                    "Frame this as an AI-ready study and career planning report for a GCSE/Year 11/A-Level student who may not know their future career yet.";
+            case PROFESSIONAL ->
+                    "Frame this as a career survival plan for the user's current profession, focused on task-level automation and practical repositioning.";
+        };
+    }
+
+    private String sectionEmphasis(JourneyType journeyType) {
+        return switch (journeyType) {
+            case UNIVERSITY_STUDENT ->
+                    "Use course relevance, likely career paths, AI exposure of those paths, specialisations to consider, and skills to build during the course.";
+            case A_LEVEL_UNDECIDED ->
+                    "Use suggested subject/A-Level combinations, career clusters, AI exposure of possible paths, skills to build while still in school, and next steps for choosing subjects.";
+            case PROFESSIONAL ->
+                    "Use task-level automation, skills that stay valuable, adjacent roles, salary/market shifts, and a career survival plan.";
+        };
+    }
+
+    private String journeyInstructions(JourneyType journeyType) {
+        return switch (journeyType) {
+            case UNIVERSITY_STUDENT -> """
+                    UNIVERSITY_STUDENT JOURNEY:
+                    - Treat the subject as a course or degree, not a current job.
+                    - Focus on the careers this course may lead to and how AI may affect those paths.
+                    - Recommend specialisations, placements, projects, modules, portfolios, and tools that improve employability.
+                    - Map taskExposureMap to likely graduate work areas or future career-path exposures.
+                    - Map adjacentRoles to related career routes or specialisations the student could pursue.
+                    - Keep salary guidance graduate-career oriented and UK-specific.
+                    """;
+            case A_LEVEL_UNDECIDED -> """
+                    A_LEVEL_UNDECIDED JOURNEY:
+                    - Treat the subject as possible GCSE/A-Level subjects, interests, strengths, and preferences, not a profession.
+                    - The user may not know their degree or career yet; avoid pretending certainty.
+                    - Suggest sensible subject/A-Level combinations and explain what routes they keep open.
+                    - Map taskExposureMap to possible future path exposures or study/career clusters.
+                    - Map skillCards to school-stage and early-career skills to build.
+                    - Map adjacentRoles to possible future career clusters, not fixed job transitions.
+                    - Map action plans to next study and career decision steps.
+                    - Map resources to student-friendly learning, exploration, and subject-choice resources.
+                    - If salary fields are required, use broad future-path market context rather than implying the student is already in a job.
+                    """;
+            case PROFESSIONAL -> """
+                    PROFESSIONAL JOURNEY:
+                    - Treat the subject as the user's current profession or role.
+                    - Focus on day-to-day task automation, what changes first, skills that stay valuable, adjacent roles, and salary/market shifts.
+                    - Map taskExposureMap to concrete tasks from the role.
+                    - Map adjacentRoles to realistic transitions from this profession.
+                    - Keep recommendations practical for a working professional.
+                    """;
+        };
+    }
+
     private List<ResilienceRow> toResilienceRows(JsonNode node) {
         List<ResilienceRow> rows = new ArrayList<>();
         if (node.isArray()) {
@@ -323,10 +403,11 @@ public class PremiumReportAiService {
         return (System.nanoTime() - startNanos) / 1_000_000;
     }
 
-    private void logGenerationSummary(String reportId, String profession, GenerationMetrics metrics) {
+    private void logGenerationSummary(String reportId, String mode, String profession, GenerationMetrics metrics) {
         log.info(
-                "{} completed for reportId={} profession=\"{}\": model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostUsd={}",
+                "AI_COST reportType=\"{}\" mode={} reportId={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostPence={} estimatedCostUsd={}",
                 metrics.getReportType(),
+                mode,
                 reportId,
                 profession,
                 metrics.getModel(),
@@ -334,6 +415,7 @@ public class PremiumReportAiService {
                 metrics.getPromptTokens(),
                 metrics.getCompletionTokens(),
                 metrics.getTotalTokens(),
+                metrics.getEstimatedCostPenceLabel(),
                 metrics.getEstimatedCostUsdLabel()
         );
     }
@@ -363,6 +445,23 @@ public class PremiumReportAiService {
 
     private int clampPercent(int value) {
         return Math.max(0, Math.min(100, value));
+    }
+
+    private double clampScore(double score) {
+        if (Double.isNaN(score) || Double.isInfinite(score)) {
+            return 0.0;
+        }
+        return Math.max(0.0, Math.min(10.0, score));
+    }
+
+    private String deriveRiskLevel(double score) {
+        if (score <= 3.4) {
+            return "Low";
+        }
+        if (score <= 6.9) {
+            return "Moderate";
+        }
+        return "High";
     }
 
     /**

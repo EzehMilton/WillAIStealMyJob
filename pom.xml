@@ -11,7 +11,7 @@
 	<groupId>com.chikere</groupId>
 	<artifactId>jobai</artifactId>
 	<version>1.0.0</version>
-	<name>WillAiStealMyJob</name>
+	<name>WillAIStealMyFuture</name>
 	<description>A Portal that checks the impact AI has on your job</description>
 	<url/>
 	<licenses>

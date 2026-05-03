@@ -2,6 +2,9 @@ package com.chikere.jobai.service;
 
 import com.chikere.jobai.model.GenerationMetrics;
 import com.chikere.jobai.model.JobRiskAssessment;
+import com.chikere.jobai.model.JourneyConfig;
+import com.chikere.jobai.model.JourneyType;
+import com.chikere.jobai.model.RiskScoringResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -14,89 +17,62 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Locale;
-import java.util.Objects;
 
 @Service
 @Slf4j
 public class JobAiService {
 
-    private static final String MODE_COURSE = "course";
-    private static final String MODE_PROFESSION = "profession";
-
-    private final ChatClient gpt54ChatClient;
     private final ChatClient gpt54MiniChatClient;
     private final ResourceLoader resourceLoader;
     private final GenerationMetricsService generationMetricsService;
-    private final boolean useDummyMode;
     private final ObjectMapper objectMapper;
-    private final String premiumModelName;
     private final String miniModelName;
+    private final JourneyConfigRegistry journeyConfigRegistry;
+    private final RiskScoringService riskScoringService;
 
     private final String jobAiPromptTemplate;
     private final String professionInstructions;
     private final String courseInstructions;
+    private final String aLevelInstructions;
 
-    public JobAiService(@Qualifier("gpt54ChatClient") ChatClient gpt54ChatClient,
-                        @Qualifier("gpt54MiniChatClient") ChatClient gpt54MiniChatClient,
+    public JobAiService(@Qualifier("gpt54MiniChatClient") ChatClient gpt54MiniChatClient,
                         ResourceLoader resourceLoader,
                         GenerationMetricsService generationMetricsService,
-                        @Value("${app.ai.use-dummy:false}") boolean useDummyMode,
-                        @Value("${app.ai.model.premium}") String premiumModelName,
+                        JourneyConfigRegistry journeyConfigRegistry,
+                        RiskScoringService riskScoringService,
                         @Value("${app.ai.model.mini}") String miniModelName) {
-        this.gpt54ChatClient = gpt54ChatClient;
         this.gpt54MiniChatClient = gpt54MiniChatClient;
         this.resourceLoader = resourceLoader;
         this.generationMetricsService = generationMetricsService;
-        this.useDummyMode = useDummyMode;
-        this.premiumModelName = premiumModelName;
+        this.journeyConfigRegistry = journeyConfigRegistry;
+        this.riskScoringService = riskScoringService;
         this.miniModelName = miniModelName;
         this.objectMapper = new ObjectMapper();
 
         this.jobAiPromptTemplate = loadResourceFile("classpath:prompts/jobai.txt");
-        this.professionInstructions = loadResourceFile("classpath:prompts/profession-instructions.txt");
-        this.courseInstructions = loadResourceFile("classpath:prompts/course-instructions.txt");
+        this.professionInstructions = loadPromptInstructions(JourneyType.PROFESSIONAL);
+        this.courseInstructions = loadPromptInstructions(JourneyType.UNIVERSITY_STUDENT);
+        this.aLevelInstructions = loadPromptInstructions(JourneyType.A_LEVEL_UNDECIDED);
 
         log.info("Loaded prompt templates for job risk assessment");
-
-        if (this.useDummyMode) {
-            log.info("JobAiService is running in dummy mode. No external AI model calls will be made.");
-        }
     }
 
     public JobRiskAssessment assessJobRisk(String mode, String profession, String roleSummary) {
         long generationStart = System.nanoTime();
-        String normalizedMode = normalizeMode(mode);
+        JourneyType journeyType = JourneyType.fromMode(mode);
+        String normalizedMode = journeyType.legacyMode();
         String normalizedProfession = normalizeProfession(profession);
         String normalizedRoleSummary = normalizeRoleSummary(roleSummary);
 
         log.info("Assessing job risk - Summary Report - for mode: {}, profession: {}", normalizedMode, normalizedProfession);
 
-        if (useDummyMode) {
-            JobRiskAssessment assessment = buildDummyAssessment(normalizedMode, normalizedProfession, normalizedRoleSummary);
-            GenerationMetrics metrics = generationMetricsService.forLocalGeneration("Summary Report", elapsedMillis(generationStart));
-            assessment.setGenerationMetrics(metrics);
-            logGenerationSummary(normalizedProfession, metrics);
-            return assessment;
-        }
-
-        PromptContext promptContext = buildPromptContext(normalizedMode);
-
-        String prompt = jobAiPromptTemplate
-                .replace("{mode}", normalizedMode)
-                .replace("{modeInstructions}", promptContext.modeInstructions())
-                .replace("{inputLabel}", promptContext.inputLabel())
-                .replace("{detailsLabel}", promptContext.detailsLabel())
-                .replace("{profession}", normalizedProfession)
-                .replace("{roleSummary}", normalizedRoleSummary);
+        String prompt = buildAssessmentPrompt(normalizedMode, normalizedProfession, normalizedRoleSummary);
 
         log.debug("Generated prompt for assessment");
 
-        ChatClient selectedChatClient = selectAssessmentModel(normalizedMode);
-        String modelName = MODE_COURSE.equals(normalizedMode) ? miniModelName : premiumModelName;
-        log.info("Calling AI: model={} profession=\"{}\"", modelName, normalizedProfession);
+        log.info("Calling AI: model={} profession=\"{}\"", miniModelName, normalizedProfession);
 
-        ChatResponse chatResponse = selectedChatClient.prompt(prompt).call().chatResponse();
+        ChatResponse chatResponse = gpt54MiniChatClient.prompt(prompt).call().chatResponse();
         String response = extractContent(chatResponse);
         String cleanedResponse = cleanJsonResponse(response);
 
@@ -104,14 +80,23 @@ public class JobAiService {
 
         try {
             JobRiskAssessment assessment = objectMapper.readValue(cleanedResponse, JobRiskAssessment.class);
+            RiskScoringResult scoringResult = riskScoringService.score(
+                    journeyType,
+                    normalizedProfession,
+                    normalizedRoleSummary,
+                    assessment.getSummary()
+            );
+            assessment.setScore(scoringResult.score());
+            assessment.setRiskLevel(scoringResult.riskLevel());
+            assessment.setSummary(scoringResult.summary());
             GenerationMetrics metrics = generationMetricsService.fromChatResponse(
                     "Summary Report",
-                    modelName,
+                    miniModelName,
                     elapsedMillis(generationStart),
                     chatResponse
             );
             assessment.setGenerationMetrics(metrics);
-            logGenerationSummary(normalizedProfession, metrics);
+            logGenerationSummary(normalizedMode, normalizedProfession, metrics);
             return assessment;
         } catch (Exception e) {
             log.error("Failed to parse AI response: {}", response, e);
@@ -119,33 +104,45 @@ public class JobAiService {
         }
     }
 
-    private ChatClient selectAssessmentModel(String mode) {
-        return MODE_COURSE.equals(mode) ? gpt54MiniChatClient : gpt54ChatClient;
+    String buildAssessmentPrompt(String mode, String profession, String roleSummary) {
+        PromptContext promptContext = buildPromptContext(mode);
+        return jobAiPromptTemplate
+                .replace("{mode}", mode)
+                .replace("{modeInstructions}", promptContext.modeInstructions())
+                .replace("{inputLabel}", promptContext.inputLabel())
+                .replace("{detailsLabel}", promptContext.detailsLabel())
+                .replace("{profession}", profession)
+                .replace("{roleSummary}", roleSummary);
     }
 
     private PromptContext buildPromptContext(String mode) {
-        if (MODE_COURSE.equals(mode)) {
+        JourneyConfig config = journeyConfigRegistry.get(mode);
+
+        if (config.journeyType().isUniversityStudent()) {
             return new PromptContext(
                     courseInstructions,
-                    "Course/Degree",
-                    "Expected Career Path"
+                    config.subjectLabel(),
+                    config.detailsLabel()
+            );
+        }
+
+        if (config.journeyType() == JourneyType.A_LEVEL_UNDECIDED) {
+            return new PromptContext(
+                    aLevelInstructions,
+                    config.subjectLabel(),
+                    config.detailsLabel()
             );
         }
 
         return new PromptContext(
                 professionInstructions,
-                "Profession",
-                "Role Details"
+                config.subjectLabel(),
+                config.detailsLabel()
         );
     }
 
-    private String normalizeMode(String mode) {
-        if (mode == null || mode.isBlank()) {
-            return MODE_PROFESSION;
-        }
-
-        String normalized = mode.trim().toLowerCase(Locale.ROOT);
-        return MODE_COURSE.equals(normalized) ? MODE_COURSE : MODE_PROFESSION;
+    private String loadPromptInstructions(JourneyType journeyType) {
+        return loadResourceFile("classpath:prompts/" + journeyConfigRegistry.get(journeyType).promptInstructionResource());
     }
 
     private String normalizeProfession(String profession) {
@@ -154,27 +151,6 @@ public class JobAiService {
 
     private String normalizeRoleSummary(String roleSummary) {
         return roleSummary == null ? "" : roleSummary.trim();
-    }
-
-    private JobRiskAssessment buildDummyAssessment(String mode, String profession, String roleSummary) {
-        String content = roleSummary.toLowerCase(Locale.ROOT);
-
-        double score = (Math.floorMod(
-                Objects.hash(mode, profession.toLowerCase(Locale.ROOT), content), 71
-        ) / 10.0) + 1.5;
-
-        score += scoreAdjustment(content);
-        score = Math.max(0.5, Math.min(9.5, Math.round(score * 10.0) / 10.0));
-
-        String riskLevel = score <= 2 ? "Low" : (score <= 6 ? "Moderate" : "High");
-
-        JobRiskAssessment assessment = new JobRiskAssessment();
-        assessment.setScore(score);
-        assessment.setRiskLevel(riskLevel);
-        assessment.setSummary(buildDummySummary(mode, profession, riskLevel));
-        assessment.setAssessment(buildDummyNarrative(mode, profession, roleSummary, score));
-
-        return assessment;
     }
 
     private String extractContent(ChatResponse chatResponse) {
@@ -188,76 +164,27 @@ public class JobAiService {
         return (System.nanoTime() - startNanos) / 1_000_000;
     }
 
-    private void logGenerationSummary(String profession, GenerationMetrics metrics) {
+    private void logGenerationSummary(String mode, String profession, GenerationMetrics metrics) {
         log.info(
-                "{} completed for profession=\"{}\": model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostUsd={}",
+                "AI_COST reportType=\"{}\" mode={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostPence={} estimatedCostUsd={}",
                 metrics.getReportType(),
+                mode,
                 profession,
                 metrics.getModel(),
                 metrics.getDurationMs(),
                 metrics.getPromptTokens(),
                 metrics.getCompletionTokens(),
                 metrics.getTotalTokens(),
+                metrics.getEstimatedCostPenceLabel(),
                 metrics.getEstimatedCostUsdLabel()
         );
     }
 
-    private double scoreAdjustment(String content) {
-        double adjustment = 0.0;
-
-        if (containsAny(content, "repetitive", "data entry", "admin", "scheduling", "routine", "transcription")) {
-            adjustment += 1.4;
+    double clampScore(double score) {
+        if (Double.isNaN(score) || Double.isInfinite(score)) {
+            return 0.0;
         }
-
-        if (containsAny(content, "analysis", "reporting", "documentation", "support", "compliance")) {
-            adjustment += 0.8;
-        }
-
-        if (containsAny(content, "leadership", "negotiation", "teaching", "creative", "strategy", "hands-on", "care")) {
-            adjustment -= 1.2;
-        }
-
-        if (containsAny(content, "field work", "manual", "stakeholder", "coaching", "customer relationship")) {
-            adjustment -= 0.6;
-        }
-
-        return adjustment;
-    }
-
-    private boolean containsAny(String content, String... keywords) {
-        for (String keyword : keywords) {
-            if (content.contains(keyword)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private String buildDummySummary(String mode, String profession, String riskLevel) {
-        String subject = MODE_COURSE.equals(mode)
-                ? "career path from " + profession
-                : profession + " role";
-
-        return "Demo assessment: the " + subject + " shows "
-                + riskLevel.toLowerCase(Locale.ROOT)
-                + " automation pressure over the next 5-10 years.";
-    }
-
-    private String buildDummyNarrative(String mode, String profession, String roleSummary, double score) {
-        String subjectLine = MODE_COURSE.equals(mode)
-                ? "Course: " + profession
-                : "Profession: " + profession;
-
-        return subjectLine + "\n\n"
-                + "This is a locally generated dummy report for development/testing. "
-                + "No external AI model was called.\n\n"
-                + "Estimated score: " + score + "/10\n\n"
-                + "Why this score:\n"
-                + "- Inputs with routine and documentation-heavy tasks trend higher risk.\n"
-                + "- Inputs with creative, leadership, or people-facing work trend lower risk.\n"
-                + "- Final score is deterministic for the same input so you can test repeatably.\n\n"
-                + "Input excerpt:\n"
-                + roleSummary;
+        return Math.max(0.0, Math.min(10.0, score));
     }
 
     private String cleanJsonResponse(String response) {

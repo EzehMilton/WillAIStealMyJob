@@ -1,6 +1,7 @@
 package com.chikere.jobai.controller;
 
 import com.chikere.jobai.model.CheckoutResponse;
+import com.chikere.jobai.model.JourneyType;
 import com.chikere.jobai.service.ReportService;
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
@@ -28,6 +29,9 @@ public class CheckoutController {
 
     @Value("${stripe.price-id.course}")
     private String coursePriceId;
+
+    @Value("${stripe.price-id.a-level-undecided:}")
+    private String aLevelUndecidedPriceId;
 
     @Value("${app.base-url}")
     private String baseUrl;
@@ -76,8 +80,16 @@ public class CheckoutController {
         }
     }
 
-    private String resolvePriceId(String mode) {
-        return "course".equals(mode) ? coursePriceId : professionPriceId;
+    String resolvePriceId(String mode) {
+        return switch (JourneyType.fromMode(mode)) {
+            case UNIVERSITY_STUDENT -> coursePriceId;
+            case A_LEVEL_UNDECIDED -> hasText(aLevelUndecidedPriceId) ? aLevelUndecidedPriceId : coursePriceId;
+            case PROFESSIONAL -> professionPriceId;
+        };
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private String truncate(String value, int maxLength) {

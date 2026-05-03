@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generating Your Report — WillAIStealMyJob</title>
+    <title>Generating Your Report — WillAIStealMyFuture</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -251,7 +251,7 @@
     <!-- Header -->
     <header class="site-header">
         <a th:href="@{/}" class="site-brand">
-            <em>WillAIStealMyJob</em>
+            <em>WillAIStealMyFuture</em>
         </a>
     </header>
 
@@ -314,7 +314,7 @@
                                 <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
                             </svg>
                         </div>
-                        <span class="step-label">Please wait. Preparing your report <span style="color:var(--dim); font-weight:400;">(This may take up to 1 minute)</span></span>
+                        <span class="step-label"><span class="step-label-main">Preparing your report</span> <span style="color:var(--dim); font-weight:400;">(This may take up to 1 minute)</span></span>
                     </li>
                 </ul>
             </div>
@@ -332,7 +332,7 @@
 
     <!-- Footer -->
     <footer class="site-footer">
-        <p>WillAIStealMyJob &nbsp;·&nbsp; &copy; 2026</p>
+        <p>WillAIStealMyFuture &nbsp;·&nbsp; &copy; 2026</p>
     </footer>
 
     <script>
@@ -367,10 +367,54 @@
         const STEP_DURATION_MS = 1500;
         const steps = Array.from(document.querySelectorAll('.step-item'));
         const progressBar = document.getElementById('progressBar');
+        const stored = JSON.parse(sessionStorage.getItem('checkoutPayload') || '{}');
+        const journeyCopy = {
+            profession: {
+                subtitle: 'Building your personalised AI Career Survival Plan\u2026',
+                steps: [
+                    'Analyzing profession and tasks',
+                    'Evaluating AI automation trends',
+                    'Identifying AI-resistant skills',
+                    'Generating career survival strategy',
+                    'Preparing your report'
+                ]
+            },
+            course: {
+                subtitle: 'Building your personalised AI Degree & Career Strategy\u2026',
+                steps: [
+                    'Analyzing your course and career direction',
+                    'Evaluating AI impact on likely career paths',
+                    'Identifying resilient skills and specialisations',
+                    'Generating your study and career strategy',
+                    'Preparing your report'
+                ]
+            },
+            a_level: {
+                subtitle: 'Building your personalised AI-Ready Study & Career Plan\u2026',
+                steps: [
+                    'Understanding your interests and subject ideas',
+                    'Mapping possible future study paths',
+                    'Evaluating AI exposure across future careers',
+                    'Generating subject and skills recommendations',
+                    'Preparing your report'
+                ]
+            }
+        };
+        const activeJourneyCopy = journeyCopy[stored.mode] || journeyCopy.profession;
         let currentStep = 0;
         let animationDone = false;
         let apiDone = false;
         let reportId = null;
+
+        function applyJourneyCopy() {
+            document.getElementById('status-text').textContent = activeJourneyCopy.subtitle;
+            steps.forEach((step, index) => {
+                const label = step.querySelector('.step-label-main') || step.querySelector('.step-label');
+                if (label && activeJourneyCopy.steps[index]) {
+                    label.textContent = activeJourneyCopy.steps[index];
+                }
+            });
+        }
 
         // ─── Animation ────────────────────────────────────────────────────────────
         function markDone(index) {
@@ -424,7 +468,6 @@
         async function callGenerateReport() {
             try {
                 const sessionId = new URLSearchParams(window.location.search).get('session_id') || '';
-                const stored = JSON.parse(sessionStorage.getItem('checkoutPayload') || '{}');
 
                 const response = await fetch('/generate-report', {
                     method: 'POST',
@@ -435,7 +478,7 @@
                     body: JSON.stringify({
                         sessionId:   sessionId,
                         profession:  stored.profession  || '',
-                        description: stored.assessment  || stored.summary || '',
+                        description: stored.originalDetails || stored.details || stored.assessment || stored.summary || '',
                         score:       stored.score       || 0,
                         riskLevel:   stored.riskLevel   || '',
                         mode:        stored.mode        || 'profession'
@@ -462,6 +505,7 @@
         }
 
         // ─── Kick off ─────────────────────────────────────────────────────────────
+        applyJourneyCopy();
         advanceStep();
         callGenerateReport();
     </script>
