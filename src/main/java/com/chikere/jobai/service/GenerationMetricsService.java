@@ -6,10 +6,12 @@ import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Locale;
 
 @Service
+@Slf4j
 public class GenerationMetricsService {
 
     private final String premiumModelName;
@@ -51,7 +53,10 @@ public class GenerationMetricsService {
                 ? metadata.getModel().trim()
                 : fallbackModelName;
 
-        double estimatedCostUsd = estimateCostUsd(modelName, promptTokens, completionTokens);
+        Pricing pricing = pricingForModel(modelName);
+        double inputCostUsd = costUsd(promptTokens, pricing.inputCostPer1M());
+        double outputCostUsd = costUsd(completionTokens, pricing.outputCostPer1M());
+        double estimatedCostUsd = inputCostUsd + outputCostUsd;
 
         return GenerationMetrics.builder()
                 .reportType(reportType)
@@ -60,21 +65,28 @@ public class GenerationMetricsService {
                 .promptTokens(promptTokens)
                 .completionTokens(completionTokens)
                 .totalTokens(totalTokens)
+                .inputCostUsd(inputCostUsd)
+                .outputCostUsd(outputCostUsd)
                 .estimatedCostUsd(estimatedCostUsd)
                 .estimatedCostPence(estimatedCostPence(estimatedCostUsd))
                 .build();
     }
 
-    private double estimateCostUsd(String modelName, int promptTokens, int completionTokens) {
-        Pricing pricing = pricingForModel(modelName);
-        return (promptTokens / 1_000_000.0) * pricing.inputCostPer1M()
-                + (completionTokens / 1_000_000.0) * pricing.outputCostPer1M();
+    private double costUsd(int tokens, double pricePer1M) {
+        return (tokens / 1_000_000.0) * pricePer1M;
     }
 
     private Pricing pricingForModel(String modelName) {
         String normalized = modelName == null ? "" : modelName.trim();
-        if (normalized.equalsIgnoreCase(miniModelName) || normalized.toLowerCase(Locale.ROOT).contains("mini")) {
+        String normalizedLower = normalized.toLowerCase(Locale.ROOT);
+        if (normalized.equalsIgnoreCase(miniModelName)
+                || normalizedLower.startsWith(miniModelName.toLowerCase(Locale.ROOT))
+                || normalizedLower.contains("mini")) {
             return new Pricing(miniInputCostPer1M, miniOutputCostPer1M);
+        }
+        if (!normalized.equalsIgnoreCase(premiumModelName)
+                && !normalizedLower.startsWith(premiumModelName.toLowerCase(Locale.ROOT))) {
+            log.warn("Unknown AI model pricing for model='{}'. Falling back to premium pricing config.", modelName);
         }
         return new Pricing(premiumInputCostPer1M, premiumOutputCostPer1M);
     }

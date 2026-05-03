@@ -94,8 +94,8 @@ class JobAiServiceTest {
                         "gpt-5.4-mini",
                         2.5,
                         10.0,
-                        0.4,
-                        1.6,
+                        0.75,
+                        4.50,
                         0.79
                 ),
                 journeyConfigRegistry,

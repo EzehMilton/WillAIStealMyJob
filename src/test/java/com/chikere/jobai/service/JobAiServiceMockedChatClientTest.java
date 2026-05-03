@@ -116,7 +116,7 @@ class JobAiServiceMockedChatClientTest {
         return new JobAiService(
                 miniClient,
                 new DefaultResourceLoader(),
-                new GenerationMetricsService("gpt-5.4", "gpt-5.4-mini", 2.5, 10.0, 0.4, 1.6, 0.79),
+                new GenerationMetricsService("gpt-5.4", "gpt-5.4-mini", 2.5, 10.0, 0.75, 4.50, 0.79),
                 journeyConfigRegistry,
                 new RiskScoringService(new RiskDimensionCalculator(), new RiskAdjustmentService(), new RiskSanityValidator()),
                 "gpt-5.4-mini"

@@ -405,7 +405,7 @@ public class PremiumReportAiService {
 
     private void logGenerationSummary(String reportId, String mode, String profession, GenerationMetrics metrics) {
         log.info(
-                "AI_COST reportType=\"{}\" mode={} reportId={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostPence={} estimatedCostUsd={}",
+                "AI_COST reportType=\"{}\" mode={} reportId={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} inputCostUsd={} outputCostUsd={} estimatedCostUsd={} estimatedCostPence={}",
                 metrics.getReportType(),
                 mode,
                 reportId,
@@ -415,8 +415,10 @@ public class PremiumReportAiService {
                 metrics.getPromptTokens(),
                 metrics.getCompletionTokens(),
                 metrics.getTotalTokens(),
-                metrics.getEstimatedCostPenceLabel(),
-                metrics.getEstimatedCostUsdLabel()
+                metrics.getInputCostUsdLabel(),
+                metrics.getOutputCostUsdLabel(),
+                metrics.getEstimatedCostUsdLabel(),
+                metrics.getEstimatedCostPenceLabel()
         );
     }
 

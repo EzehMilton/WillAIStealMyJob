@@ -166,7 +166,7 @@ public class JobAiService {
 
     private void logGenerationSummary(String mode, String profession, GenerationMetrics metrics) {
         log.info(
-                "AI_COST reportType=\"{}\" mode={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} estimatedCostPence={} estimatedCostUsd={}",
+                "AI_COST reportType=\"{}\" mode={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} inputCostUsd={} outputCostUsd={} estimatedCostUsd={} estimatedCostPence={}",
                 metrics.getReportType(),
                 mode,
                 profession,
@@ -175,8 +175,10 @@ public class JobAiService {
                 metrics.getPromptTokens(),
                 metrics.getCompletionTokens(),
                 metrics.getTotalTokens(),
-                metrics.getEstimatedCostPenceLabel(),
-                metrics.getEstimatedCostUsdLabel()
+                metrics.getInputCostUsdLabel(),
+                metrics.getOutputCostUsdLabel(),
+                metrics.getEstimatedCostUsdLabel(),
+                metrics.getEstimatedCostPenceLabel()
         );
     }
 

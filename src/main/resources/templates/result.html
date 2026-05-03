@@ -252,10 +252,10 @@
                impactTitle=${mode == 'a_level' ? 'Your Future Path Impact Zone' : (mode == 'course' ? 'Your Degree Impact Zone' : 'Your AI Impact Zone')},
                impactScope=${mode == 'a_level' ? 'Future Path Exposure' : (mode == 'course' ? 'Degree Path Exposure' : 'AI Impact')},
                impactSubtitle=${mode == 'a_level' ? 'This is a quick snapshot of how AI may affect the study and career paths connected to your subject interests.' : (mode == 'course' ? 'This is a quick snapshot of how AI may affect the career paths linked to this course.' : 'This is a quick snapshot of how AI may affect your current role.')},
-               impactHelper=${mode == 'a_level' ? 'Your exact future-readiness score and subject-path breakdown are included in the premium report.' : (mode == 'course' ? 'Your exact course-linked exposure score and career-path breakdown are included in the premium report.' : 'Your exact exposure score and task-by-task breakdown will be included in the premium report.')},
-               premiumSignalCta=${mode == 'a_level' ? 'Unlock the exact score, subject-path map, and next steps.' : (mode == 'course' ? 'Unlock the exact score, career-path map, and study strategy.' : 'Unlock the exact score, task map, and 30/90/365-day plan.')},
-               premiumScoreTeaser=${mode == 'a_level' ? 'Unlock your exact future-readiness score, subject-combination guidance, career clusters, and practical next steps.' : (mode == 'course' ? 'Unlock your exact course-linked exposure score, career-path risk map, safer specialisations, and study strategy.' : 'Unlock your exact exposure score, task-level risk map, what changes first, and a practical career survival plan.')},
-               lockedSnapshotNote=${mode == 'a_level' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact future-readiness score, subject-path risks, and next steps.' : (mode == 'course' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact course-linked score, career-path risks, and study strategy.' : '🔒 This is only a high-level snapshot. Your premium report reveals your exact exposure, task-level risks, and what to do next.')}">
+               impactHelper=${mode == 'a_level' ? 'Your exact future-readiness and subject-path breakdown are included in the premium report.' : (mode == 'course' ? 'Your exact course-linked exposure and career-path breakdown are included in the premium report.' : 'Your exact exposure and task-by-task breakdown will be included in the premium report.')},
+               premiumSignalCta=${mode == 'a_level' ? 'Unlock the exact exposure, subject-path map, and next steps.' : (mode == 'course' ? 'Unlock the exact exposure, career-path map, and study strategy.' : 'Unlock the exact exposure, task map, and 30/90/365-day plan.')},
+               premiumScoreTeaser=${mode == 'a_level' ? 'Unlock your exact future-readiness, subject-combination guidance, career clusters, and practical next steps.' : (mode == 'course' ? 'Unlock your exact course-linked exposure, career-path risk map, safer specialisations, and study strategy.' : 'Unlock your exact exposure, task-level risk map, what changes first, and a practical career survival plan.')},
+               lockedSnapshotNote=${mode == 'a_level' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact future-readiness, subject-path risks, and next steps.' : (mode == 'course' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact course-linked exposure, career-path risks, and study strategy.' : '🔒 This is only a high-level snapshot. Your premium report reveals your exact exposure, task-level risks, and what to do next.')}">
     <!-- Header -->
     <header class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container">
@@ -346,7 +346,7 @@
 
                             <button type="button" class="premium-teaser-strip w-100"
                                     data-bs-toggle="modal" data-bs-target="#premiumModal">
-                                <span th:text="${premiumSignalCta}">Unlock the exact score, task map, and 30/90/365-day plan.</span>
+                                <span th:text="${premiumSignalCta}">Unlock the exact exposure, task map, and 30/90/365-day plan.</span>
                                 <span class="premium-teaser-action">View premium breakdown →</span>
                             </button>
                         </div>
@@ -395,7 +395,7 @@
                                     <span class="fs-5 me-2">&#128274;</span>
                                     <h5 class="fw-bold mb-0 text-white"><span th:text="${premiumTitle}">Premium: Unlock your AI Career Survival Plan</span> <span class="badge bg-secondary ms-1 premium-price-badge" th:text="${premiumPrice + ' per report'}">£4.99 per report</span></h5>
                                 </div>
-                                <p class="text-white-50 small mb-3 premium-score-teaser" th:text="${premiumScoreTeaser}">Unlock your exact exposure score, task-level risk map, what changes first, and a practical career survival plan.</p>
+                                <p class="text-white-50 small mb-3 premium-score-teaser" th:text="${premiumScoreTeaser}">Unlock your exact exposure, task-level risk map, what changes first, and a practical career survival plan.</p>
                                 <p class="text-white-50 small mb-3">Your personalised report will include:</p>
                                 <!-- Profession list -->
                                 <ul th:if="${!isCourse and !isALevel}" class="list-unstyled mb-0">

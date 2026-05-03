@@ -19,6 +19,8 @@ public class GenerationMetrics {
     private int promptTokens;
     private int completionTokens;
     private int totalTokens;
+    private double inputCostUsd;
+    private double outputCostUsd;
     private double estimatedCostUsd;
     private double estimatedCostPence;
 
@@ -31,6 +33,14 @@ public class GenerationMetrics {
 
     public String getEstimatedCostUsdLabel() {
         return String.format(Locale.US, "$%.4f", estimatedCostUsd);
+    }
+
+    public String getInputCostUsdLabel() {
+        return String.format(Locale.US, "$%.4f", inputCostUsd);
+    }
+
+    public String getOutputCostUsdLabel() {
+        return String.format(Locale.US, "$%.4f", outputCostUsd);
     }
 
     public String getEstimatedCostPenceLabel() {

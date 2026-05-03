@@ -67,17 +67,17 @@ class ResultTemplateTest {
         assertTrue(professionHtml.contains("Your AI Impact Zone"));
         assertTrue(professionHtml.contains("This is a quick snapshot of how AI may affect your current role."));
         assertTrue(professionHtml.contains("AI Impact"));
-        assertTrue(professionHtml.contains("Unlock the exact score, task map, and 30/90/365-day plan."));
+        assertTrue(professionHtml.contains("Unlock the exact exposure, task map, and 30/90/365-day plan."));
 
         assertTrue(courseHtml.contains("Your Degree Impact Zone"));
         assertTrue(courseHtml.contains("Degree Path Exposure"));
         assertTrue(courseHtml.contains("career paths linked to this course"));
-        assertTrue(courseHtml.contains("Unlock the exact score, career-path map, and study strategy."));
+        assertTrue(courseHtml.contains("Unlock the exact exposure, career-path map, and study strategy."));
 
         assertTrue(aLevelHtml.contains("Your Future Path Impact Zone"));
         assertTrue(aLevelHtml.contains("Future Path Exposure"));
         assertTrue(aLevelHtml.contains("study and career paths connected to your subject interests"));
-        assertTrue(aLevelHtml.contains("Unlock the exact score, subject-path map, and next steps."));
+        assertTrue(aLevelHtml.contains("Unlock the exact exposure, subject-path map, and next steps."));
         assertTrue(aLevelHtml.contains("View premium breakdown"));
     }
 

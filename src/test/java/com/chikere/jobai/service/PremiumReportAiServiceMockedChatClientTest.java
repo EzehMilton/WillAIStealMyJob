@@ -107,7 +107,7 @@ class PremiumReportAiServiceMockedChatClientTest {
     private PremiumReportAiService newService(ChatClient chatClient) {
         return new PremiumReportAiService(
                 chatClient,
-                new GenerationMetricsService("gpt-5.4", "gpt-5.4-mini", 2.5, 10.0, 0.4, 1.6, 0.79),
+                new GenerationMetricsService("gpt-5.4", "gpt-5.4-mini", 2.5, 10.0, 0.75, 4.50, 0.79),
                 journeyConfigRegistry,
                 new DefaultResourceLoader(),
                 "gpt-5.4-mini"
