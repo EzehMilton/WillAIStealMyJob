@@ -320,6 +320,68 @@
             color: #c4cbe0;
         }
 
+        .field-label-with-tooltip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            position: relative;
+        }
+
+        .subject-tooltip-trigger {
+            display: none;
+            position: relative;
+            color: var(--accent);
+            font-size: 0.9rem;
+            line-height: 1;
+            cursor: help;
+        }
+
+        .subject-tooltip-trigger.show {
+            display: inline-flex;
+        }
+
+        .subject-tooltip-text {
+            position: absolute;
+            z-index: 20;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: min(280px, 78vw);
+            padding: 0.7rem 0.8rem;
+            border-radius: 10px;
+            background: rgba(13, 15, 20, 0.98);
+            border: 1px solid rgba(79, 142, 255, 0.35);
+            color: #d8deef;
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35);
+            font-size: 0.78rem;
+            font-weight: 500;
+            line-height: 1.45;
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transition: opacity 0.16s ease, visibility 0.16s ease, transform 0.16s ease;
+        }
+
+        .subject-tooltip-text::before {
+            content: '';
+            position: absolute;
+            top: -6px;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            transform: translateX(-50%) rotate(45deg);
+            background: rgba(13, 15, 20, 0.98);
+            border-left: 1px solid rgba(79, 142, 255, 0.35);
+            border-top: 1px solid rgba(79, 142, 255, 0.35);
+        }
+
+        .subject-tooltip-trigger:hover .subject-tooltip-text,
+        .subject-tooltip-trigger:focus .subject-tooltip-text {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(2px);
+        }
+
         @media (max-width: 768px) {
             .journey-selector {
                 grid-template-columns: 1fr;
@@ -348,7 +410,7 @@
                 <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.775 11.775 0 0 1-2.517 2.453 7.159 7.159 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7.158 7.158 0 0 1-1.048-.625 11.777 11.777 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 62.456 62.456 0 0 1 5.072.56z"/>
                 <path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
             </svg>
-            Job AI Risk Assessment
+            AI Career & Future Assessment
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                 aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -364,9 +426,9 @@
             <div class="col-lg-7 col-md-9">
                 <!-- Hero Section -->
                 <div class="hero-section text-center mb-5">
-                    <p class="hero-kicker">WillAIStealMyJob · Section 00 — Intake</p>
+                    <p class="hero-kicker">WillAIStealMyFuture · Section 00 — Intake</p>
                     <h1 class="display-5 fw-bold mb-3">Is AI Coming for Your Job or Your Future?</h1>
-                    <p class="lead text-muted">See how AI could affect your work, degree plans, or subject choices, with guidance for professionals, university students, and students choosing what to study next.</p>
+                    <p class="lead text-muted">Find out with a personalised risk report and action plan. Built for your career, course, or subject choice.</p>
                 </div>
 
                 <!-- Loading Overlay -->
@@ -400,7 +462,7 @@
                                                th:field="*{mode}"
                                                onchange="updateFormLabels()">
                                         <label class="journey-card" for="modeProfession">
-                                            <span class="journey-title">I am working</span>
+                                            <span class="journey-title">I am a working professional</span>
                                             <span class="journey-copy">Analyse my job and AI risk</span>
                                         </label>
                                     </div>
@@ -426,8 +488,8 @@
                                                th:field="*{mode}"
                                                onchange="updateFormLabels()">
                                         <label class="journey-card" for="modeALevel">
-                                            <span class="journey-title">I am choosing GCSE / A-Level subjects</span>
-                                            <span class="journey-copy">Get guidance on what to study</span>
+                                            <span class="journey-title">I am planning my school subjects</span>
+                                            <span class="journey-copy">Explore subject choices and future paths</span>
                                         </label>
                                     </div>
                                 </div>
@@ -435,8 +497,17 @@
 
                             <!-- Profession/Course Field -->
                             <div class="mb-4">
-                                <label for="profession" class="form-label fw-semibold" id="professionLabel">
-                                    What is your profession?
+                                <label for="profession" class="form-label fw-semibold field-label-with-tooltip" id="professionLabel">
+                                    <span id="professionLabelText">What is your profession?</span>
+                                    <span class="subject-tooltip-trigger"
+                                          id="subjectPathTooltip"
+                                          tabindex="0"
+                                          aria-label="Supported school pathways">
+                                        ⓘ
+                                        <span class="subject-tooltip-text" role="tooltip">
+                                            Works for GCSEs, A-Levels, high school, senior secondary, IB, AP, WAEC/NECO, and similar school pathways.
+                                        </span>
+                                    </span>
                                 </label>
                                 <input type="text"
                                        class="form-control form-control-lg"
@@ -553,11 +624,11 @@
                                 <ul class="report-preview-list">
                                     <li>
                                         <span class="report-preview-icon">🎯</span>
-                                        <span class="report-preview-range">Your Personal AI Risk Score (0–100)</span>
+                                        <span class="report-preview-range">Your AI exposure level (Low → Very High)</span>
                                     </li>
                                     <li>
                                         <span class="report-preview-icon">📊</span>
-                                        <span class="report-preview-range">A quick summary of your risk level</span>
+                                        <span class="report-preview-range">A clear summary of what this means for you</span>
                                     </li>
                                     <li>
                                         <span class="report-preview-icon">👀</span>
@@ -572,7 +643,7 @@
                                 <ul class="report-preview-list">
                                     <li>
                                         <span class="report-preview-icon">🤖</span>
-                                        <span><strong>A deeper breakdown of your job, course, or future path's exposure to AI</strong></span>
+                                        <span><strong>A deeper breakdown of where AI will impact you most</strong></span>
                                     </li>
                                     <li>
                                         <span class="report-preview-icon">📅</span>
@@ -580,17 +651,17 @@
                                     </li>
                                     <li>
                                         <span class="report-preview-icon">🚀</span>
-                                        <span><strong>What you need to stay competitive</strong></span>
+                                        <span><strong>What you need to do to stay competitive</strong></span>
                                     </li>
                                     <li>
                                         <span class="report-preview-icon">🛡️</span>
-                                        <span><strong>A personalised strategy for your future</strong></span>
+                                        <span><strong>A personalised action plan for your future</strong></span>
                                     </li>
                                 </ul>
                                 <p></p>
                                 <div class="report-preview-header">
                                     <span class="report-preview-sparkle">⏱️</span>
-                                    <span class="report-preview-title">No signup required. Results in less than a minute</span>
+                                    <span class="report-preview-title">No signup required. Report in less than a minute</span>
                                 </div>
                             </div>
 
@@ -621,7 +692,7 @@
                                 </svg>
                             </div>
                             <h5 class="fw-semibold">Insight</h5>
-                            <p class="text-muted small mb-0">Understand how AI may impact your job, course, or future path</p>
+                            <p class="text-muted small mb-0">Understand how AI may impact your future path</p>
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -655,7 +726,7 @@
 <!-- Footer -->
 <footer class="footer mt-5 py-4">
     <div class="container text-center">
-        <p class="text-muted mb-0">&copy; 2026 Will AI Steal My Job — AI Career Risk Assessment. All rights reserved.</p>
+        <p class="text-muted mb-0">&copy; 2026 Will AI Steal My Future — AI Career Risk Assessment. All rights reserved.</p>
     </div>
 </footer>
 
@@ -712,10 +783,10 @@
     const JOURNEY_CONFIG = {
         profession: {
             subjectLabel: 'What is your profession?',
-            subjectPlaceholder: 'e.g. Software Developer, Teacher, Accountant',
+            subjectPlaceholder: 'e.g. Software Developer, Teacher, Accountant, Plumber',
             detailsLabel: 'Describe your role and daily tasks',
             detailsPlaceholder: 'Describe what you do day to day, your main responsibilities, the tools or systems you use, and the kind of problems you solve.',
-            helpText: 'Add enough detail for a more accurate and personalised result.',
+            helpText: 'Add enough detail for a more accurate and personalised report.',
             cvUploadAllowed: true
         },
         course: {
@@ -727,10 +798,10 @@
             cvUploadAllowed: false
         },
         a_level: {
-            subjectLabel: 'What subjects are you considering or interested in?',
-            subjectPlaceholder: 'e.g. Maths, Biology, Business, Computer Science, Psychology',
-            detailsLabel: 'Tell us about your interests, strengths, and future preferences',
-            detailsPlaceholder: 'Tell us your favourite subjects, what you are good at, career ideas you have, the kind of work style you prefer, and whether you are open to tech.',
+            subjectLabel: 'What subjects, classes, or study areas are you considering?',
+            subjectPlaceholder: 'e.g. Maths, Science, Business, Computer Science, Psychology, Arts',
+            detailsLabel: 'Tell us about your interests, strengths, and future goals',
+            detailsPlaceholder: 'Tell us what you enjoy learning, what you are good at, any career ideas you have, how you like to work, and whether you are open to using technology.',
             helpText: 'You do not need to know your future career yet. Share what you enjoy and what kind of future you want.',
             cvUploadAllowed: false
         }
@@ -746,7 +817,8 @@
     function updateFormLabels() {
         const mode = getSelectedJourneyMode();
         const config = JOURNEY_CONFIG[mode] || JOURNEY_CONFIG.profession;
-        const professionLabel = document.getElementById('professionLabel');
+        const professionLabelText = document.getElementById('professionLabelText');
+        const subjectPathTooltip = document.getElementById('subjectPathTooltip');
         const roleSummaryLabel = document.getElementById('roleSummaryLabel');
         const professionInput = document.getElementById('profession');
         const roleSummaryInput = document.getElementById('roleSummary');
@@ -755,7 +827,8 @@
         const cvUploadSection = document.getElementById('cvUploadSection');
         const roleSummarySection = document.getElementById('roleSummarySection');
 
-        professionLabel.textContent = config.subjectLabel;
+        professionLabelText.textContent = config.subjectLabel;
+        subjectPathTooltip.classList.toggle('show', mode === 'a_level');
         roleSummaryLabel.textContent = config.detailsLabel;
         professionInput.placeholder = config.subjectPlaceholder;
         roleSummaryInput.placeholder = config.detailsPlaceholder;

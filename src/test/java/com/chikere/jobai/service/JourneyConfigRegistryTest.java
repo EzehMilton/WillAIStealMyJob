@@ -49,7 +49,7 @@ class JourneyConfigRegistryTest {
         assertEquals(JourneyType.A_LEVEL_UNDECIDED, config.journeyType());
         assertEquals("a_level", config.legacyModeValue());
         assertEquals("Interests and Possible Subjects", config.subjectLabel());
-        assertEquals("Tell us about your interests, strengths, and future preferences", config.detailsLabel());
+        assertEquals("Tell us about your interests, strengths, and future goals", config.detailsLabel());
         assertEquals(350, config.wordLimit());
         assertFalse(config.cvUploadAllowed());
         assertTrue(config.manualInputAllowed());

@@ -255,7 +255,7 @@
                impactHelper=${mode == 'a_level' ? 'Your exact future-readiness score and subject-path breakdown are included in the premium report.' : (mode == 'course' ? 'Your exact course-linked exposure score and career-path breakdown are included in the premium report.' : 'Your exact exposure score and task-by-task breakdown will be included in the premium report.')},
                premiumSignalCta=${mode == 'a_level' ? 'Unlock the exact score, subject-path map, and next steps.' : (mode == 'course' ? 'Unlock the exact score, career-path map, and study strategy.' : 'Unlock the exact score, task map, and 30/90/365-day plan.')},
                premiumScoreTeaser=${mode == 'a_level' ? 'Unlock your exact future-readiness score, subject-combination guidance, career clusters, and practical next steps.' : (mode == 'course' ? 'Unlock your exact course-linked exposure score, career-path risk map, safer specialisations, and study strategy.' : 'Unlock your exact exposure score, task-level risk map, what changes first, and a practical career survival plan.')},
-               lockedSnapshotNote=${mode == 'a_level' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact future-readiness score, subject-path risks, and next steps.' : (mode == 'course' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact course-linked score, career-path risks, and study strategy.' : '🔒 This is only a high-level snapshot. Your premium report reveals your exact exposure score, task-level risks, and what to do next.')}">
+               lockedSnapshotNote=${mode == 'a_level' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact future-readiness score, subject-path risks, and next steps.' : (mode == 'course' ? '🔒 This is only a high-level snapshot. Your premium report reveals your exact course-linked score, career-path risks, and study strategy.' : '🔒 This is only a high-level snapshot. Your premium report reveals your exact exposure, task-level risks, and what to do next.')}">
     <!-- Header -->
     <header class="navbar navbar-expand-lg navbar-dark sticky-top">
         <div class="container">
@@ -264,7 +264,7 @@
                     <path d="M5.338 1.59a61.44 61.44 0 0 0-2.837.856.481.481 0 0 0-.328.39c-.554 4.157.726 7.19 2.253 9.188a10.725 10.725 0 0 0 2.287 2.233c.346.244.652.42.893.533.12.057.218.095.293.118a.55.55 0 0 0 .101.025.615.615 0 0 0 .1-.025c.076-.023.174-.061.294-.118.24-.113.547-.29.893-.533a10.726 10.726 0 0 0 2.287-2.233c1.527-1.997 2.807-5.031 2.253-9.188a.48.48 0 0 0-.328-.39c-.651-.213-1.75-.56-2.837-.855C9.552 1.29 8.531 1.067 8 1.067c-.53 0-1.552.223-2.662.524zM5.072.56C6.157.265 7.31 0 8 0s1.843.265 2.928.56c1.11.3 2.229.655 2.887.87a1.54 1.54 0 0 1 1.044 1.262c.596 4.477-.787 7.795-2.465 9.99a11.775 11.775 0 0 1-2.517 2.453 7.159 7.159 0 0 1-1.048.625c-.28.132-.581.24-.829.24s-.548-.108-.829-.24a7.158 7.158 0 0 1-1.048-.625 11.777 11.777 0 0 1-2.517-2.453C1.928 10.487.545 7.169 1.141 2.692A1.54 1.54 0 0 1 2.185 1.43 62.456 62.456 0 0 1 5.072.56z"/>
                     <path d="M10.854 5.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 7.793l2.646-2.647a.5.5 0 0 1 .708 0z"/>
                 </svg>
-                Job AI Risk Assessment
+                AI Career & Future Assessment
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
                     aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -293,7 +293,7 @@
                 <div class="col-lg-8 col-md-10">
                     <!-- Results Hero -->
                     <div class="text-center mb-5 results-hero">
-                        <p class="hero-kicker">WillAIStealMyJob · Section 01 — Exposure Snapshot</p>
+                        <p class="hero-kicker">WillAIStealMyFuture · Section 01 — Exposure Snapshot</p>
                         <h1 class="display-5 fw-bold text-white mb-3" th:text="${resultTitle}">Your Job Risk Assessment Results</h1>
                         <p class="lead text-white-50" th:if="${profession}"><span th:text="${analysisLabel}">Analysis for</span>: <span th:text="${profession}">Profession</span></p>
                     </div>
@@ -383,7 +383,7 @@
                                     Assessment content will appear here
                                 </div>
                                 <p class="mt-3 mb-0" style="font-size: 0.9rem; color: #6c757d;" th:text="${lockedSnapshotNote}">
-                                    🔒 This is only a high-level snapshot. Your premium report reveals your exact exposure score, task-level risks, and what to do next.
+                                    🔒 This is only a high-level snapshot. Your premium report reveals your exact exposure, task-level risks, and what to do next.
                                 </p>
                             </div>
 
@@ -632,7 +632,7 @@
     <!-- Footer -->
     <footer class="footer mt-5 py-4">
         <div class="container text-center">
-            <p class="text-muted mb-0">&copy; 2026 Will AI Steal My Job — AI Career Risk Assessment. All rights reserved.</p>
+            <p class="text-muted mb-0">&copy; 2026 Will AI Steal My Future — AI Career Risk Assessment. All rights reserved.</p>
         </div>
     </footer>
 

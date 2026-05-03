@@ -1,4 +1,4 @@
-# Scoring Investigation — WillAIStealMyJob
+# Scoring Investigation — WillAIStealMyFuture
 
 **Updated:** 2026-05-02  
 **Branch:** feature/multi-journey-assessment  

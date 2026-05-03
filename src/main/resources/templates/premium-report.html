@@ -681,7 +681,7 @@
 <div class="cover">
     <div class="container">
         <div class="cover-meta">
-            <span>WillAIStealMyJob</span> ·
+            <span>WillAIStealMyFuture</span> ·
             <span th:text="${reportLocked} ? 'Premium Preview' : 'Premium Report'">Premium Report</span> ·
             <span th:text="${#temporals.format(report.generatedAt, 'MMMM yyyy')}">March 2026</span>
         </div>
@@ -961,7 +961,7 @@
 
     <div class="report-footer">
         <div class="footer-top">
-            <div class="footer-brand">WillAIStealMyJob</div>
+            <div class="footer-brand">WillAIStealMyFuture</div>
             <div class="footer-actions">
                 <a class="btn-home" th:if="${reportLocked}" href="/">← Home</a>
                 <button class="btn-home" th:if="${!reportLocked}" id="btnBackHome">← Home</button>

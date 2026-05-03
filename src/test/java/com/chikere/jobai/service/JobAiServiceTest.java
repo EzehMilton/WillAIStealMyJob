@@ -24,7 +24,7 @@ class JobAiServiceTest {
 
         assertTrue(prompt.contains("Year 11, GCSE, or A-Level student"));
         assertTrue(prompt.contains("Interests and Possible Subjects"));
-        assertTrue(prompt.contains("Tell us about your interests, strengths, and future preferences"));
+        assertTrue(prompt.contains("Tell us about your interests, strengths, and future goals"));
         assertTrue(prompt.contains("2-3 sentences, suitable for display as a free snapshot insight card"));
         assertTrue(prompt.contains("DO NOT include exact numeric scores"));
     }

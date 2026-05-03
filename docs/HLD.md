@@ -1,4 +1,4 @@
-# WillAIStealMyJob — High-Level Design (HLD)
+# WillAIStealMyFuture — High-Level Design (HLD)
 
 _Last updated: 2026-05-02 · Branch: feature/multi-journey-assessment_
 
@@ -27,7 +27,7 @@ _Last updated: 2026-05-02 · Branch: feature/multi-journey-assessment_
 
 ## 1. Executive Summary
 
-**WillAIStealMyJob** is a web application that helps people understand how artificial intelligence might affect their career, education, or future options.
+**WillAIStealMyFuture** is a web application that helps people understand how artificial intelligence might affect their career, education, or future options.
 
 It does this by:
 
