@@ -102,9 +102,8 @@ public class PremiumReportAiService {
                                       JourneyType journeyType,
                                       JourneyConfig config) {
         String mode = config.legacyModeValue();
-        String profession = promptSafe(request.getProfession(), "Unknown", 120);
-        String description = promptSafe(request.getDescription(), "Not provided", 5000);
-        String riskLevel = promptSafe(request.getRiskLevel(), "Moderate", 40);
+        String profession = normalise(request.getProfession(), "Unknown");
+        String description = normalise(request.getDescription(), "Not provided");
 
         return promptTemplate
                 .replace("{mode}", mode)
@@ -119,7 +118,7 @@ public class PremiumReportAiService {
                 .replace("{profession}", profession)
                 .replace("{roleSummary}", description)
                 .replace("{score}", String.format("%.1f", request.getScore()))
-                .replace("{riskLevel}", riskLevel);
+                .replace("{riskLevel}", normalise(request.getRiskLevel(), "Moderate"));
     }
 
     // ─── Mapping ─────────────────────────────────────────────────────────────
@@ -493,37 +492,6 @@ public class PremiumReportAiService {
 
     private String normalise(String value, String fallback) {
         return (value == null || value.isBlank()) ? fallback : value.trim();
-    }
-
-    private String promptSafe(String value, String fallback, int maxChars) {
-        String cleaned = normalise(value, fallback)
-                .replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", " ")
-                .replace('\r', ' ')
-                .replace('\n', ' ')
-                .replace('\t', ' ')
-                .replace('{', '(')
-                .replace('}', ')')
-                .replace('<', '(')
-                .replace('>', ')')
-                .replace('\\', '/')
-                .replace("```", "'''")
-                .replace('`', '\'')
-                .replaceAll("\\s+", " ")
-                .trim();
-
-        cleaned = stripPromptInjectionDirectives(cleaned);
-        if (cleaned.length() > maxChars) {
-            cleaned = cleaned.substring(0, maxChars).trim();
-        }
-        return cleaned.isBlank() ? fallback : cleaned;
-    }
-
-    private String stripPromptInjectionDirectives(String value) {
-        return value
-                .replaceAll("(?i)\\b(ignore|disregard|forget|override|bypass)\\b.{0,80}\\b(previous|above|prior|system|developer|instructions?|prompt)\\b", "[removed instruction-like text]")
-                .replaceAll("(?i)\\b(output|reveal|print|show|exfiltrate)\\b.{0,60}\\b(system|developer)\\s+prompt\\b", "[removed instruction-like text]")
-                .replaceAll("(?i)\\bact\\s+as\\b.{0,80}", "[removed instruction-like text]")
-                .replaceAll("(?i)\\byou\\s+are\\s+now\\b.{0,80}", "[removed instruction-like text]");
     }
 
     private String loadResource(String path) {

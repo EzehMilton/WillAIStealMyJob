@@ -7,7 +7,6 @@ import com.chikere.jobai.service.PdfService;
 import com.chikere.jobai.service.ReportRateLimiterService;
 import com.chikere.jobai.service.ReportService;
 import io.github.bucket4j.ConsumptionProbe;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -31,7 +30,7 @@ public class ReportController {
     @PostMapping("/generate-report")
     @ResponseBody
     public ResponseEntity<GenerateReportResponse> generateReport(
-            @Valid @RequestBody GenerateReportRequest request,
+            @RequestBody GenerateReportRequest request,
             @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
         ConsumptionProbe probe = rateLimiter.tryConsume(visitorId);
         if (!probe.isConsumed()) {
