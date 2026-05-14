@@ -632,6 +632,14 @@
         @media print {
             .footer-actions, .leave-overlay, .unlock-panel, .status-banner, .soft-note { display: none !important; }
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page {
+                @top-left { content: ""; }
+                @top-center { content: ""; }
+                @top-right { content: ""; }
+                @bottom-left { content: ""; }
+                @bottom-center { content: ""; }
+                @bottom-right { content: ""; }
+            }
         }
 
         @media (max-width: 680px) {

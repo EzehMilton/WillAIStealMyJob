@@ -7,6 +7,12 @@
         @page {
             size: A4;
             margin: 1.5cm 1.8cm 2cm 1.8cm;
+            @bottom-left {
+                content: "";
+            }
+            @bottom-center {
+                content: "";
+            }
             @bottom-right {
                 content: "Page " counter(page);
                 font-size: 7pt;
