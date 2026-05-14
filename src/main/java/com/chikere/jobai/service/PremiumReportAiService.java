@@ -316,7 +316,7 @@ public class PremiumReportAiService {
                     - Recommend specialisations, placements, projects, modules, portfolios, and tools that improve employability.
                     - Map taskExposureMap to likely graduate work areas or future career-path exposures.
                     - Map adjacentRoles to related career routes or specialisations the student could pursue.
-                    - Keep salary guidance graduate-career oriented and UK-specific.
+                    - Keep salary guidance graduate-career oriented. Express all salary figures in USD ($) as a global reference point.
                     """;
             case A_LEVEL_UNDECIDED -> """
                     A_LEVEL_UNDECIDED JOURNEY:

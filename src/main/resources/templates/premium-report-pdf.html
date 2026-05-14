@@ -7,6 +7,12 @@
         @page {
             size: A4;
             margin: 1.5cm 1.8cm 2cm 1.8cm;
+            @bottom-left {
+                content: "";
+            }
+            @bottom-center {
+                content: "";
+            }
             @bottom-right {
                 content: "Page " counter(page);
                 font-size: 7pt;
@@ -310,7 +316,8 @@
                displayRiskLevel=${(report.riskLevel != null and !#strings.isEmpty(report.riskLevel)) ? report.riskLevel : (report.premiumRiskLevel != null and !#strings.isEmpty(report.premiumRiskLevel) ? report.premiumRiskLevel : 'Moderate')},
                exposureInterpretation=${displayScore <= 2.0 ? 'Firmly Low' : (displayScore <= 3.4 ? 'Upper end of Low' : (displayScore <= 4.9 ? 'Lower end of Moderate' : (displayScore <= 6.4 ? 'Middle of Moderate' : (displayScore <= 7.4 ? 'Upper end of Moderate' : (displayScore <= 8.4 ? 'High' : 'Very High')))))},
                exposureMeaning=${displayScore <= 2.0 ? 'You are not at immediate risk. AI may support your work, but the core value of the role remains strongly human-led.' : (displayScore <= 3.4 ? 'Your exposure is still low, but some routine parts of the role may start to change.' : (displayScore <= 4.9 ? 'You are not at immediate risk, but parts of your role are already starting to change.' : (displayScore <= 6.4 ? 'AI is likely to reshape several parts of your role, especially routine or repeatable work.' : (displayScore <= 7.4 ? 'AI pressure is becoming significant. Without repositioning, parts of your role may become easier to automate or compress.' : (displayScore <= 8.4 ? 'Your role has strong exposure to automation. The safest move is to reposition toward judgement, ownership, and human-centred work.' : 'This role is highly exposed. You should treat adaptation as urgent and start repositioning immediately.')))))},
-               journeyScoreExplanation=${report.mode == 'a_level' ? 'This is not a fixed prediction. It shows how flexible and future-ready your current subject direction looks.' : (report.mode == 'course' ? 'Your exposure depends less on the course title and more on the career paths, specialisations, and skills you build from it.' : 'Your risk is not evenly spread. It is concentrated in the tasks that are most repeatable, digital, and easy to standardise.')}">
+               journeyScoreExplanation=${report.mode == 'a_level' ? 'This is not a fixed prediction. It shows how flexible and future-ready your current subject direction looks.' : (report.mode == 'course' ? 'Your exposure depends less on the course title and more on the career paths, specialisations, and skills you build from it.' : 'Your risk is not evenly spread. It is concentrated in the tasks that are most repeatable, digital, and easy to standardise.')},
+               exposureMapTitle=${report.mode == 'a_level' ? 'Future Path Exposure Map' : (report.mode == 'course' ? 'Career Path Exposure Map' : 'Task Exposure Map')}">
 
     <!-- ════════════════════════════════════════════════════════
          COVER
@@ -411,9 +418,9 @@
 
 
     <!-- ════════════════════════════════════════════════════════
-         SECTION 02 — TASK ANALYSIS
+         SECTION 02 — EXPOSURE MAP
     ═══════════════════════════════════════════════════════════ -->
-    <div class="section-eyebrow">Section 02 &mdash; Task Analysis</div>
+    <div class="section-eyebrow" th:text="'Section 02 — ' + ${exposureMapTitle}">Section 02 — Task Exposure Map</div>
     <div class="section-title">What Gets Automated, and What Doesn't</div>
     <p class="section-intro">Not all of your work carries equal risk. Here is a task-by-task breakdown based on current AI capabilities and industry trends for your profession.</p>
 

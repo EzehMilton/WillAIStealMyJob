@@ -632,6 +632,14 @@
         @media print {
             .footer-actions, .leave-overlay, .unlock-panel, .status-banner, .soft-note { display: none !important; }
             * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page {
+                @top-left { content: ""; }
+                @top-center { content: ""; }
+                @top-right { content: ""; }
+                @bottom-left { content: ""; }
+                @bottom-center { content: ""; }
+                @bottom-right { content: ""; }
+            }
         }
 
         @media (max-width: 680px) {
@@ -890,6 +898,9 @@
             <strong>The consultancy opportunity:</strong>
             <span th:text="${report.consultancyOpportunity}">Consultancy note...</span>
         </div>
+        <p style="margin-top:0.75rem;font-size:0.78rem;color:var(--muted,#888);font-style:italic;">
+            Salary figures are shown in USD ($) as a globally recognised reference. Actual earnings will vary by country, region, and local market conditions.
+        </p>
     </div>
 
     <div class="section">

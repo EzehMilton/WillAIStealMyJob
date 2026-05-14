@@ -32,10 +32,10 @@ UNIVERSAL REPORT QUALITY BOOSTER:
 
 INSTRUCTIONS:
 - All analysis must be specific to THIS journey, {inputLabel}, and the details provided — not generic.
-- Salary figures, where relevant, must reflect the current UK market. If this is a student journey, use salary fields for broad future-path market context rather than implying the user already holds a job.
+- Salary figures, where relevant, must be expressed in USD ($) as a globally recognised reference point, with figures reflecting a broad international market. If this is a student journey, use salary fields for broad future-path market context rather than implying the user already holds a job.
 - Reference real tools, frameworks, technologies, subjects, courses, or learning resources relevant to this journey.
 - Tone: honest, empowering, and actionable. Not alarmist. Not vague.
-- The executive summary must reference the official score of {score}/10 and official risk level of {riskLevel}.
+- The executive summary must NOT mention the score or risk level. Focus on what is most exposed and what the core opportunity is.
 - Do not output premiumScore or premiumRiskLevel anywhere in the JSON.
 - scoreRationale must briefly explain why the official score makes sense, using evidence from the detailed report. It must not claim to calculate a new score.
 - For profession mode: focus on task-level automation, career survival planning, skills that stay valuable, adjacent roles, and salary/market shifts.
@@ -53,7 +53,7 @@ Return exactly this JSON structure:
 
   "adaptabilityPotential": "High | Medium | Low (max 1 word) — how easily this user can adapt and stay ahead of AI disruption given their current context.",
 
-  "executiveSummary": "3-4 sentence paragraph. Must mention the specific {inputLabel}, the score of {score}/10, what is most exposed, and what the core opportunity is. Be direct.",
+  "executiveSummary": "3-4 sentence paragraph. Must mention the specific {inputLabel}, what is most exposed, and what the core opportunity is. Do not include the score or risk level. Be direct.",
 
   "coreAdvice": "One clear, actionable sentence — the single most important thing this person should do right now.",
 
@@ -107,8 +107,8 @@ Return exactly this JSON structure:
   ],
 
   "salaryTraditionalTitle": "Traditional [Profession/Career Path/Route] — e.g. 'Traditional Software Developer', 'General Business Graduate Route', or 'Broad Social Science Path'",
-  "salaryTraditionalMedian": "£XXk",
-  "salaryTraditionalRange": "Range: £XXk–£XXk",
+  "salaryTraditionalMedian": "$XXk",
+  "salaryTraditionalRange": "Range: $XXk–$XXk",
   "salaryTraditionalBullets": [
     "Characteristic of traditional role — e.g. 'Writes code, focuses on delivery'",
     "Another characteristic",
@@ -117,8 +117,8 @@ Return exactly this JSON structure:
     "Another characteristic"
   ],
   "salaryAiTitle": "AI-Augmented [Profession/Career Path/Route] — e.g. 'AI-Augmented Software Engineer', 'AI-Literate Business Graduate', or 'Data-Informed Health Pathway'",
-  "salaryAiMedian": "£XXk",
-  "salaryAiRange": "Range: £XXk–£XXk+",
+  "salaryAiMedian": "$XXk",
+  "salaryAiRange": "Range: $XXk–$XXk+",
   "salaryAiBullets": [
     "Characteristic of AI-augmented role — e.g. 'Orchestrates AI to multiply output'",
     "Another characteristic",
@@ -126,12 +126,12 @@ Return exactly this JSON structure:
     "Another characteristic",
     "Another characteristic"
   ],
-  "consultancyOpportunity": "2–3 sentences on consultancy, freelance, project, internship, portfolio, or future earning opportunity for this journey in the AI era. Mention realistic UK market context where appropriate.",
+  "consultancyOpportunity": "2–3 sentences on consultancy, freelance, project, internship, portfolio, or future earning opportunity for this journey in the AI era. Mention typical global market context. Express any figures in USD ($) as a universal reference point.",
 
   "adjacentRoles": [
     {
       "targetRole": "Specific role title, specialisation, or future career cluster",
-      "salaryBand": "£XX,000 – £XX,000 (UK)",
+      "salaryBand": "$XX,000 – $XX,000 (USD)",
       "aiResilience": "High | Medium | Low",
       "transitionDifficulty": "Easy | Medium | Hard",
       "reason": "One sentence on why this is a natural option from this profession, course, interests, or subject mix",
