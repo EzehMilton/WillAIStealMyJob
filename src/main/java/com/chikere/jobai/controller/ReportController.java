@@ -2,6 +2,7 @@ package com.chikere.jobai.controller;
 
 import com.chikere.jobai.model.GenerateReportRequest;
 import com.chikere.jobai.model.GenerateReportResponse;
+import com.chikere.jobai.model.PremiumReport;
 import com.chikere.jobai.service.AnalyticsService;
 import com.chikere.jobai.service.PdfService;
 import com.chikere.jobai.service.ReportRateLimiterService;
@@ -9,6 +10,7 @@ import com.chikere.jobai.service.ReportService;
 import io.github.bucket4j.ConsumptionProbe;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -16,6 +18,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 @Controller
 @RequiredArgsConstructor
@@ -26,6 +32,8 @@ public class ReportController {
     private final PdfService pdfService;
     private final AnalyticsService analyticsService;
     private final ReportRateLimiterService rateLimiter;
+    @Qualifier("pdfTaskExecutor")
+    private final Executor pdfTaskExecutor;
 
     @PostMapping("/generate-report")
     @ResponseBody
@@ -87,24 +95,38 @@ public class ReportController {
 
     @GetMapping({"/report/{reportId}/download", "/premium-report/{reportId}/download"})
     @ResponseBody
-    public ResponseEntity<byte[]> downloadReport(@PathVariable String reportId) {
-        return reportService.getUnlockedReport(reportId)
-                .map(report -> {
-                    try {
-                        byte[] pdf = pdfService.generateReportPdf(report);
-                        String filename = "ai-career-report-"
-                                + report.getProfession().toLowerCase().replaceAll("[^a-z0-9]+", "-")
-                                + ".pdf";
-                        return ResponseEntity.ok()
-                                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                                .contentType(MediaType.APPLICATION_PDF)
-                                .body(pdf);
-                    } catch (Exception e) {
-                        log.error("PDF generation failed for reportId={}", reportId, e);
-                        analyticsService.recordError("unknown", "pdf_generation_error", reportId, e.getMessage());
-                        return ResponseEntity.internalServerError().<byte[]>build();
-                    }
-                })
-                .orElse(ResponseEntity.status(HttpStatus.FORBIDDEN).build());
+    public CompletableFuture<ResponseEntity<byte[]>> downloadReport(@PathVariable String reportId) {
+        Optional<PremiumReport> unlockedReport = reportService.getUnlockedReport(reportId);
+        if (unlockedReport.isEmpty()) {
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.FORBIDDEN).build());
+        }
+
+        try {
+            return CompletableFuture.supplyAsync(
+                    () -> renderPdfDownload(reportId, unlockedReport.get()),
+                    pdfTaskExecutor
+            );
+        } catch (RuntimeException e) {
+            log.warn("PDF generation rejected for reportId={}: {}", reportId, e.getMessage());
+            analyticsService.recordError("unknown", "pdf_generation_rejected", reportId, e.getMessage());
+            return CompletableFuture.completedFuture(ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build());
+        }
+    }
+
+    private ResponseEntity<byte[]> renderPdfDownload(String reportId, PremiumReport report) {
+        try {
+            byte[] pdf = pdfService.generateReportPdf(report);
+            String filename = "ai-career-report-"
+                    + report.getProfession().toLowerCase().replaceAll("[^a-z0-9]+", "-")
+                    + ".pdf";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("PDF generation failed for reportId={}", reportId, e);
+            analyticsService.recordError("unknown", "pdf_generation_error", reportId, e.getMessage());
+            return ResponseEntity.internalServerError().<byte[]>build();
+        }
     }
 }
