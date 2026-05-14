@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}">
     <title th:text="${report.mode == 'a_level' ? 'AI-Ready Study &amp; Career Plan' : (report.mode == 'course' ? 'AI Degree &amp; Career Strategy' : 'AI Career Survival Plan')} + ' — ' + ${report.profession}">AI Risk Report</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -1031,7 +1033,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Visitor-Id': window.visitorId || 'unknown'
+                        'X-Visitor-Id': window.visitorId || 'unknown',
+                        [csrfHeaderName()]: csrfToken()
                     }
                 });
                 if (!response.ok) {
@@ -1080,6 +1083,14 @@
                 overlay.classList.remove('open');
                 window.print();
             });
+        }
+
+        function csrfToken() {
+            return document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
+        }
+
+        function csrfHeaderName() {
+            return document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
         }
     })();
 </script>

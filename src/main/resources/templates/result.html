@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}">
     <title th:text="${mode == 'a_level'} ? 'Future Study Path Results - Job AI' : (${mode == 'course'} ? 'Degree Outlook Results - Job AI' : 'Job Risk Assessment Results - Job AI')">Assessment Results - Job AI</title>
 
     <!-- Bootstrap 5 CSS -->
@@ -832,7 +834,7 @@
             // Fire result_viewed once per page load
             fetch('/analytics/event', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     visitorId: window.visitorId,
                     eventType: 'result_viewed',
@@ -855,9 +857,12 @@
                         profession: profession,
                         riskScore: score
                     });
-                    navigator.sendBeacon('/analytics/event',
-                        new Blob([payload], { type: 'application/json' })
-                    );
+                    fetch('/analytics/event', {
+                        method: 'POST',
+                        headers: csrfHeaders({ 'Content-Type': 'application/json' }),
+                        body: payload,
+                        keepalive: true
+                    }).catch(function () {});
                 }
             });
         }());
@@ -881,7 +886,7 @@
 
             fetch('/analytics/event', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({
                     visitorId: window.visitorId,
                     eventType: 'premium_report_generation_started',
@@ -892,6 +897,12 @@
 
             window.location.href = '/generating-report';
         });
+
+        function csrfHeaders(headers) {
+            const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+            return token && header ? Object.assign({}, headers, { [header]: token }) : headers;
+        }
     </script>
 </body>
 </html>
