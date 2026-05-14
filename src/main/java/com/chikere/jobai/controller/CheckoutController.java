@@ -53,6 +53,19 @@ public class CheckoutController {
                 return ResponseEntity.ok(new CheckoutResponse(baseUrl + "/report/" + reportId));
             }
 
+            String existingSessionId = reportView.stripeSessionId();
+            if (existingSessionId != null && !existingSessionId.isBlank()) {
+                try {
+                    Session existing = Session.retrieve(existingSessionId);
+                    if ("open".equals(existing.getStatus())) {
+                        log.info("Reusing existing open checkout session reportId={} sessionId={}", reportId, existingSessionId);
+                        return ResponseEntity.ok(new CheckoutResponse(existing.getUrl()));
+                    }
+                } catch (StripeException e) {
+                    log.warn("Could not retrieve existing session sessionId={} — will create new one: {}", existingSessionId, e.getMessage());
+                }
+            }
+
             SessionCreateParams params = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.PAYMENT)
                     .setSuccessUrl(baseUrl + "/report/" + reportId + "?checkout=success")

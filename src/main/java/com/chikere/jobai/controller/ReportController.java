@@ -4,7 +4,9 @@ import com.chikere.jobai.model.GenerateReportRequest;
 import com.chikere.jobai.model.GenerateReportResponse;
 import com.chikere.jobai.service.AnalyticsService;
 import com.chikere.jobai.service.PdfService;
+import com.chikere.jobai.service.ReportRateLimiterService;
 import com.chikere.jobai.service.ReportService;
+import io.github.bucket4j.ConsumptionProbe;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -23,13 +25,23 @@ public class ReportController {
     private final ReportService reportService;
     private final PdfService pdfService;
     private final AnalyticsService analyticsService;
+    private final ReportRateLimiterService rateLimiter;
 
     @PostMapping("/generate-report")
     @ResponseBody
     public ResponseEntity<GenerateReportResponse> generateReport(
             @RequestBody GenerateReportRequest request,
             @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
-        log.info("Generating persisted premium report for profession={}", request.getProfession());
+        ConsumptionProbe probe = rateLimiter.tryConsume(visitorId);
+        if (!probe.isConsumed()) {
+            long retryAfter = probe.getNanosToWaitForRefill() / 1_000_000_000;
+            log.warn("Rate limit exceeded visitorId={}", visitorId);
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                    .header("Retry-After", String.valueOf(retryAfter))
+                    .<GenerateReportResponse>build();
+        }
+
+        log.info("Generating persisted premium report visitorId={}", visitorId);
         long start = System.nanoTime();
         try {
             reportService.purgeExpiredUnpaidReports();
@@ -39,7 +51,7 @@ public class ReportController {
             analyticsService.recordGenerationCompleted(visitorId, storedReport.reportId(), request.getProfession(), storedReport.report().getGenerationMetrics());
             return ResponseEntity.ok(new GenerateReportResponse(storedReport.reportId()));
         } catch (Exception e) {
-            log.error("Report generation failed for profession={}", request.getProfession(), e);
+            log.error("Report generation failed visitorId={}", visitorId, e);
             analyticsService.recordError(visitorId, "report_generation_error", null, e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
@@ -62,10 +74,9 @@ public class ReportController {
                         model.addAttribute("paymentStatus", reportView.paymentStatus());
                         model.addAttribute("expiresAt", reportView.expiresAt());
                         model.addAttribute("checkoutState", checkoutState);
-                        log.info("{} report page rendered reportId={} profession={}",
+                        log.info("{} report page rendered reportId={}",
                                 reportView.reportLocked() ? "Locked" : "Unlocked",
-                                reportView.reportId(),
-                                reportView.profession());
+                                reportView.reportId());
                         return "premium-report";
                     })
                     .orElse("redirect:/");

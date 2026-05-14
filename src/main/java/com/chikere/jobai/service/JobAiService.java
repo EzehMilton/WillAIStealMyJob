@@ -64,13 +64,13 @@ public class JobAiService {
         String normalizedProfession = normalizeProfession(profession);
         String normalizedRoleSummary = normalizeRoleSummary(roleSummary);
 
-        log.info("Assessing job risk - Summary Report - for mode: {}, profession: {}", normalizedMode, normalizedProfession);
+        log.info("Assessing job risk - Summary Report - for mode: {}", normalizedMode);
 
         String prompt = buildAssessmentPrompt(normalizedMode, normalizedProfession, normalizedRoleSummary);
 
         log.debug("Generated prompt for assessment");
 
-        log.info("Calling AI: model={} profession=\"{}\"", miniModelName, normalizedProfession);
+        log.info("Calling AI: model={}", miniModelName);
 
         ChatResponse chatResponse = gpt54MiniChatClient.prompt(prompt).call().chatResponse();
         String response = extractContent(chatResponse);
@@ -96,7 +96,7 @@ public class JobAiService {
                     chatResponse
             );
             assessment.setGenerationMetrics(metrics);
-            logGenerationSummary(normalizedMode, normalizedProfession, metrics);
+            logGenerationSummary(normalizedMode, metrics);
             return assessment;
         } catch (Exception e) {
             log.error("Failed to parse AI response: {}", response, e);
@@ -164,12 +164,11 @@ public class JobAiService {
         return (System.nanoTime() - startNanos) / 1_000_000;
     }
 
-    private void logGenerationSummary(String mode, String profession, GenerationMetrics metrics) {
+    private void logGenerationSummary(String mode, GenerationMetrics metrics) {
         log.info(
-                "AI_COST reportType=\"{}\" mode={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} inputCostUsd={} outputCostUsd={} estimatedCostUsd={} estimatedCostPence={}",
+                "AI_COST reportType=\"{}\" mode={} model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} inputCostUsd={} outputCostUsd={} estimatedCostUsd={} estimatedCostPence={}",
                 metrics.getReportType(),
                 mode,
-                profession,
                 metrics.getModel(),
                 metrics.getDurationMs(),
                 metrics.getPromptTokens(),

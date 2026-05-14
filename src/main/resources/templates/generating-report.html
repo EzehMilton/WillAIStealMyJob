@@ -400,7 +400,10 @@
                 ]
             }
         };
-        const activeJourneyCopy = journeyCopy[stored.mode] || journeyCopy.profession;
+        const VALID_MODES = ['profession', 'course', 'a_level'];
+        const activeJourneyCopy = VALID_MODES.includes(stored.mode)
+            ? journeyCopy[stored.mode]
+            : journeyCopy.profession;
         let currentStep = 0;
         let animationDone = false;
         let apiDone = false;

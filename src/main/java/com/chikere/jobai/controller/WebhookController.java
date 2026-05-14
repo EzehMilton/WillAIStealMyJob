@@ -50,20 +50,39 @@ public class WebhookController {
                 String reportId = meta != null ? meta.get("reportId") : null;
                 String visitorId = meta != null ? meta.get("visitorId") : null;
 
-                if (reportId != null && !reportId.isBlank()) {
+                if (reportId == null || reportId.isBlank()) {
+                    log.error("Webhook checkout.session.completed missing reportId in metadata — sessionId={}", session.getId());
+                    return ResponseEntity.ok("received");
+                }
+
+                try {
                     reportService.markPaidFromWebhook(reportId, session.getId());
+                } catch (Exception e) {
+                    log.error("Failed to mark report paid — reportId={} sessionId={}", reportId, session.getId(), e);
+                    return ResponseEntity.internalServerError().body("payment processing failed");
+                }
+
+                try {
                     analyticsService.recordPaymentCompleted(
                             visitorId,
                             session.getId(),
                             session.getAmountTotal(),
                             session.getCurrency()
                     );
+                } catch (Exception e) {
+                    log.warn("Analytics recordPaymentCompleted failed — sessionId={}", session.getId(), e);
                 }
             }
+
         } else if ("checkout.session.expired".equals(event.getType())) {
             StripeObject stripeObject = event.getDataObjectDeserializer().getObject().orElse(null);
             if (stripeObject instanceof Session session) {
-                reportService.markFailedBySessionId(session.getId());
+                try {
+                    reportService.markFailedBySessionId(session.getId());
+                } catch (Exception e) {
+                    log.error("Failed to mark report failed — sessionId={}", session.getId(), e);
+                    return ResponseEntity.internalServerError().body("session expiry processing failed");
+                }
             }
         }
 
