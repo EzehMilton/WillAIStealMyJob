@@ -35,7 +35,7 @@ INSTRUCTIONS:
 - Salary figures, where relevant, must be expressed in USD ($) as a globally recognised reference point, with figures reflecting a broad international market. If this is a student journey, use salary fields for broad future-path market context rather than implying the user already holds a job.
 - Reference real tools, frameworks, technologies, subjects, courses, or learning resources relevant to this journey.
 - Tone: honest, empowering, and actionable. Not alarmist. Not vague.
-- The executive summary must reference the official score of {score}/10 and official risk level of {riskLevel}.
+- The executive summary must NOT mention the score or risk level. Focus on what is most exposed and what the core opportunity is.
 - Do not output premiumScore or premiumRiskLevel anywhere in the JSON.
 - scoreRationale must briefly explain why the official score makes sense, using evidence from the detailed report. It must not claim to calculate a new score.
 - For profession mode: focus on task-level automation, career survival planning, skills that stay valuable, adjacent roles, and salary/market shifts.
@@ -53,7 +53,7 @@ Return exactly this JSON structure:
 
   "adaptabilityPotential": "High | Medium | Low (max 1 word) — how easily this user can adapt and stay ahead of AI disruption given their current context.",
 
-  "executiveSummary": "3-4 sentence paragraph. Must mention the specific {inputLabel}, the score of {score}/10, what is most exposed, and what the core opportunity is. Be direct.",
+  "executiveSummary": "3-4 sentence paragraph. Must mention the specific {inputLabel}, what is most exposed, and what the core opportunity is. Do not include the score or risk level. Be direct.",
 
   "coreAdvice": "One clear, actionable sentence — the single most important thing this person should do right now.",
 
