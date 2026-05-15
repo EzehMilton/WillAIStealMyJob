@@ -102,8 +102,8 @@ public class PremiumReportAiService {
                                       JourneyType journeyType,
                                       JourneyConfig config) {
         String mode = config.legacyModeValue();
-        String profession = normalise(request.getProfession(), "Unknown");
-        String description = normalise(request.getDescription(), "Not provided");
+        String profession = cap(normalise(request.getProfession(), "Unknown"), 300);
+        String description = cap(normalise(request.getDescription(), "Not provided"), 4000);
 
         return promptTemplate
                 .replace("{mode}", mode)
@@ -492,6 +492,10 @@ public class PremiumReportAiService {
 
     private String normalise(String value, String fallback) {
         return (value == null || value.isBlank()) ? fallback : value.trim();
+    }
+
+    private String cap(String value, int maxChars) {
+        return value.length() <= maxChars ? value : value.substring(0, maxChars);
     }
 
     private String loadResource(String path) {
