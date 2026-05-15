@@ -78,7 +78,7 @@ public class CheckoutController {
                     )
                     .putMetadata("visitorId", safe(visitorId))
                     .putMetadata("reportId", reportId)
-                    .putMetadata("profession", truncate(reportView.profession(), 490))
+                    .putMetadata("profession", truncateMeta(reportView.profession(), 490, reportId))
                     .build();
 
             Session session = Session.create(params);
@@ -110,6 +110,15 @@ public class CheckoutController {
             return "";
         }
         return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+
+    private String truncateMeta(String value, int maxLength, String reportId) {
+        if (value == null) return "";
+        if (value.length() > maxLength) {
+            log.warn("Profession truncated for Stripe metadata reportId={} originalLength={}", reportId, value.length());
+            return value.substring(0, maxLength);
+        }
+        return value;
     }
 
     private String safe(String value) {

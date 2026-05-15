@@ -746,7 +746,7 @@
         </div>
 
         <div class="soft-note" th:if="${reportLocked and expiresAt != null}">
-            This unpaid saved report expires on <span th:text="${#temporals.format(expiresAt, 'dd MMM yyyy HH:mm')}">11 Apr 2026 10:00</span>.
+            This unpaid saved report expires on <span th:text="${#temporals.format(expiresAt, 'dd MMM yyyy HH:mm')} + ' UTC'">11 Apr 2026 10:00 UTC</span>.
         </div>
     </div>
 </div>
