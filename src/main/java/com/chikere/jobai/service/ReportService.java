@@ -149,6 +149,15 @@ public class ReportService {
                 });
     }
 
+    @Transactional(readOnly = true)
+    public boolean reportExists(String reportId) {
+        try {
+            return reportRequestRepository.findById(parseUuid(reportId)).isPresent();
+        } catch (ReportNotFoundException e) {
+            return false;
+        }
+    }
+
     @Transactional
     public void purgeExpiredUnpaidReports() {
         reportRequestRepository.deleteByPaymentStatusNotAndExpiresAtBefore(

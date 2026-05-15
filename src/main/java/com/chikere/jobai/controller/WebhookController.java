@@ -55,6 +55,11 @@ public class WebhookController {
                     return ResponseEntity.ok("received");
                 }
 
+                if (!reportService.reportExists(reportId)) {
+                    log.error("Webhook references unknown or expired reportId={} sessionId={}", reportId, session.getId());
+                    return ResponseEntity.ok("received");
+                }
+
                 try {
                     reportService.markPaidFromWebhook(reportId, session.getId());
                 } catch (Exception e) {
