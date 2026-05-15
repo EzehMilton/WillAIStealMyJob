@@ -51,8 +51,8 @@ public class ReportService {
         stored.setReportJson(writeReport(fullReport));
 
         reportRequestRepository.save(stored);
-        log.info("Report generated and stored reportId={} profession={} expiresAt={}",
-                fullReport.getReportId(), fullReport.getProfession(), stored.getExpiresAt());
+        log.info("Report generated and stored reportId={} expiresAt={}",
+                fullReport.getReportId(), stored.getExpiresAt());
 
         return StoredReport.builder()
                 .reportId(fullReport.getReportId())
@@ -83,6 +83,7 @@ public class ReportService {
                             .report(renderedReport)
                             .fullReport(unlocked ? fullReport : null)
                             .expiresAt(entity.getExpiresAt())
+                            .stripeSessionId(entity.getStripeSessionId())
                             .build();
                 });
     }
@@ -148,6 +149,15 @@ public class ReportService {
                 });
     }
 
+    @Transactional(readOnly = true)
+    public boolean reportExists(String reportId) {
+        try {
+            return reportRequestRepository.findById(parseUuid(reportId)).isPresent();
+        } catch (ReportNotFoundException e) {
+            return false;
+        }
+    }
+
     @Transactional
     public void purgeExpiredUnpaidReports() {
         reportRequestRepository.deleteByPaymentStatusNotAndExpiresAtBefore(
@@ -205,7 +215,8 @@ public class ReportService {
                                    boolean reportLocked,
                                    PremiumReport report,
                                    PremiumReport fullReport,
-                                   OffsetDateTime expiresAt) {
+                                   OffsetDateTime expiresAt,
+                                   String stripeSessionId) {
     }
 
     public static class ReportNotFoundException extends RuntimeException {

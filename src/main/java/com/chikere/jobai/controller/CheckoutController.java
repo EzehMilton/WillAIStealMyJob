@@ -53,6 +53,19 @@ public class CheckoutController {
                 return ResponseEntity.ok(new CheckoutResponse(baseUrl + "/report/" + reportId));
             }
 
+            String existingSessionId = reportView.stripeSessionId();
+            if (existingSessionId != null && !existingSessionId.isBlank()) {
+                try {
+                    Session existing = Session.retrieve(existingSessionId);
+                    if ("open".equals(existing.getStatus())) {
+                        log.info("Reusing existing open checkout session reportId={} sessionId={}", reportId, existingSessionId);
+                        return ResponseEntity.ok(new CheckoutResponse(existing.getUrl()));
+                    }
+                } catch (StripeException e) {
+                    log.warn("Could not retrieve existing session sessionId={} — will create new one: {}", existingSessionId, e.getMessage());
+                }
+            }
+
             SessionCreateParams params = SessionCreateParams.builder()
                     .setMode(SessionCreateParams.Mode.PAYMENT)
                     .setSuccessUrl(baseUrl + "/report/" + reportId + "?checkout=success")
@@ -65,7 +78,7 @@ public class CheckoutController {
                     )
                     .putMetadata("visitorId", safe(visitorId))
                     .putMetadata("reportId", reportId)
-                    .putMetadata("profession", truncate(reportView.profession(), 490))
+                    .putMetadata("profession", truncateMeta(reportView.profession(), 490, reportId))
                     .build();
 
             Session session = Session.create(params);
@@ -97,6 +110,15 @@ public class CheckoutController {
             return "";
         }
         return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+
+    private String truncateMeta(String value, int maxLength, String reportId) {
+        if (value == null) return "";
+        if (value.length() > maxLength) {
+            log.warn("Profession truncated for Stripe metadata reportId={} originalLength={}", reportId, value.length());
+            return value.substring(0, maxLength);
+        }
+        return value;
     }
 
     private String safe(String value) {

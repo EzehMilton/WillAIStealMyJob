@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}">
     <title>Generating Your Report — WillAIStealMyFuture</title>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
@@ -400,7 +402,10 @@
                 ]
             }
         };
-        const activeJourneyCopy = journeyCopy[stored.mode] || journeyCopy.profession;
+        const VALID_MODES = ['profession', 'course', 'a_level'];
+        const activeJourneyCopy = VALID_MODES.includes(stored.mode)
+            ? journeyCopy[stored.mode]
+            : journeyCopy.profession;
         let currentStep = 0;
         let animationDone = false;
         let apiDone = false;
@@ -473,7 +478,8 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'X-Visitor-Id': window.visitorId || 'unknown'
+                        'X-Visitor-Id': window.visitorId || 'unknown',
+                        [csrfHeaderName()]: csrfToken()
                     },
                     body: JSON.stringify({
                         sessionId:   sessionId,
@@ -502,6 +508,14 @@
                     apiDone = true;  // reuse flag; reportId is null → maybeRedirect won't fire
                 }
             }
+        }
+
+        function csrfToken() {
+            return document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
+        }
+
+        function csrfHeaderName() {
+            return document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
         }
 
         // ─── Kick off ─────────────────────────────────────────────────────────────

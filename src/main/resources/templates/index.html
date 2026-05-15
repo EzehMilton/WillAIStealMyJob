@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}">
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : 'X-CSRF-TOKEN'}">
     <title>Job AI - Risk Assessment</title>
 
     <!-- Bootstrap 5 CSS -->
@@ -446,6 +448,7 @@
                 <div class="card shadow-lg border-0 rounded-4 assessment-form-card">
                     <div class="card-body p-4 p-md-5">
                         <form th:action="@{/assess}" th:object="${riskAssessmentForm}" method="post" id="assessmentForm" enctype="multipart/form-data" onsubmit="return handleFormSubmit()">
+                            <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
 
                             <!-- Journey Selector -->
                             <div class="mb-4">
@@ -986,7 +989,7 @@
         // Track summary generation attempt
         fetch('/analytics/event', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ visitorId: window.visitorId, eventType: 'summary_requested' })
         }).catch(function () {});
 
@@ -1063,17 +1066,23 @@
         if (isNew) {
             fetch('/analytics/event', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
                 body: JSON.stringify({ visitorId: id, eventType: 'visit' })
             }).catch(function () {});
         }
         // Fire landing_page_view on every page load (not just first visit)
         fetch('/analytics/event', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ visitorId: id, eventType: 'landing_page_view' })
         }).catch(function () {});
     }());
+
+    function csrfHeaders(headers) {
+        const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+        const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+        return token && header ? Object.assign({}, headers, { [header]: token }) : headers;
+    }
 </script>
 </body>
 </html>

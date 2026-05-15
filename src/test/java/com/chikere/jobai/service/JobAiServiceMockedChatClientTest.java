@@ -11,13 +11,16 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.core.io.DefaultResourceLoader;
 
+import java.time.Duration;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -112,6 +115,30 @@ class JobAiServiceMockedChatClientTest {
         verify(professionalClient.client(), never()).prompt(anyString());
     }
 
+    @Test
+    void aiCircuitOpensAfterRepeatedFailuresAndFailsFast() {
+        ChatClient failingClient = failingChatClient();
+        JobAiService service = newService(failingClient, 2, Duration.ofMinutes(1), 10);
+
+        assertThrows(RuntimeException.class, () -> service.assessJobRisk(
+                "profession",
+                "Teacher",
+                "Planning lessons and supporting students"
+        ));
+        assertThrows(RuntimeException.class, () -> service.assessJobRisk(
+                "profession",
+                "Teacher",
+                "Planning lessons and supporting students"
+        ));
+
+        assertThrows(JobAiService.AiCircuitOpenException.class, () -> service.assessJobRisk(
+                "profession",
+                "Teacher",
+                "Planning lessons and supporting students"
+        ));
+        verify(failingClient, times(2)).prompt(anyString());
+    }
+
     private JobAiService newService(ChatClient professionalClient, ChatClient miniClient) {
         return new JobAiService(
                 miniClient,
@@ -120,6 +147,23 @@ class JobAiServiceMockedChatClientTest {
                 journeyConfigRegistry,
                 new RiskScoringService(new RiskDimensionCalculator(), new RiskAdjustmentService(), new RiskSanityValidator()),
                 "gpt-5.4-mini"
+        );
+    }
+
+    private JobAiService newService(ChatClient miniClient,
+                                    int failureThreshold,
+                                    Duration openDuration,
+                                    int maxConcurrentAiCalls) {
+        return new JobAiService(
+                miniClient,
+                new DefaultResourceLoader(),
+                new GenerationMetricsService("gpt-5.4", "gpt-5.4-mini", 2.5, 10.0, 0.75, 4.50, 0.79),
+                journeyConfigRegistry,
+                new RiskScoringService(new RiskDimensionCalculator(), new RiskAdjustmentService(), new RiskSanityValidator()),
+                "gpt-5.4-mini",
+                failureThreshold,
+                openDuration,
+                maxConcurrentAiCalls
         );
     }
 
@@ -134,6 +178,16 @@ class JobAiServiceMockedChatClientTest {
         when(callSpec.chatResponse()).thenReturn(chatResponse(json, model));
 
         return new MockChatClient(client, promptCaptor);
+    }
+
+    private ChatClient failingChatClient() {
+        ChatClient client = mock(ChatClient.class);
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+
+        when(client.prompt(anyString())).thenReturn(requestSpec);
+        when(requestSpec.call()).thenThrow(new RuntimeException("OpenAI unavailable"));
+
+        return client;
     }
 
     private ChatResponse chatResponse(String json, String model) {

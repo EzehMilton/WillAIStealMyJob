@@ -62,14 +62,14 @@ public class PremiumReportAiService {
     public PremiumReport generate(GenerateReportRequest request) {
         long generationStart = System.nanoTime();
         String reportId = UUID.randomUUID().toString();
-        log.info("Generating premium report id={} for profession={}", reportId, request.getProfession());
+        log.info("Generating premium report id={}", reportId);
 
         JourneyType journeyType = JourneyType.fromMode(request.getMode());
         JourneyConfig config = journeyConfigRegistry.get(journeyType);
         String profession = normalise(request.getProfession(), "Unknown");
         String prompt = buildPremiumPrompt(request, journeyType, config);
 
-        log.info("Calling AI: model={} reportId={} profession=\"{}\"", modelName, reportId, profession);
+        log.info("Calling AI: model={} reportId={}", modelName, reportId);
 
         ChatResponse chatResponse = chatClient.prompt(prompt).call().chatResponse();
         String raw = extractContent(chatResponse);
@@ -85,10 +85,10 @@ public class PremiumReportAiService {
                     chatResponse
             );
             report.setGenerationMetrics(metrics);
-            logGenerationSummary(reportId, journeyType.legacyMode(), profession, metrics);
+            logGenerationSummary(reportId, journeyType.legacyMode(), metrics);
             return report;
         } catch (Exception e) {
-            log.error("Failed to parse AI response for reportId={}: {}", reportId, raw, e);
+            log.error("Failed to parse AI response for reportId={}", reportId, e);
             throw new RuntimeException("Failed to parse premium report AI response", e);
         }
     }
@@ -102,8 +102,8 @@ public class PremiumReportAiService {
                                       JourneyType journeyType,
                                       JourneyConfig config) {
         String mode = config.legacyModeValue();
-        String profession = normalise(request.getProfession(), "Unknown");
-        String description = normalise(request.getDescription(), "Not provided");
+        String profession = cap(normalise(request.getProfession(), "Unknown"), 300);
+        String description = cap(normalise(request.getDescription(), "Not provided"), 4000);
 
         return promptTemplate
                 .replace("{mode}", mode)
@@ -403,13 +403,12 @@ public class PremiumReportAiService {
         return (System.nanoTime() - startNanos) / 1_000_000;
     }
 
-    private void logGenerationSummary(String reportId, String mode, String profession, GenerationMetrics metrics) {
+    private void logGenerationSummary(String reportId, String mode, GenerationMetrics metrics) {
         log.info(
-                "AI_COST reportType=\"{}\" mode={} reportId={} profession=\"{}\" model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} inputCostUsd={} outputCostUsd={} estimatedCostUsd={} estimatedCostPence={}",
+                "AI_COST reportType=\"{}\" mode={} reportId={} model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} inputCostUsd={} outputCostUsd={} estimatedCostUsd={} estimatedCostPence={}",
                 metrics.getReportType(),
                 mode,
                 reportId,
-                profession,
                 metrics.getModel(),
                 metrics.getDurationMs(),
                 metrics.getPromptTokens(),
@@ -493,6 +492,10 @@ public class PremiumReportAiService {
 
     private String normalise(String value, String fallback) {
         return (value == null || value.isBlank()) ? fallback : value.trim();
+    }
+
+    private String cap(String value, int maxChars) {
+        return value.length() <= maxChars ? value : value.substring(0, maxChars);
     }
 
     private String loadResource(String path) {
