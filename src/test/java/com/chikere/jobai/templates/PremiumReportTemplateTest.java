@@ -160,6 +160,21 @@ class PremiumReportTemplateTest {
         assertTrue(highHtml.contains("Your role has strong exposure to automation. The safest move is to reposition toward judgement, ownership, and human-centred work."));
     }
 
+    @Test
+    void sampleReportDoesNotRenderNavigationOrActionControls() {
+        Context context = baseContext(false);
+        context.setVariable("report", sampleReport("profession"));
+        context.setVariable("isSample", true);
+
+        String html = templateEngine.process("premium-report", context);
+
+        assertTrue(html.contains("Close this tab or window to return to your assessment."));
+        assertFalse(html.contains("Run your own free assessment"));
+        assertFalse(html.contains("id=\"btnBackHome\""));
+        assertFalse(html.contains("id=\"btnPrint\""));
+        assertFalse(html.contains("<div class=\"footer-actions\""));
+    }
+
     private String render(String mode, boolean reportLocked) {
         return render(sampleReport(mode), reportLocked);
     }

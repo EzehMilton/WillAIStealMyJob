@@ -21,7 +21,7 @@ class CspTemplateTest {
 
     private static final List<String> SERVED_TEMPLATES = List.of(
             "index.html", "result.html", "generating-report.html",
-            "premium-report.html", "error.html");
+            "premium-report.html", "how.html", "error.html");
 
     private static final Pattern SCRIPT_OPEN_TAG = Pattern.compile("<script\\b[^>]*>");
     private static final Pattern INLINE_HANDLER =

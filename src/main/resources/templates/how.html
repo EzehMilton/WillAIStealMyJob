@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How It Works - WillAIStealMyFuture</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN"
+          crossorigin="anonymous">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <style>
+        body.page-how {
+            font-family: 'DM Sans', sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(79, 142, 255, 0.22), transparent 32rem),
+                linear-gradient(135deg, #0d0f14 0%, #111627 48%, #161229 100%);
+            color: #e8eaf0;
+        }
+
+        .how-shell {
+            min-height: 100vh;
+            padding: 3rem 0 4rem;
+        }
+
+        .how-panel {
+            max-width: 980px;
+            margin: 0 auto;
+            background: rgba(19, 22, 30, 0.9);
+            border: 1px solid rgba(79, 142, 255, 0.22);
+            border-radius: 18px;
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+            overflow: hidden;
+        }
+
+        .how-hero {
+            padding: 3rem 3rem 2.25rem;
+            border-bottom: 1px solid rgba(37, 42, 56, 0.95);
+            background: linear-gradient(145deg, rgba(79, 142, 255, 0.09), rgba(124, 92, 252, 0.09));
+            text-align: center;
+        }
+
+        .how-kicker {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #8fb5ff;
+            margin-bottom: 1rem;
+        }
+
+        .how-hero h1 {
+            font-family: 'DM Serif Display', serif;
+            font-size: clamp(2.4rem, 5vw, 4.5rem);
+            line-height: 1.02;
+            margin-bottom: 1rem;
+        }
+
+        .how-hero p {
+            max-width: 760px;
+            color: #b8c0d8;
+            font-size: 1.05rem;
+            line-height: 1.75;
+            margin: 0 auto;
+        }
+
+        .how-content {
+            padding: 2.5rem 3rem 3rem;
+        }
+
+        .how-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .how-card,
+        .how-assurance {
+            background: rgba(13, 15, 20, 0.72);
+            border: 1px solid rgba(37, 42, 56, 0.95);
+            border-radius: 14px;
+        }
+
+        .how-card {
+            padding: 1.35rem;
+        }
+
+        .how-step {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.72rem;
+            color: #4f8eff;
+            margin-bottom: 0.75rem;
+        }
+
+        .how-card h2 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 0.65rem;
+        }
+
+        .how-card p,
+        .how-assurance p,
+        .how-assurance li {
+            color: #aeb6cc;
+            line-height: 1.65;
+            font-size: 0.95rem;
+        }
+
+        .how-assurance {
+            padding: 1.6rem 1.75rem;
+            margin-top: 1rem;
+        }
+
+        .how-assurance h2 {
+            font-family: 'DM Serif Display', serif;
+            font-size: 1.8rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .how-assurance ul {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem 1.25rem;
+            padding-left: 1.1rem;
+            margin: 1rem 0 0;
+        }
+
+        .how-note {
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid rgba(37, 42, 56, 0.95);
+            color: #7a8099;
+            font-size: 0.88rem;
+        }
+
+        .how-footer {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            align-items: center;
+            margin-top: 2rem;
+            color: #7a8099;
+            font-size: 0.9rem;
+        }
+
+        .how-home-link {
+            color: #dce6ff;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(220, 230, 255, 0.5);
+            font-weight: 700;
+        }
+
+        .how-home-link:hover {
+            color: #fff;
+            border-color: #fff;
+        }
+
+        @media (max-width: 820px) {
+            .how-shell {
+                padding: 1rem 0;
+            }
+
+            .how-panel {
+                border-radius: 0;
+                border-left: none;
+                border-right: none;
+            }
+
+            .how-hero,
+            .how-content {
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }
+
+            .how-grid,
+            .how-assurance ul {
+                grid-template-columns: 1fr;
+            }
+
+            .how-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+<body class="page-how">
+<main class="how-shell">
+    <div class="container">
+        <article class="how-panel">
+            <section class="how-hero">
+                <div class="how-kicker">WillAIStealMyFuture · How it works</div>
+                <h1>A clear, personalised view of AI risk without the guesswork.</h1>
+                <p>
+                    The assessment turns your role, course, or subject direction into a structured report that explains
+                    where AI is most likely to create pressure, where human strengths still matter, and what you can do next.
+                </p>
+            </section>
+
+            <section class="how-content">
+                <div class="how-grid">
+                    <div class="how-card">
+                        <div class="how-step">01 · Context</div>
+                        <h2>We start with your situation</h2>
+                        <p>
+                            You choose the path that fits you: current profession, university course, or school subject
+                            choices. The details you provide help the system avoid generic career advice.
+                        </p>
+                    </div>
+                    <div class="how-card">
+                        <div class="how-step">02 · Analysis</div>
+                        <h2>We assess exposure at the practical level</h2>
+                        <p>
+                            The report looks beyond job titles. It considers the kinds of tasks, decisions, skills,
+                            career routes, and study choices that are more or less exposed to AI-driven change.
+                        </p>
+                    </div>
+                    <div class="how-card">
+                        <div class="how-step">03 · Action</div>
+                        <h2>We turn the findings into a plan</h2>
+                        <p>
+                            You receive a readable summary first. The full report expands that into a more detailed
+                            outlook, practical priorities, and steps you can act on without needing to be an AI expert.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="how-assurance">
+                    <h2>What the report is designed to do</h2>
+                    <p>
+                        The aim is not to predict your future with false certainty. The aim is to help you make better
+                        decisions while AI is changing how work, study, hiring, and skills are valued.
+                    </p>
+                    <ul>
+                        <li>Separate broad AI hype from the parts of your path that actually deserve attention.</li>
+                        <li>Show likely pressure points without presenting them as fixed destiny.</li>
+                        <li>Highlight skills and directions that improve resilience, adaptability, and optionality.</li>
+                        <li>Give you a practical plan that is specific enough to use, but simple enough to start.</li>
+                    </ul>
+                    <p class="how-note">
+                        The exact scoring methods, weighting, prompt design, validation checks, and report assembly
+                        process are proprietary. We share the reasoning at a useful level without exposing the internal
+                        system that produces the analysis.
+                    </p>
+                </div>
+
+                <div class="how-footer">
+                    <span>This page opened separately so your assessment stays in place.</span>
+                    <a class="how-home-link" th:href="@{/}">Start a new assessment</a>
+                </div>
+            </section>
+        </article>
+    </div>
+</main>
+</body>
+</html>

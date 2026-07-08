@@ -398,6 +398,28 @@
             display: none;
         }
 
+        .how-link-wrap {
+            margin-top: 0.65rem;
+        }
+
+        .how-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            color: rgba(255, 255, 255, 0.95);
+            font-weight: 700;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.55);
+            padding-bottom: 2px;
+            transition: color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .how-link:hover,
+        .how-link:focus {
+            color: #fff;
+            border-color: #fff;
+        }
+
         #loadingStepText {
             transition: opacity 0.3s ease;
         }
@@ -433,6 +455,9 @@
                     <p class="hero-kicker">WillAIStealMyFuture · Section 00 — Intake</p>
                     <h1 class="display-5 fw-bold mb-3">Is AI Coming for Your Job or Your Future?</h1>
                     <p class="lead text-muted">Find out with a personalised risk report and action plan. Built for your career, course, or subject choice.</p>
+                    <div class="how-link-wrap">
+                        <a th:href="@{/how}" class="how-link" target="_blank" rel="noopener">How it works ↗</a>
+                    </div>
                 </div>
 
                 <!-- Loading Overlay -->

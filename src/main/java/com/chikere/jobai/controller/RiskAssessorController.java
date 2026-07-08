@@ -41,6 +41,11 @@ public class RiskAssessorController {
         return "index";
     }
 
+    @GetMapping("/how")
+    public String howItWorks() {
+        return "how";
+    }
+
     @PostMapping("/assess")
     public String assessRisk(@Valid @ModelAttribute("riskAssessmentForm") RiskAssessmentForm form,
                              BindingResult bindingResult,

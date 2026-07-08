@@ -56,6 +56,11 @@ class RiskAssessorControllerTest {
     }
 
     @Test
+    void howItWorksRendersHowTemplate() {
+        assertEquals("how", controller.howItWorks());
+    }
+
+    @Test
     void directVisitToResultWithoutFlashAttributesRedirectsHome() {
         String view = controller.result(new ExtendedModelMap());
 

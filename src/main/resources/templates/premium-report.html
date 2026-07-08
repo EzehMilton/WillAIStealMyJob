@@ -693,8 +693,7 @@
     <div class="container">
         <div class="status-banner" th:if="${isSample == true}">
             <strong>Sample report.</strong> This is a real example of the full report you receive after
-            checkout, generated for a fictional software developer.
-            <a href="/" style="color: inherit; font-weight: 700;">Run your own free assessment →</a>
+            checkout, generated for a fictional software developer. Close this tab or window to return to your assessment.
         </div>
         <div class="cover-meta">
             <span>WillAIStealMyFuture</span> ·
@@ -981,7 +980,7 @@
     <div class="report-footer">
         <div class="footer-top">
             <div class="footer-brand">WillAIStealMyFuture</div>
-            <div class="footer-actions">
+            <div class="footer-actions" th:if="${isSample != true}">
                 <a class="btn-home" th:if="${reportLocked}" href="/">← Home</a>
                 <button class="btn-home" th:if="${!reportLocked}" id="btnBackHome">← Home</button>
                 <button class="btn-download" th:if="${!reportLocked}" id="btnPrint">Print / Save as PDF</button>
