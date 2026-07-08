@@ -79,11 +79,15 @@ In `generating-report.html`, when the fetch fails before the animation finishes,
 `ReportService.generateAndStoreReport()` is `@Transactional` and calls `premiumReportAiService.generate()` *inside* the transaction. With a 60-second read timeout and up to 5 retries with exponential backoff, one report can pin a pooled connection for minutes. A handful of concurrent generations will exhaust the Hikari pool (default 10) and take down unrelated DB traffic. Generate the report first, then open a short transaction just for the save.
 - File: `service/ReportService.java:37-64`.
 
-### 2.5 [Low] Direct visit to `/result` renders a broken page
+### 2.5 [Low] ✅ FIXED (2026-07-08) — Direct visit to `/result` renders a broken page
+> Fixed: `/result` redirects to `/` when the `success` flash attribute is absent (refresh, bookmark, direct visit). The failed-assessment error state (`success=false` + `error` flash) still renders. Covered in `RiskAssessorControllerTest`.
+
 The result page depends entirely on flash attributes; refreshing or bookmarking `/result` gives an empty shell. Redirect to `/` when `success`/`score` attributes are absent.
 - File: `controller/RiskAssessorController.java:105-108`.
 
-### 2.6 [Low] `Retry-After` can be `0`
+### 2.6 [Low] ✅ FIXED (2026-07-08) — `Retry-After` can be `0`
+> Fixed: ceiling division (`(nanos + 999_999_999) / 1_000_000_000`), so a 0.5 s wait yields `Retry-After: 1` and 2.1 s yields `3`. Covered in `ReportControllerRateLimitTest` (also the first coverage of the 429 path).
+
 Integer division of `getNanosToWaitForRefill() / 1_000_000_000` floors sub-second waits to `0`, telling clients they can retry immediately. Round up.
 - File: `controller/ReportController.java:45`.
 
@@ -168,11 +172,15 @@ The cheap summary call (`JobAiService`) has a hand-rolled circuit breaker + bulk
 
 ## 5 · Data & Persistence
 
-### 5.1 [High] H2 file database with `ddl-auto=update` and no migrations
+### 5.1 [High] ✅ FIXED (2026-07-08) — H2 file database with `ddl-auto=update` and no migrations
+> Fixed: Flyway added with a portable `V1__baseline.sql` (both tables + indexes, runs on H2 and PostgreSQL); `ddl-auto` switched to `validate`; `baseline-on-migrate=true` adopts pre-Flyway databases. PostgreSQL driver + `flyway-database-postgresql` added — `DATABASE_URL` now actually works against Postgres, verified by `PostgresFlywayMigrationTest` (Testcontainers, real Postgres 16; skips without Docker) and `FlywayMigrationTest` (H2). `reportJson` remapped from `@Lob` (→ unqueryable `oid` on Postgres) to `varchar(1_000_000)`. §5.2's indexes (`stripe_session_id`, `(payment_status, expires_at)`, `request_hash`) are in the baseline and on the entity. Regular tests keep fast Hibernate-generated schema (H2, `create-drop`). **Update 2026-07-08:** the anticipated validation failure on pre-Flyway `./data/` files (CLOB `report_json`, possibly missing columns/table) surfaced on first boot; added `V2__converge_pre_flyway_schema.sql`, which converts the column and adds any missing pieces idempotently — legacy DBs converge automatically with data preserved (`LegacySchemaConvergenceTest` reproduces the exact failure), and V2 is a verified no-op on fresh H2/PostgreSQL databases.
+
 For a system that stores *purchases*, this combination is fragile: no schema history, no rollback, single-file storage that doesn't survive container replacement, and `update` can silently diverge across environments. Adopt Flyway (one baseline migration reflecting today's schema), switch `ddl-auto` to `validate`, and target PostgreSQL in production (`DATABASE_URL` already supports it). Keep H2 for tests only.
 - Files: `application.properties:14-20`, `pom.xml`.
 
-### 5.2 [Medium] Missing indexes
+### 5.2 [Medium] ✅ FIXED (2026-07-08, via §5.1) — Missing indexes
+> Indexes on `stripe_session_id`, `(payment_status, expires_at)`, and `request_hash` added both as `@Index` annotations and in the Flyway baseline.
+
 `findByStripeSessionId` (webhook expiry path) and the purge delete both run on unindexed columns. Trivial at today's scale, but they're on payment paths — add `@Index` on `stripe_session_id` and `(payment_status, expires_at)`.
 - File: `model/ReportRequest.java`.
 
@@ -187,7 +195,9 @@ The entity uses `OffsetDateTime` (UTC) but `PremiumReport.generatedAt` is a `Loc
 
 ## 6 · Frontend & Templates
 
-### 6.1 [Medium] ~5,600 lines of templates with heavy copy-paste
+### 6.1 [Medium] 🔶 PARTIALLY FIXED (2026-07-08) — ~5,600 lines of templates with heavy copy-paste
+> The JS extraction (the bug-multiplying part) is done: visitor bootstrap (4 drifted copies) and CSRF helpers (2 competing styles) unified in `/static/js/visitor.js`; analytics fetch wrappers replaced by `trackEvent()` in `/static/js/analytics.js`. All four funnel pages include the shared files; `SharedScriptsTemplateTest` fails the build if a template ever grows a local copy again. This unblocks §3.2 (page-specific inline scripts remain — the CSP change still needs those moved or nonced). **Still open:** shared CSS consolidation into `style.css` and head/nav/footer fragments — on inspection the markup duplication is smaller than stated (premium/sample have no nav/footer), and each page's large CSS block is mostly page-specific; consolidating needs visual verification, so deferred.
+
 The visitor-ID bootstrap script is duplicated in 4 templates; CSRF helper functions, analytics `fetch` wrappers, and large CSS blocks are repeated per page. Any fix (e.g. the §2.1 bug) must be applied in several places. Extract:
 - shared JS → `/static/js/visitor.js`, `/static/js/analytics.js` (also unblocks removing `'unsafe-inline'`, §3.2);
 - shared markup (head, nav, footer, CSRF meta) → Thymeleaf fragments;

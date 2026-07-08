@@ -104,6 +104,11 @@ public class RiskAssessorController {
 
     @GetMapping("/result")
     public String result(Model model) {
+        // The page renders entirely from flash attributes; on a refresh or direct
+        // visit they're gone and the page would be an empty shell — go home instead.
+        if (!model.containsAttribute("success")) {
+            return "redirect:/";
+        }
         return "result";
     }
 

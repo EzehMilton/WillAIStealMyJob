@@ -37,6 +37,35 @@ class RiskAssessorControllerTest {
     }
 
     @Test
+    void directVisitToResultWithoutFlashAttributesRedirectsHome() {
+        String view = controller.result(new ExtendedModelMap());
+
+        assertEquals("redirect:/", view);
+    }
+
+    @Test
+    void resultRendersWhenFlashAttributesArePresent() {
+        ExtendedModelMap model = new ExtendedModelMap();
+        model.addAttribute("success", true);
+        model.addAttribute("score", 5.5);
+
+        String view = controller.result(model);
+
+        assertEquals("result", view);
+    }
+
+    @Test
+    void resultRendersErrorStateFlashedByFailedAssessment() {
+        ExtendedModelMap model = new ExtendedModelMap();
+        model.addAttribute("success", false);
+        model.addAttribute("error", "An error occurred while assessing the risk. Please try again.");
+
+        String view = controller.result(model);
+
+        assertEquals("result", view);
+    }
+
+    @Test
     void assessRisk_preservesManualProfessionalDetailsInResultFlashModel() {
         assertOriginalDetailsFlashed(
                 form("profession", "Engineer", "I design and maintain production systems", "manual"),

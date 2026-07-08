@@ -240,6 +240,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="/js/visitor.js"></script>
+    <script src="/js/analytics.js"></script>
 </head>
 <body class="page-results"
       th:with="isCourse=${mode == 'course'},
@@ -807,23 +809,8 @@
             integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
             crossorigin="anonymous"></script>
 
-    <script>
-        /* ── Visitor UUID ── */
-        (function () {
-            const KEY = 'visitor_id';
-            let id = localStorage.getItem(KEY);
-            if (!id) {
-                id = crypto.randomUUID();
-                localStorage.setItem(KEY, id);
-                const exp = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-                document.cookie = KEY + '=' + id + '; path=/; expires=' + exp + '; SameSite=Lax';
-            }
-            window.visitorId = id;
-        }());
-    </script>
-
     <script th:inline="javascript">
-        /* ── Funnel tracking for result page ── */
+        /* ── Funnel tracking for result page (visitor.js/analytics.js provide the plumbing) ── */
         (function () {
             const hasResult = /*[[${success != null && success}]]*/ false;
             if (!hasResult) return;
@@ -832,16 +819,7 @@
             const score      = /*[[${score}]]*/ 0;
 
             // Fire result_viewed once per page load
-            fetch('/analytics/event', {
-                method: 'POST',
-                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({
-                    visitorId: window.visitorId,
-                    eventType: 'result_viewed',
-                    profession: profession,
-                    riskScore: score
-                })
-            }).catch(function () {});
+            trackEvent('result_viewed', { profession: profession, riskScore: score });
 
             // Track exit without payment
             let paid = false;
@@ -851,18 +829,9 @@
 
             window.addEventListener('pagehide', function () {
                 if (!paid) {
-                    const payload = JSON.stringify({
-                        visitorId: window.visitorId,
-                        eventType: 'result_exited_without_payment',
-                        profession: profession,
-                        riskScore: score
-                    });
-                    fetch('/analytics/event', {
-                        method: 'POST',
-                        headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-                        body: payload,
-                        keepalive: true
-                    }).catch(function () {});
+                    trackEvent('result_exited_without_payment',
+                        { profession: profession, riskScore: score },
+                        { keepalive: true });
                 }
             });
         }());
@@ -884,25 +853,11 @@
 
             sessionStorage.setItem('checkoutPayload', JSON.stringify(payload));
 
-            fetch('/analytics/event', {
-                method: 'POST',
-                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({
-                    visitorId: window.visitorId,
-                    eventType: 'premium_report_generation_started',
-                    profession: payload.profession,
-                    riskScore: payload.score
-                })
-            }).catch(function () {});
+            trackEvent('premium_report_generation_started',
+                { profession: payload.profession, riskScore: payload.score });
 
             window.location.href = '/generating-report';
         });
-
-        function csrfHeaders(headers) {
-            const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
-            const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
-            return token && header ? Object.assign({}, headers, { [header]: token }) : headers;
-        }
     </script>
 </body>
 </html>

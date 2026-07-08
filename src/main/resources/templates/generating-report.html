@@ -247,6 +247,7 @@
             .site-header { padding: 16px 20px; }
         }
     </style>
+    <script src="/js/visitor.js"></script>
 </head>
 <body>
 
@@ -337,21 +338,7 @@
         <p>WillAIStealMyFuture &nbsp;·&nbsp; &copy; 2026</p>
     </footer>
 
-    <script>
-        /* ── Visitor UUID ── */
-        (function () {
-            const KEY = 'visitor_id';
-            let id = localStorage.getItem(KEY);
-            if (!id) {
-                id = crypto.randomUUID();
-                localStorage.setItem(KEY, id);
-                const exp = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-                document.cookie = KEY + '=' + id + '; path=/; expires=' + exp + '; SameSite=Lax';
-            }
-            window.visitorId = id;
-        }());
-    </script>
-
+    <!-- Visitor bootstrap + CSRF helpers come from /js/visitor.js (shared) -->
     <script>
         // ─── SVG icons for step states ───────────────────────────────────────────
         const ICON_PENDING = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16">
@@ -528,14 +515,6 @@
                 await new Promise(resolve => setTimeout(resolve, STATUS_POLL_INTERVAL_MS));
             }
             throw new Error('Timed out waiting for report generation');
-        }
-
-        function csrfToken() {
-            return document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
-        }
-
-        function csrfHeaderName() {
-            return document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
         }
 
         // ─── Kick off ─────────────────────────────────────────────────────────────

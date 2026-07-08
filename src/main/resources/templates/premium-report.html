@@ -653,6 +653,7 @@
             .footer-actions { flex-wrap: wrap; justify-content: center; }
         }
     </style>
+    <script src="/js/visitor.js"></script>
 </head>
 <body th:with="isCourse=${report.mode == 'course'},
                isALevel=${report.mode == 'a_level'},
@@ -1003,18 +1004,7 @@
     </div>
 </div>
 
-<script>
-    (function () {
-        const KEY = 'visitor_id';
-        let id = localStorage.getItem(KEY);
-        if (!id && window.crypto && crypto.randomUUID) {
-            id = crypto.randomUUID();
-            localStorage.setItem(KEY, id);
-        }
-        window.visitorId = id || 'unknown';
-    })();
-</script>
-
+<!-- Visitor bootstrap + CSRF helpers come from /js/visitor.js (shared) -->
 <script th:inline="javascript">
     (function () {
         const reportLocked = /*[[${reportLocked}]]*/ true;
@@ -1085,13 +1075,6 @@
             });
         }
 
-        function csrfToken() {
-            return document.querySelector('meta[name="_csrf"]')?.getAttribute('content') || '';
-        }
-
-        function csrfHeaderName() {
-            return document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') || 'X-CSRF-TOKEN';
-        }
     })();
 </script>
 </body>

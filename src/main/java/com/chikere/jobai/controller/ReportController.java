@@ -43,7 +43,8 @@ public class ReportController {
             @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
         ConsumptionProbe probe = rateLimiter.tryConsume(visitorId);
         if (!probe.isConsumed()) {
-            long retryAfter = probe.getNanosToWaitForRefill() / 1_000_000_000;
+            // Round up: flooring sub-second waits to 0 tells clients to retry immediately
+            long retryAfter = (probe.getNanosToWaitForRefill() + 999_999_999) / 1_000_000_000;
             log.warn("Rate limit exceeded visitorId={}", visitorId);
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .header("Retry-After", String.valueOf(retryAfter))

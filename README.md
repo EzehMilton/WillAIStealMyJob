@@ -8,7 +8,7 @@ A web app that assesses how exposed a job, degree course, or set of A-Level choi
 - Spring AI → OpenAI (two models: a cheap "mini" for free summaries, a report model for paid reports)
 - Thymeleaf server-rendered frontend
 - Stripe Checkout + webhooks for payment
-- H2 (file-based) via JPA — PostgreSQL supported through `DATABASE_URL`
+- H2 (file-based) via JPA for dev — PostgreSQL for production through `DATABASE_URL`; schema owned by Flyway migrations (`src/main/resources/db/migration`), Hibernate validates only
 - Flying Saucer for PDF rendering, Bucket4j for rate limiting, Micrometer/Actuator for metrics
 
 ## Quickstart

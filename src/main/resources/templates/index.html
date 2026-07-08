@@ -402,6 +402,8 @@
             transition: opacity 0.3s ease;
         }
     </style>
+    <script src="/js/visitor.js"></script>
+    <script src="/js/analytics.js"></script>
 </head>
 <body class="page-home">
 <!-- Header -->
@@ -987,11 +989,7 @@
         }
 
         // Track summary generation attempt
-        fetch('/analytics/event', {
-            method: 'POST',
-            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ visitorId: window.visitorId, eventType: 'summary_requested' })
-        }).catch(function () {});
+        trackEvent('summary_requested');
 
         showLoadingOverlay();
         return true;
@@ -1051,38 +1049,12 @@
 </script>
 
 <script>
-    /* ── Visitor UUID ── */
-    (function () {
-        const KEY = 'visitor_id';
-        let id = localStorage.getItem(KEY);
-        const isNew = !id;
-        if (!id) {
-            id = crypto.randomUUID();
-            localStorage.setItem(KEY, id);
-            const exp = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toUTCString();
-            document.cookie = KEY + '=' + id + '; path=/; expires=' + exp + '; SameSite=Lax';
-        }
-        window.visitorId = id;
-        if (isNew) {
-            fetch('/analytics/event', {
-                method: 'POST',
-                headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-                body: JSON.stringify({ visitorId: id, eventType: 'visit' })
-            }).catch(function () {});
-        }
-        // Fire landing_page_view on every page load (not just first visit)
-        fetch('/analytics/event', {
-            method: 'POST',
-            headers: csrfHeaders({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({ visitorId: id, eventType: 'landing_page_view' })
-        }).catch(function () {});
-    }());
-
-    function csrfHeaders(headers) {
-        const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
-        const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
-        return token && header ? Object.assign({}, headers, { [header]: token }) : headers;
+    /* Visitor bootstrap + CSRF helpers live in /js/visitor.js (shared across pages) */
+    if (window.visitorIsNew) {
+        trackEvent('visit');
     }
+    // Fire landing_page_view on every page load (not just first visit)
+    trackEvent('landing_page_view');
 </script>
 </body>
 </html>
