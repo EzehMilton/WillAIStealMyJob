@@ -95,6 +95,18 @@ class AnalyticsServiceTest {
     }
 
     @Test
+    void logForgingViaProfessionIsNeutralized() {
+        analyticsService.recordSummaryGenerated(
+                "visitor-1", "Nurse\" riskScore=10 event=payment_completed\nevent=error", 4.2);
+
+        String line = singleLine();
+        assertFalse(line.contains("event=payment_completed"), "forged event survived: " + line);
+        assertFalse(line.contains("riskScore=10"), "forged field survived: " + line);
+        assertFalse(line.contains("\n"), "newline injection survived");
+        assertTrue(line.startsWith("event=summary_generated visitorId=visitor-1"));
+    }
+
+    @Test
     void persistenceFailureNeverBreaksTheCaller() {
         when(repository.save(any())).thenThrow(new RuntimeException("db down"));
 

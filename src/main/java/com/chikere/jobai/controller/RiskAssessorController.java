@@ -9,6 +9,7 @@ import com.chikere.jobai.service.JourneyConfigRegistry;
 import com.chikere.jobai.service.RiskAssessmentService;
 import com.chikere.jobai.service.RiskAssessmentService.DocumentParseException;
 import com.chikere.jobai.service.RiskAssessmentService.ValidationException;
+import com.chikere.jobai.service.SampleReportFactory;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,6 +30,7 @@ public class RiskAssessorController {
     private final RiskAssessmentService riskAssessmentService;
     private final AnalyticsService analyticsService;
     private final JourneyConfigRegistry journeyConfigRegistry;
+    private final SampleReportFactory sampleReportFactory;
 
     @GetMapping("/")
     public String home(Model model) {
@@ -113,8 +115,17 @@ public class RiskAssessorController {
     }
 
     @GetMapping("/sample-report")
-    public String sampleReport() {
-        return "sample-report";
+    public String sampleReport(Model model) {
+        // Rendered through the real premium-report template with a canned fixture, so the
+        // sample can never drift from what customers actually receive (§6.2).
+        model.addAttribute("report", sampleReportFactory.sampleReport());
+        model.addAttribute("reportId", "sample");
+        model.addAttribute("reportLocked", false);
+        model.addAttribute("paymentStatus", null);
+        model.addAttribute("expiresAt", null);
+        model.addAttribute("checkoutState", null);
+        model.addAttribute("isSample", true);
+        return "premium-report";
     }
 
     @GetMapping("/generating-report")

@@ -809,7 +809,7 @@
             integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL"
             crossorigin="anonymous"></script>
 
-    <script th:inline="javascript">
+    <script th:inline="javascript" th:attr="nonce=${cspNonce}">
         /* ── Funnel tracking for result page (visitor.js/analytics.js provide the plumbing) ── */
         (function () {
             const hasResult = /*[[${success != null && success}]]*/ false;

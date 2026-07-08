@@ -106,7 +106,7 @@ public class AnalyticsService {
     public void recordError(String visitorId, String errorType, String reportId, String message) {
         ANALYTICS.warn("event=error visitorId={} errorType={} reportId={} message=\"{}\" ts={}",
                 safe(visitorId), safe(errorType, "unknown"), safe(reportId, "-"),
-                message != null ? message : "", Instant.now());
+                safe(message, ""), Instant.now());
         persist("error", event -> {
             event.setVisitorId(truncate(visitorId, 100));
             event.setReportId(truncate(reportId, 40));
@@ -118,7 +118,7 @@ public class AnalyticsService {
 
     public void record(String visitorId, String eventType, String profession, Double riskScore) {
         ANALYTICS.info("event={} visitorId={} profession=\"{}\" riskScore={} ts={}",
-                eventType, safe(visitorId), safe(profession, "-"),
+                safe(eventType, "unknown"), safe(visitorId), safe(profession, "-"),
                 riskScore != null ? riskScore : "-", Instant.now());
         persist(safeEventType(eventType), event -> {
             event.setVisitorId(truncate(visitorId, 100));
@@ -154,11 +154,22 @@ public class AnalyticsService {
     // ── Utilities ─────────────────────────────────────────────────────────────
 
     private String safe(String value) {
-        return value != null && !value.isBlank() ? value.trim() : "unknown";
+        return safe(value, "unknown");
     }
 
     private String safe(String value, String fallback) {
-        return value != null && !value.isBlank() ? value.trim() : fallback;
+        if (value == null || value.isBlank()) {
+            return fallback;
+        }
+        return truncate(sanitizeForLog(value), 300);
+    }
+
+    /**
+     * The ANALYTICS log lines are parsed as key=value pairs; user-supplied text must not be
+     * able to forge fields (=, ") or start new lines (CR/LF, control chars).
+     */
+    private String sanitizeForLog(String value) {
+        return value.replaceAll("[=\"\\p{Cntrl}]", "_");
     }
 
     private String truncate(String value, int maxLength) {

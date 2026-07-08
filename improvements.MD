@@ -95,7 +95,9 @@ Integer division of `getNanosToWaitForRefill() / 1_000_000_000` floors sub-secon
 
 ## 3 · Security
 
-### 3.1 [High] Unauthenticated, unvalidated analytics endpoint
+### 3.1 [High] ✅ FIXED (2026-07-08) — Unauthenticated, unvalidated analytics endpoint
+> Fixed on all three axes: **(1) validation** — `eventType` checked against the allowlist of the six events the frontend actually sends (400 otherwise), visitorId capped at 64 chars, profession at 300; **(2) log injection** — `AnalyticsService.safe()` now strips `=`, `"`, and control chars (incl. CR/LF) and caps at 300, applied to every user-supplied value including error messages and the generic recorder's eventType, so forged `key=value` pairs and injected lines are neutralized (regression test proves the doc's exact attack string no longer parses); **(3) rate limiting** — new `AnalyticsRateLimiterService`, Bucket4j keyed on client IP (not the spoofable visitorId), default 60 events/min via `app.rate-limit.analytics.*`, with a 10k-client map bound; over-limit → 429. Also protects the `analytics_events` table (§8.1) from write floods.
+
 `POST /analytics/event` accepts any `visitorId`, `eventType`, and `profession` string and writes them into the ANALYTICS log verbatim. Consequences:
 
 - **Log forging / injection:** a `profession` containing `" riskScore=10 event=payment_completed` corrupts the very logs used as the analytics source of truth. Escape or strip quotes/newlines/`=` from all user-supplied values before logging (this applies to `AnalyticsService.safe()` generally — it trims but does not sanitize).
@@ -103,7 +105,9 @@ Integer division of `getNanosToWaitForRefill() / 1_000_000_000` floors sub-secon
 - **Fix:** validate `eventType` against a known enum, cap string lengths, sanitize values, and rate-limit the endpoint.
 - Files: `controller/AnalyticsController.java`, `service/AnalyticsService.java`.
 
-### 3.2 [Medium] CSP still allows `'unsafe-inline'` scripts
+### 3.2 [Medium] ✅ FIXED for scripts (2026-07-08) — CSP still allows `'unsafe-inline'` scripts
+> Fixed via nonces (the remaining inline scripts are page-specific with Thymeleaf data inlining, so static-file extraction wasn't practical): `CspNonceFilter` emits the CSP per request with `script-src 'self' 'nonce-…' https://cdn.jsdelivr.net` — no `'unsafe-inline'`; `CspNonceModelAdvice` exposes `${cspNonce}` to views (Thymeleaf 3.1 dropped `#request`); all 5 inline script tags carry `th:attr="nonce=${cspNonce}"`. All 11 inline `on*` handler attributes (also blocked without unsafe-inline, nonces don't help) converted to `addEventListener`/CSS `:hover`. Verified end-to-end: `CspHeaderIntegrationTest` proves the rendered page's nonce matches the header; `CspTemplateTest` fails the build on any nonce-less inline script or new `on*` attribute. **`style-src` deliberately keeps `'unsafe-inline'`**: the templates use 100+ inline `style=""` attributes, and adding a style nonce would make browsers *ignore* `unsafe-inline` and break them all — closing that needs the §6.1 CSS consolidation first.
+
 Every template carries large inline `<script>` blocks, so the CSP whitelists `'unsafe-inline'` for `script-src` — which neutralizes most of CSP's XSS protection. Move the JS into static files under `/static/js/` (this also fixes the duplication in §6.1) or adopt nonces via a request filter. Same applies to `style-src`.
 - File: `configuration/SecurityConfig.java:33-35`.
 
@@ -203,7 +207,9 @@ The visitor-ID bootstrap script is duplicated in 4 templates; CSRF helper functi
 - shared markup (head, nav, footer, CSRF meta) → Thymeleaf fragments;
 - shared CSS → the existing `static/css/style.css`.
 
-### 6.2 [Medium] `sample-report.html` (1,294 lines) appears to be a fully hard-coded page
+### 6.2 [Medium] ✅ FIXED (2026-07-08) — `sample-report.html` (1,294 lines) appears to be a fully hard-coded page
+> Fixed exactly as suggested: `sample-report.html` deleted; `GET /sample-report` now builds a canned `PremiumReport` fixture (new `SampleReportFactory`, a fictional "Software Developer") and renders it through the real `premium-report` template, unlocked. The template evolving can no longer leave the sample stale. Two small template additions gated on a new `isSample` model flag: a "Sample report" banner with a link back to the free assessment, and suppression of the "save your report" leave-modal (nothing to lose by leaving a sample). Verified via `SampleReportFactoryTest` (fixture renders cleanly through the live template with the sample banner and no leave-modal) and `RiskAssessorControllerTest`.
+
 It duplicates the premium-report layout with static content. When the real template evolves, the sample will silently drift from what customers actually receive. Consider rendering the sample through the same `premium-report` template with a canned `PremiumReport` fixture object.
 
 ### 6.3 [Low] Free-assessment result lives only in flash attributes + sessionStorage

@@ -691,6 +691,11 @@
                topUnlockCopy=${report.mode == 'a_level' ? 'Unlock your complete future-path analysis, subject-choice guidance, skills to build, and practical next steps — ready to view, print, and save.' : (report.mode == 'course' ? 'Unlock your complete degree outlook, career-path analysis, skill priorities, and practical action plan — ready to view, print, and save.' : 'Unlock your complete analysis, future outlook, safer career paths, and practical action plan — ready to view, print, and save.')}">
 <div class="cover">
     <div class="container">
+        <div class="status-banner" th:if="${isSample == true}">
+            <strong>Sample report.</strong> This is a real example of the full report you receive after
+            checkout, generated for a fictional software developer.
+            <a href="/" style="color: inherit; font-weight: 700;">Run your own free assessment →</a>
+        </div>
         <div class="cover-meta">
             <span>WillAIStealMyFuture</span> ·
             <span th:text="${reportLocked} ? 'Premium Preview' : 'Premium Report'">Premium Report</span> ·
@@ -979,7 +984,7 @@
             <div class="footer-actions">
                 <a class="btn-home" th:if="${reportLocked}" href="/">← Home</a>
                 <button class="btn-home" th:if="${!reportLocked}" id="btnBackHome">← Home</button>
-                <button class="btn-download" th:if="${!reportLocked}" id="btnPrint" onclick="window.print()">Print / Save as PDF</button>
+                <button class="btn-download" th:if="${!reportLocked}" id="btnPrint">Print / Save as PDF</button>
                 <button class="btn-primary" th:if="${reportLocked}" id="unlockReportBtnFooter" th:text="${'See full AI risk breakdown – ' + premiumPrice}">See full AI risk breakdown – £4.99</button>
             </div>
         </div>
@@ -992,7 +997,7 @@
     </div>
 </div>
 
-<div class="leave-overlay" id="leaveOverlay" role="dialog" aria-modal="true" aria-labelledby="leaveModalTitle" th:if="${!reportLocked}">
+<div class="leave-overlay" id="leaveOverlay" role="dialog" aria-modal="true" aria-labelledby="leaveModalTitle" th:if="${!reportLocked and isSample != true}">
     <div class="leave-modal">
         <div class="leave-modal-icon">⚠️</div>
         <h2 id="leaveModalTitle">Save your unlocked report</h2>
@@ -1005,9 +1010,10 @@
 </div>
 
 <!-- Visitor bootstrap + CSRF helpers come from /js/visitor.js (shared) -->
-<script th:inline="javascript">
+<script th:inline="javascript" th:attr="nonce=${cspNonce}">
     (function () {
         const reportLocked = /*[[${reportLocked}]]*/ true;
+        const isSample = /*[[${isSample == true}]]*/ false;
         const reportId = /*[[${reportId}]]*/ '';
         const unlockButtons = ['unlockReportBtn', 'unlockReportBtnSecondary', 'unlockReportBtnFooter']
             .map(id => document.getElementById(id))
@@ -1048,7 +1054,15 @@
             });
         });
 
-        if (!reportLocked) {
+        if (!reportLocked && isSample) {
+            // Sample viewers have nothing to save — no leave-reminder modal
+            const btnBackHome = document.getElementById('btnBackHome');
+            if (btnBackHome) {
+                btnBackHome.addEventListener('click', function () { window.location.href = '/'; });
+            }
+        }
+
+        if (!reportLocked && !isSample) {
             const overlay = document.getElementById('leaveOverlay');
             const btnBackHome = document.getElementById('btnBackHome');
             const btnDownload = document.getElementById('btnModalDownload');
@@ -1075,6 +1089,10 @@
             });
         }
 
+        const printButton = document.getElementById('btnPrint');
+        if (printButton) {
+            printButton.addEventListener('click', function () { window.print(); });
+        }
     })();
 </script>
 </body>
