@@ -1,6 +1,8 @@
 package com.chikere.jobai.service;
 
 import com.chikere.jobai.model.GenerationMetrics;
+import io.micrometer.core.instrument.Metrics;
+import io.micrometer.core.instrument.Timer;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -8,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.Duration;
 import java.util.Locale;
 
 @Service
@@ -70,6 +73,50 @@ public class GenerationMetricsService {
                 .estimatedCostUsd(estimatedCostUsd)
                 .estimatedCostPence(estimatedCostPence(estimatedCostUsd))
                 .build();
+    }
+
+    /**
+     * Single AI_COST log format for both AI paths; {@code reportId} is "-" for the summary
+     * path, which has no persisted report. Also feeds the Micrometer registry so latency,
+     * token volume, and cost are queryable via /actuator/metrics.
+     */
+    public void logAiCost(String mode, String reportId, GenerationMetrics metrics) {
+        recordMetrics(metrics);
+        log.info(
+                "AI_COST reportType=\"{}\" mode={} reportId={} model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} inputCostUsd={} outputCostUsd={} estimatedCostUsd={} estimatedCostPence={}",
+                metrics.getReportType(),
+                mode,
+                reportId != null && !reportId.isBlank() ? reportId : "-",
+                metrics.getModel(),
+                metrics.getDurationMs(),
+                metrics.getPromptTokens(),
+                metrics.getCompletionTokens(),
+                metrics.getTotalTokens(),
+                metrics.getInputCostUsdLabel(),
+                metrics.getOutputCostUsdLabel(),
+                metrics.getEstimatedCostUsdLabel(),
+                metrics.getEstimatedCostPenceLabel()
+        );
+    }
+
+    private void recordMetrics(GenerationMetrics metrics) {
+        try {
+            String reportType = metrics.getReportType() != null ? metrics.getReportType() : "-";
+            String model = metrics.getModel() != null ? metrics.getModel() : "-";
+            Timer.builder("jobai.ai.generation")
+                    .tag("reportType", reportType)
+                    .tag("model", model)
+                    .register(Metrics.globalRegistry)
+                    .record(Duration.ofMillis(metrics.getDurationMs()));
+            Metrics.counter("jobai.ai.tokens", "reportType", reportType, "type", "prompt")
+                    .increment(metrics.getPromptTokens());
+            Metrics.counter("jobai.ai.tokens", "reportType", reportType, "type", "completion")
+                    .increment(metrics.getCompletionTokens());
+            Metrics.counter("jobai.ai.cost.usd", "reportType", reportType)
+                    .increment(metrics.getEstimatedCostUsd());
+        } catch (Exception e) {
+            log.warn("Could not record AI metrics: {}", e.getMessage());
+        }
     }
 
     private double costUsd(int tokens, double pricePer1M) {

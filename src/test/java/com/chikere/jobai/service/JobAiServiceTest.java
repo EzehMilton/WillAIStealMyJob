@@ -78,11 +78,9 @@ class JobAiServiceTest {
 
     @Test
     void liveSummaryScoreClampKeepsParsedScoresInRange() {
-        JobAiService service = newService();
-
-        assertEquals(0.0, service.clampScore(-1.2));
-        assertEquals(10.0, service.clampScore(12.3));
-        assertEquals(4.6, service.clampScore(4.6));
+        assertEquals(0.0, AiResponseUtils.clampScore(-1.2));
+        assertEquals(10.0, AiResponseUtils.clampScore(12.3));
+        assertEquals(4.6, AiResponseUtils.clampScore(4.6));
     }
 
     private JobAiService newService() {

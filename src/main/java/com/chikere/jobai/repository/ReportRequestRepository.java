@@ -9,6 +9,9 @@ import java.util.UUID;
 public interface ReportRequestRepository extends JpaRepository<ReportRequest, UUID> {
     Optional<ReportRequest> findByStripeSessionId(String stripeSessionId);
 
+    Optional<ReportRequest> findFirstByRequestHashAndPaymentStatusNotOrderByGeneratedAtDesc(
+            String requestHash, com.chikere.jobai.model.PaymentStatus excludedStatus);
+
     void deleteByPaymentStatusNotAndExpiresAtBefore(com.chikere.jobai.model.PaymentStatus paymentStatus,
                                                     java.time.OffsetDateTime expiresAt);
 }

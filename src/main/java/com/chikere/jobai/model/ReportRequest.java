@@ -50,7 +50,16 @@ public class ReportRequest {
     @Column(nullable = false, length = 20)
     private PaymentStatus paymentStatus;
 
+    /** Async generation lifecycle; null on rows created before this column existed. */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ReportStatus generationStatus;
+
     private String stripeSessionId;
+
+    /** SHA-256 of the generation inputs, used to dedupe repeated identical requests. */
+    @Column(length = 64)
+    private String requestHash;
 
     @Column
     private OffsetDateTime expiresAt;

@@ -24,4 +24,10 @@ class ActuatorHealthEndpointTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("UP")));
     }
+
+    @Test
+    void metricsEndpointIsLockedWhenNoActuatorUserIsConfigured() throws Exception {
+        mockMvc.perform(get("/actuator/metrics"))
+                .andExpect(status().isUnauthorized());
+    }
 }

@@ -450,16 +450,19 @@
                         markDone(currentStep - 1);
                         progressBar.style.width = '100%';
                         animationDone = true;
-                        maybeRedirect();
+                        maybeFinish();
                     }, STEP_DURATION_MS);
                 }
             }
         }
 
-        // ─── Redirect when both animation and API are done ───────────────────────
-        function maybeRedirect() {
-            if (animationDone && apiDone && reportId) {
+        // ─── Once both animation and API are done: redirect, or surface failure ──
+        function maybeFinish() {
+            if (!animationDone || !apiDone) return;
+            if (reportId) {
                 window.location.href = '/premium-report/' + reportId;
+            } else {
+                showError();
             }
         }
 
@@ -470,6 +473,11 @@
         }
 
         // ─── API call ─────────────────────────────────────────────────────────────
+        // Generation runs asynchronously server-side: the POST returns 202 + reportId
+        // immediately and we poll the status endpoint until it completes.
+        const STATUS_POLL_INTERVAL_MS = 2500;
+        const STATUS_POLL_LIMIT = 144; // ~6 minutes
+
         async function callGenerateReport() {
             try {
                 const sessionId = new URLSearchParams(window.location.search).get('session_id') || '';
@@ -494,20 +502,32 @@
                 if (!response.ok) throw new Error('Generate report returned ' + response.status);
 
                 const data = await response.json();
+                await waitUntilReady(data.reportId);
                 reportId = data.reportId;
                 apiDone = true;
-                maybeRedirect();
+                maybeFinish();
 
             } catch (err) {
                 console.error('Report generation error:', err);
-                // Only show error if animation has already completed — otherwise wait
-                if (animationDone) {
-                    showError();
-                } else {
-                    // Flag and let animation finish, then show error
-                    apiDone = true;  // reuse flag; reportId is null → maybeRedirect won't fire
-                }
+                // reportId stays null → maybeFinish shows the error once the animation ends
+                apiDone = true;
+                maybeFinish();
             }
+        }
+
+        async function waitUntilReady(id) {
+            for (let attempt = 0; attempt < STATUS_POLL_LIMIT; attempt++) {
+                const res = await fetch('/report/' + id + '/status');
+                if (res.ok) {
+                    const status = await res.json();
+                    if (status.reportStatus === 'COMPLETED') return;
+                    if (status.reportStatus === 'FAILED') throw new Error('Report generation failed');
+                } else if (res.status === 404) {
+                    throw new Error('Report disappeared while polling status');
+                }
+                await new Promise(resolve => setTimeout(resolve, STATUS_POLL_INTERVAL_MS));
+            }
+            throw new Error('Timed out waiting for report generation');
         }
 
         function csrfToken() {
