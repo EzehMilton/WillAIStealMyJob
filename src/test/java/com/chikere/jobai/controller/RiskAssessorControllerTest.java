@@ -4,10 +4,12 @@ import com.chikere.jobai.model.AssessmentProcessingResult;
 import com.chikere.jobai.model.JobRiskAssessment;
 import com.chikere.jobai.model.JourneyType;
 import com.chikere.jobai.model.RiskAssessmentForm;
+import com.chikere.jobai.model.PremiumReport;
 import com.chikere.jobai.service.AnalyticsService;
 import com.chikere.jobai.service.JourneyConfigRegistry;
 import com.chikere.jobai.service.RiskAssessmentService;
 import com.chikere.jobai.service.RiskAssessmentService.ValidationException;
+import com.chikere.jobai.service.SampleReportFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ui.ExtendedModelMap;
@@ -24,16 +26,67 @@ import static org.mockito.Mockito.when;
 class RiskAssessorControllerTest {
 
     private RiskAssessmentService riskAssessmentService;
+    private SampleReportFactory sampleReportFactory;
     private RiskAssessorController controller;
 
     @BeforeEach
     void setUp() {
         riskAssessmentService = mock(RiskAssessmentService.class);
+        sampleReportFactory = mock(SampleReportFactory.class);
         controller = new RiskAssessorController(
                 riskAssessmentService,
                 mock(AnalyticsService.class),
-                new JourneyConfigRegistry(800, 450, 350)
+                new JourneyConfigRegistry(800, 450, 350),
+                sampleReportFactory
         );
+    }
+
+    @Test
+    void sampleReportRendersThroughThePremiumReportTemplateUnlockedAsASample() {
+        PremiumReport canned = PremiumReport.builder().reportId("sample").profession("Software Developer").build();
+        when(sampleReportFactory.sampleReport()).thenReturn(canned);
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        String view = controller.sampleReport(model);
+
+        assertEquals("premium-report", view);
+        assertEquals(canned, model.getAttribute("report"));
+        assertEquals(false, model.getAttribute("reportLocked"));
+        assertEquals(true, model.getAttribute("isSample"));
+    }
+
+    @Test
+    void howItWorksRendersHowTemplate() {
+        assertEquals("how", controller.howItWorks());
+    }
+
+    @Test
+    void directVisitToResultWithoutFlashAttributesRedirectsHome() {
+        String view = controller.result(new ExtendedModelMap());
+
+        assertEquals("redirect:/", view);
+    }
+
+    @Test
+    void resultRendersWhenFlashAttributesArePresent() {
+        ExtendedModelMap model = new ExtendedModelMap();
+        model.addAttribute("success", true);
+        model.addAttribute("score", 5.5);
+
+        String view = controller.result(model);
+
+        assertEquals("result", view);
+    }
+
+    @Test
+    void resultRendersErrorStateFlashedByFailedAssessment() {
+        ExtendedModelMap model = new ExtendedModelMap();
+        model.addAttribute("success", false);
+        model.addAttribute("error", "An error occurred while assessing the risk. Please try again.");
+
+        String view = controller.result(model);
+
+        assertEquals("result", view);
     }
 
     @Test

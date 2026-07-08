@@ -3,6 +3,7 @@ package com.chikere.jobai.controller;
 import com.chikere.jobai.model.GenerateReportRequest;
 import com.chikere.jobai.model.GenerateReportResponse;
 import com.chikere.jobai.model.PremiumReport;
+import com.chikere.jobai.model.ReportStatusResponse;
 import com.chikere.jobai.service.AnalyticsService;
 import com.chikere.jobai.service.PdfService;
 import com.chikere.jobai.service.ReportRateLimiterService;
@@ -42,26 +43,40 @@ public class ReportController {
             @RequestHeader(value = "X-Visitor-Id", defaultValue = "unknown") String visitorId) {
         ConsumptionProbe probe = rateLimiter.tryConsume(visitorId);
         if (!probe.isConsumed()) {
-            long retryAfter = probe.getNanosToWaitForRefill() / 1_000_000_000;
+            // Round up: flooring sub-second waits to 0 tells clients to retry immediately
+            long retryAfter = (probe.getNanosToWaitForRefill() + 999_999_999) / 1_000_000_000;
             log.warn("Rate limit exceeded visitorId={}", visitorId);
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                     .header("Retry-After", String.valueOf(retryAfter))
                     .<GenerateReportResponse>build();
         }
 
-        log.info("Generating persisted premium report visitorId={}", visitorId);
-        long start = System.nanoTime();
+        log.info("Submitting premium report generation visitorId={}", visitorId);
         try {
             reportService.purgeExpiredUnpaidReports();
-            ReportService.StoredReport storedReport = reportService.generateAndStoreReport(request);
-            long durationMs = (System.nanoTime() - start) / 1_000_000;
-            analyticsService.recordReportDelivered(visitorId, storedReport.reportId(), request.getProfession(), durationMs);
-            analyticsService.recordGenerationCompleted(visitorId, storedReport.reportId(), request.getProfession(), storedReport.report().getGenerationMetrics());
-            return ResponseEntity.ok(new GenerateReportResponse(storedReport.reportId()));
+            ReportService.SubmittedReport submitted = reportService.startReportGeneration(request, visitorId);
+            return ResponseEntity.accepted().body(new GenerateReportResponse(submitted.reportId()));
+        } catch (ReportService.GenerationCapacityException e) {
+            analyticsService.recordError(visitorId, "report_generation_capacity", null, e.getMessage());
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .header("Retry-After", "30")
+                    .<GenerateReportResponse>build();
         } catch (Exception e) {
-            log.error("Report generation failed visitorId={}", visitorId, e);
+            log.error("Report generation submit failed visitorId={}", visitorId, e);
             analyticsService.recordError(visitorId, "report_generation_error", null, e.getMessage());
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/report/{reportId}/status")
+    @ResponseBody
+    public ResponseEntity<ReportStatusResponse> reportStatus(@PathVariable String reportId) {
+        try {
+            return reportService.getGenerationStatus(reportId)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (ReportService.ReportNotFoundException ex) {
+            return ResponseEntity.notFound().build();
         }
     }
 

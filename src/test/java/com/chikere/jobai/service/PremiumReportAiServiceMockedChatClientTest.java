@@ -104,6 +104,34 @@ class PremiumReportAiServiceMockedChatClientTest {
         assertFalse(aLevelPrompt.contains("Treat the subject as the user's current profession or role."));
     }
 
+    @Test
+    void premiumCircuitOpensAfterRepeatedFailuresAndFailsFast() {
+        ChatClient failingClient = mock(ChatClient.class);
+        ChatClient.ChatClientRequestSpec requestSpec = mock(ChatClient.ChatClientRequestSpec.class);
+        when(failingClient.prompt(org.mockito.ArgumentMatchers.anyString())).thenReturn(requestSpec);
+        when(requestSpec.call()).thenThrow(new RuntimeException("OpenAI unavailable"));
+        PremiumReportAiService service = new PremiumReportAiService(
+                failingClient,
+                new GenerationMetricsService("gpt-5.4", "gpt-5.4-mini", 2.5, 10.0, 0.75, 4.50, 0.79),
+                journeyConfigRegistry,
+                new DefaultResourceLoader(),
+                new com.fasterxml.jackson.databind.ObjectMapper(),
+                "gpt-5.4-mini",
+                2,
+                java.time.Duration.ofMinutes(1),
+                4
+        );
+        GenerateReportRequest request = request("profession", "Java Developer");
+
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> service.generate(request));
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () -> service.generate(request));
+
+        org.junit.jupiter.api.Assertions.assertThrows(AiCallGuard.CircuitOpenException.class,
+                () -> service.generate(request));
+        org.mockito.Mockito.verify(failingClient, org.mockito.Mockito.times(2))
+                .prompt(org.mockito.ArgumentMatchers.anyString());
+    }
+
     private PremiumReportAiService newService(ChatClient chatClient) {
         return new PremiumReportAiService(
                 chatClient,

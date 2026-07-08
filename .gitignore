@@ -36,3 +36,6 @@ application-local.properties
 
 # local secrets
 src/main/resources/application-dev.properties
+
+# Local H2 database files
+data/

@@ -131,7 +131,7 @@ class JobAiServiceMockedChatClientTest {
                 "Planning lessons and supporting students"
         ));
 
-        assertThrows(JobAiService.AiCircuitOpenException.class, () -> service.assessJobRisk(
+        assertThrows(AiCallGuard.CircuitOpenException.class, () -> service.assessJobRisk(
                 "profession",
                 "Teacher",
                 "Planning lessons and supporting students"
@@ -160,6 +160,7 @@ class JobAiServiceMockedChatClientTest {
                 new GenerationMetricsService("gpt-5.4", "gpt-5.4-mini", 2.5, 10.0, 0.75, 4.50, 0.79),
                 journeyConfigRegistry,
                 new RiskScoringService(new RiskDimensionCalculator(), new RiskAdjustmentService(), new RiskSanityValidator()),
+                new com.fasterxml.jackson.databind.ObjectMapper(),
                 "gpt-5.4-mini",
                 failureThreshold,
                 openDuration,

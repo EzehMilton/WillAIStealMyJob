@@ -11,14 +11,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,32 +35,57 @@ public class PremiumReportAiService {
     private final ResourceLoader resourceLoader;
     private final GenerationMetricsService generationMetricsService;
     private final JourneyConfigRegistry journeyConfigRegistry;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private final String promptTemplate;
     private final String modelName;
     private final String reportQualityBooster;
+    private final AiCallGuard aiCallGuard;
 
+    @Autowired
     public PremiumReportAiService(@Qualifier("gpt54ReportChatClient") ChatClient gpt54ReportChatClient,
                                   GenerationMetricsService generationMetricsService,
                                   JourneyConfigRegistry journeyConfigRegistry,
                                   ResourceLoader resourceLoader,
-                                  @Value("${app.ai.model.report}") String modelName) {
+                                  ObjectMapper objectMapper,
+                                  @Value("${app.ai.model.report}") String modelName,
+                                  @Value("${app.ai.report.circuit-breaker.failure-threshold:3}") int circuitBreakerFailureThreshold,
+                                  @Value("${app.ai.report.circuit-breaker.open-duration:60s}") Duration circuitBreakerOpenDuration,
+                                  @Value("${app.ai.report.circuit-breaker.max-concurrent-calls:4}") int maxConcurrentAiCalls) {
         this.chatClient = gpt54ReportChatClient;
         this.generationMetricsService = generationMetricsService;
         this.journeyConfigRegistry = journeyConfigRegistry;
         this.resourceLoader = resourceLoader;
+        this.objectMapper = objectMapper;
         this.modelName = modelName;
-        this.promptTemplate = loadResource("classpath:prompts/premium-report-prompt.txt");
-        this.reportQualityBooster = loadResource("classpath:prompts/report-quality-booster.txt");
+        this.aiCallGuard = new AiCallGuard(
+                "report", circuitBreakerFailureThreshold, circuitBreakerOpenDuration, maxConcurrentAiCalls);
+        this.promptTemplate = AiResponseUtils.loadResource(resourceLoader, "classpath:prompts/premium-report-prompt.txt");
+        this.reportQualityBooster = AiResponseUtils.loadResource(resourceLoader, "classpath:prompts/report-quality-booster.txt");
         log.info("PremiumReportAiService initialised with model={}", modelName);
+    }
+
+    PremiumReportAiService(ChatClient chatClient,
+                           GenerationMetricsService generationMetricsService,
+                           JourneyConfigRegistry journeyConfigRegistry,
+                           ResourceLoader resourceLoader,
+                           String modelName) {
+        this(chatClient, generationMetricsService, journeyConfigRegistry, resourceLoader,
+                new ObjectMapper(), modelName, 3, Duration.ofSeconds(60), 4);
     }
 
     /**
      * Generates a fully AI-populated PremiumReport for the given request.
      */
     public PremiumReport generate(GenerateReportRequest request) {
+        return generate(request, UUID.randomUUID().toString());
+    }
+
+    /**
+     * Variant used by the async flow, where the report row (and its id) is created
+     * before generation starts so the client can poll for status.
+     */
+    public PremiumReport generate(GenerateReportRequest request, String reportId) {
         long generationStart = System.nanoTime();
-        String reportId = UUID.randomUUID().toString();
         log.info("Generating premium report id={}", reportId);
 
         JourneyType journeyType = JourneyType.fromMode(request.getMode());
@@ -71,9 +95,9 @@ public class PremiumReportAiService {
 
         log.info("Calling AI: model={} reportId={}", modelName, reportId);
 
-        ChatResponse chatResponse = chatClient.prompt(prompt).call().chatResponse();
-        String raw = extractContent(chatResponse);
-        String json = extractJson(raw);
+        ChatResponse chatResponse = aiCallGuard.call(() -> chatClient.prompt(prompt).call().chatResponse());
+        String raw = AiResponseUtils.extractContent(chatResponse);
+        String json = AiResponseUtils.extractJson(raw);
 
         try {
             JsonNode root = objectMapper.readTree(json);
@@ -81,11 +105,11 @@ public class PremiumReportAiService {
             GenerationMetrics metrics = generationMetricsService.fromChatResponse(
                     "Full Report",
                     modelName,
-                    elapsedMillis(generationStart),
+                    AiResponseUtils.elapsedMillis(generationStart),
                     chatResponse
             );
             report.setGenerationMetrics(metrics);
-            logGenerationSummary(reportId, journeyType.legacyMode(), metrics);
+            generationMetricsService.logAiCost(journeyType.legacyMode(), reportId, metrics);
             return report;
         } catch (Exception e) {
             log.error("Failed to parse AI response for reportId={}", reportId, e);
@@ -128,8 +152,8 @@ public class PremiumReportAiService {
                 .reportId(reportId)
                 .profession(req.getProfession())
                 .mode(req.getMode())
-                .score(clampScore(req.getScore()))
-                .riskLevel(normalise(req.getRiskLevel(), deriveRiskLevel(clampScore(req.getScore()))))
+                .score(AiResponseUtils.clampScore(req.getScore()))
+                .riskLevel(normalise(req.getRiskLevel(), deriveRiskLevel(AiResponseUtils.clampScore(req.getScore()))))
                 .scoreRationale(text(root, "scoreRationale"))
                 .generatedAt(LocalDateTime.now())
 
@@ -392,35 +416,6 @@ public class PremiumReportAiService {
         return limited.toString();
     }
 
-    private String extractContent(ChatResponse chatResponse) {
-        if (chatResponse == null || chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
-            return "";
-        }
-        return chatResponse.getResult().getOutput().getText();
-    }
-
-    private long elapsedMillis(long startNanos) {
-        return (System.nanoTime() - startNanos) / 1_000_000;
-    }
-
-    private void logGenerationSummary(String reportId, String mode, GenerationMetrics metrics) {
-        log.info(
-                "AI_COST reportType=\"{}\" mode={} reportId={} model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} inputCostUsd={} outputCostUsd={} estimatedCostUsd={} estimatedCostPence={}",
-                metrics.getReportType(),
-                mode,
-                reportId,
-                metrics.getModel(),
-                metrics.getDurationMs(),
-                metrics.getPromptTokens(),
-                metrics.getCompletionTokens(),
-                metrics.getTotalTokens(),
-                metrics.getInputCostUsdLabel(),
-                metrics.getOutputCostUsdLabel(),
-                metrics.getEstimatedCostUsdLabel(),
-                metrics.getEstimatedCostPenceLabel()
-        );
-    }
-
     private int intValue(JsonNode node, String field) {
         JsonNode value = node.path(field);
         if (value.isInt() || value.isLong() || value.isFloat() || value.isDouble()) {
@@ -448,13 +443,6 @@ public class PremiumReportAiService {
         return Math.max(0, Math.min(100, value));
     }
 
-    private double clampScore(double score) {
-        if (Double.isNaN(score) || Double.isInfinite(score)) {
-            return 0.0;
-        }
-        return Math.max(0.0, Math.min(10.0, score));
-    }
-
     private String deriveRiskLevel(double score) {
         if (score <= 3.4) {
             return "Low";
@@ -465,46 +453,11 @@ public class PremiumReportAiService {
         return "High";
     }
 
-    /**
-     * Strips markdown fences and finds the outermost JSON object.
-     * Same pattern as your cleanJsonResponse in JobAiService.
-     */
-    private String extractJson(String response) {
-        if (response == null) return "{}";
-        String s = response.trim();
-
-        // Strip ```json ... ``` fences
-        if (s.startsWith("```")) {
-            int newline = s.indexOf('\n');
-            if (newline != -1) s = s.substring(newline + 1);
-            int fence = s.lastIndexOf("```");
-            if (fence != -1) s = s.substring(0, fence);
-            s = s.trim();
-        }
-
-        int start = s.indexOf('{');
-        int end   = s.lastIndexOf('}');
-        if (start != -1 && end > start) {
-            return s.substring(start, end + 1);
-        }
-        return s;
-    }
-
     private String normalise(String value, String fallback) {
         return (value == null || value.isBlank()) ? fallback : value.trim();
     }
 
     private String cap(String value, int maxChars) {
         return value.length() <= maxChars ? value : value.substring(0, maxChars);
-    }
-
-    private String loadResource(String path) {
-        try {
-            Resource r = resourceLoader.getResource(path);
-            return r.getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Could not load resource: {}", path, e);
-            throw new RuntimeException("Failed to load: " + path, e);
-        }
     }
 }

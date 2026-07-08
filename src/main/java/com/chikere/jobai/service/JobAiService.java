@@ -12,17 +12,10 @@ import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
 import org.springframework.core.io.ResourceLoader;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @Slf4j
@@ -35,12 +28,7 @@ public class JobAiService {
     private final String miniModelName;
     private final JourneyConfigRegistry journeyConfigRegistry;
     private final RiskScoringService riskScoringService;
-    private final int circuitBreakerFailureThreshold;
-    private final Duration circuitBreakerOpenDuration;
-    private final Semaphore aiCallBulkhead;
-    private final AtomicInteger consecutiveAiFailures = new AtomicInteger();
-    private final AtomicLong circuitOpenUntilEpochMillis = new AtomicLong();
-    private final AtomicBoolean halfOpenProbeInFlight = new AtomicBoolean();
+    private final AiCallGuard aiCallGuard;
 
     private final String jobAiPromptTemplate;
     private final String professionInstructions;
@@ -53,6 +41,7 @@ public class JobAiService {
                         GenerationMetricsService generationMetricsService,
                         JourneyConfigRegistry journeyConfigRegistry,
                         RiskScoringService riskScoringService,
+                        ObjectMapper objectMapper,
                         @Value("${app.ai.model.mini}") String miniModelName,
                         @Value("${app.ai.circuit-breaker.failure-threshold:3}") int circuitBreakerFailureThreshold,
                         @Value("${app.ai.circuit-breaker.open-duration:30s}") Duration circuitBreakerOpenDuration,
@@ -63,10 +52,9 @@ public class JobAiService {
         this.journeyConfigRegistry = journeyConfigRegistry;
         this.riskScoringService = riskScoringService;
         this.miniModelName = miniModelName;
-        this.circuitBreakerFailureThreshold = Math.max(1, circuitBreakerFailureThreshold);
-        this.circuitBreakerOpenDuration = validOpenDuration(circuitBreakerOpenDuration);
-        this.aiCallBulkhead = new Semaphore(Math.max(1, maxConcurrentAiCalls));
-        this.objectMapper = new ObjectMapper();
+        this.aiCallGuard = new AiCallGuard(
+                "assessment", circuitBreakerFailureThreshold, circuitBreakerOpenDuration, maxConcurrentAiCalls);
+        this.objectMapper = objectMapper;
 
         this.jobAiPromptTemplate = loadResourceFile("classpath:prompts/jobai.txt");
         this.professionInstructions = loadPromptInstructions(JourneyType.PROFESSIONAL);
@@ -88,6 +76,7 @@ public class JobAiService {
                 generationMetricsService,
                 journeyConfigRegistry,
                 riskScoringService,
+                new ObjectMapper(),
                 miniModelName,
                 3,
                 Duration.ofSeconds(30),
@@ -110,9 +99,9 @@ public class JobAiService {
 
         log.info("Calling AI: model={}", miniModelName);
 
-        ChatResponse chatResponse = callAiWithCircuitBreaker(prompt);
-        String response = extractContent(chatResponse);
-        String cleanedResponse = cleanJsonResponse(response);
+        ChatResponse chatResponse = aiCallGuard.call(() -> gpt54MiniChatClient.prompt(prompt).call().chatResponse());
+        String response = AiResponseUtils.extractContent(chatResponse);
+        String cleanedResponse = AiResponseUtils.extractJson(response);
 
         log.debug("Received assessment response: {}", cleanedResponse);
 
@@ -130,80 +119,16 @@ public class JobAiService {
             GenerationMetrics metrics = generationMetricsService.fromChatResponse(
                     "Summary Report",
                     miniModelName,
-                    elapsedMillis(generationStart),
+                    AiResponseUtils.elapsedMillis(generationStart),
                     chatResponse
             );
             assessment.setGenerationMetrics(metrics);
-            logGenerationSummary(normalizedMode, metrics);
+            generationMetricsService.logAiCost(normalizedMode, null, metrics);
             return assessment;
         } catch (Exception e) {
             log.error("Failed to parse AI response: {}", response, e);
             throw new RuntimeException("Failed to parse AI response", e);
         }
-    }
-
-    private ChatResponse callAiWithCircuitBreaker(String prompt) {
-        long now = System.currentTimeMillis();
-        long openUntil = circuitOpenUntilEpochMillis.get();
-
-        if (openUntil > now) {
-            throw new AiCircuitOpenException("AI assessment service is temporarily unavailable");
-        }
-
-        boolean halfOpenProbe = openUntil > 0;
-        if (halfOpenProbe && !halfOpenProbeInFlight.compareAndSet(false, true)) {
-            throw new AiCircuitOpenException("AI assessment service is recovering; retry shortly");
-        }
-
-        if (!aiCallBulkhead.tryAcquire()) {
-            if (halfOpenProbe) {
-                halfOpenProbeInFlight.set(false);
-            }
-            throw new AiCircuitOpenException("AI assessment service is currently at capacity");
-        }
-
-        try {
-            ChatResponse chatResponse = gpt54MiniChatClient.prompt(prompt).call().chatResponse();
-            recordAiSuccess();
-            return chatResponse;
-        } catch (RuntimeException e) {
-            recordAiFailure(e);
-            throw e;
-        } finally {
-            aiCallBulkhead.release();
-            if (halfOpenProbe) {
-                halfOpenProbeInFlight.set(false);
-            }
-        }
-    }
-
-    private void recordAiSuccess() {
-        consecutiveAiFailures.set(0);
-        circuitOpenUntilEpochMillis.set(0);
-    }
-
-    private void recordAiFailure(RuntimeException exception) {
-        int failures = consecutiveAiFailures.incrementAndGet();
-        if (failures < circuitBreakerFailureThreshold) {
-            return;
-        }
-
-        long openUntil = System.currentTimeMillis() + circuitBreakerOpenDuration.toMillis();
-        circuitOpenUntilEpochMillis.set(openUntil);
-        consecutiveAiFailures.set(0);
-        log.warn(
-                "AI assessment circuit opened for {} ms after {} consecutive failures: {}",
-                circuitBreakerOpenDuration.toMillis(),
-                failures,
-                exception.getMessage()
-        );
-    }
-
-    private Duration validOpenDuration(Duration duration) {
-        if (duration == null || duration.isZero() || duration.isNegative()) {
-            return Duration.ofSeconds(30);
-        }
-        return duration;
     }
 
     String buildAssessmentPrompt(String mode, String profession, String roleSummary) {
@@ -255,99 +180,10 @@ public class JobAiService {
         return roleSummary == null ? "" : roleSummary.trim();
     }
 
-    private String extractContent(ChatResponse chatResponse) {
-        if (chatResponse == null || chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
-            return "";
-        }
-        return chatResponse.getResult().getOutput().getText();
-    }
-
-    private long elapsedMillis(long startNanos) {
-        return (System.nanoTime() - startNanos) / 1_000_000;
-    }
-
-    private void logGenerationSummary(String mode, GenerationMetrics metrics) {
-        log.info(
-                "AI_COST reportType=\"{}\" mode={} model={} durationMs={} promptTokens={} completionTokens={} totalTokens={} inputCostUsd={} outputCostUsd={} estimatedCostUsd={} estimatedCostPence={}",
-                metrics.getReportType(),
-                mode,
-                metrics.getModel(),
-                metrics.getDurationMs(),
-                metrics.getPromptTokens(),
-                metrics.getCompletionTokens(),
-                metrics.getTotalTokens(),
-                metrics.getInputCostUsdLabel(),
-                metrics.getOutputCostUsdLabel(),
-                metrics.getEstimatedCostUsdLabel(),
-                metrics.getEstimatedCostPenceLabel()
-        );
-    }
-
-    double clampScore(double score) {
-        if (Double.isNaN(score) || Double.isInfinite(score)) {
-            return 0.0;
-        }
-        return Math.max(0.0, Math.min(10.0, score));
-    }
-
-    private String cleanJsonResponse(String response) {
-        if (response == null) {
-            return null;
-        }
-
-        String cleaned = response.trim();
-
-        if (cleaned.startsWith("```")) {
-            int firstNewline = cleaned.indexOf('\n');
-            if (firstNewline != -1) {
-                cleaned = cleaned.substring(firstNewline + 1);
-            }
-
-            int lastFence = cleaned.lastIndexOf("```");
-            if (lastFence != -1) {
-                cleaned = cleaned.substring(0, lastFence);
-            }
-
-            cleaned = cleaned.trim();
-        }
-
-        int objectStart = cleaned.indexOf('{');
-        int arrayStart = cleaned.indexOf('[');
-
-        int start = -1;
-        int end = -1;
-
-        if (objectStart != -1 && (arrayStart == -1 || objectStart < arrayStart)) {
-            start = objectStart;
-            end = cleaned.lastIndexOf('}');
-        } else if (arrayStart != -1) {
-            start = arrayStart;
-            end = cleaned.lastIndexOf(']');
-        }
-
-        if (start != -1 && end != -1 && end > start) {
-            return cleaned.substring(start, end + 1).trim();
-        }
-
-        return cleaned;
-    }
-
     private String loadResourceFile(String resourcePath) {
-        try {
-            Resource resource = resourceLoader.getResource(resourcePath);
-            return resource.getContentAsString(StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            log.error("Failed to load resource file: {}", resourcePath, e);
-            throw new RuntimeException("Failed to load resource file: " + resourcePath, e);
-        }
+        return AiResponseUtils.loadResource(resourceLoader, resourcePath);
     }
 
     private record PromptContext(String modeInstructions, String inputLabel, String detailsLabel) {
-    }
-
-    static class AiCircuitOpenException extends RuntimeException {
-        AiCircuitOpenException(String message) {
-            super(message);
-        }
     }
 }

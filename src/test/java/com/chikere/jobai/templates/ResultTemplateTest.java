@@ -99,6 +99,15 @@ class ResultTemplateTest {
     }
 
     @Test
+    void sampleReportOpensInSeparateWindow() throws Exception {
+        String html = render("profession");
+
+        assertTrue(html.contains("href=\"/sample-report\""));
+        assertTrue(html.contains("target=\"_blank\""));
+        assertTrue(html.contains("rel=\"noopener\""));
+    }
+
+    @Test
     void generatingReportPrefersOriginalDetailsForDescription() throws Exception {
         String template = Files.readString(Path.of("src/main/resources/templates/generating-report.html"));
 

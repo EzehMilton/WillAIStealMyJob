@@ -24,6 +24,15 @@ class SecurityConfigTest {
     @MockBean
     private AnalyticsService analyticsService;
 
+    @MockBean
+    private com.chikere.jobai.service.AnalyticsRateLimiterService analyticsRateLimiterService;
+
+    @org.junit.jupiter.api.BeforeEach
+    void allowRateLimit() {
+        org.mockito.Mockito.when(analyticsRateLimiterService.tryConsume(org.mockito.ArgumentMatchers.anyString()))
+                .thenReturn(true);
+    }
+
     @Test
     void postWithoutCsrfTokenIsRejected() throws Exception {
         mockMvc.perform(post("/analytics/event")
